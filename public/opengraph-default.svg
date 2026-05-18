@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1614"/>
+      <stop offset="100%" style="stop-color:#0d0c0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1200" height="6" fill="#C0392B"/>
+  <text x="80" y="320" fill="#fafaf9" font-family="Georgia, serif" font-size="72" font-weight="700">PlotKare</text>
+  <text x="82" y="400" fill="#d6d3d1" font-family="system-ui, sans-serif" font-size="32" letter-spacing="-0.02em">Visakhapatnam plots &amp; apartments</text>
+  <text x="82" y="460" fill="#a8a29e" font-family="ui-monospace, monospace" font-size="22">plotkare.in</text>
+</svg>

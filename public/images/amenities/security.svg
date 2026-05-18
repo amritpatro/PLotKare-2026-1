@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 420" role="img" aria-label="Security amenity visual">
+  <rect width="700" height="420" fill="#142d40"/>
+  <circle cx="350" cy="210" r="125" fill="#1f475f"/>
+  <rect x="250" y="132" width="200" height="140" rx="20" fill="#fffaf1"/>
+  <circle cx="350" cy="202" r="42" fill="#8b1538"/>
+  <circle cx="350" cy="202" r="16" fill="#1a1a1a"/>
+  <path d="M350 92 V58 M350 362 v-34 M190 210 h-46 M556 210 h-46" stroke="#c9a962" stroke-width="8" stroke-linecap="round"/>
+</svg>

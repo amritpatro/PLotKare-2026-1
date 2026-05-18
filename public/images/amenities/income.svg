@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 420" role="img" aria-label="Income amenity visual">
+  <rect width="700" height="420" fill="#12382e"/>
+  <path d="M0 300 C120 260 210 320 350 270 C500 220 580 250 700 210 V420 H0 Z" fill="#355f49"/>
+  <rect x="84" y="128" width="185" height="112" rx="10" fill="#fffaf1"/>
+  <rect x="300" y="92" width="255" height="160" rx="10" fill="#c9a962"/>
+  <path d="M130 300 H590" stroke="#fffaf1" stroke-width="8" opacity=".75"/>
+  <text x="52" y="64" fill="#fffaf1" font-family="Arial, sans-serif" font-size="34" font-weight="700">Income add-on</text>
+</svg>

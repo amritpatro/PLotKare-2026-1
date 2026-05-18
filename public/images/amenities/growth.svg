@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 420" role="img" aria-label="Growth amenity visual">
+  <rect width="700" height="420" fill="#eef5ea"/>
+  <path d="M0 320 C140 260 250 350 390 275 C515 210 610 240 700 200 V420 H0 Z" fill="#8fa57d"/>
+  <g fill="#355f49">
+    <path d="M190 286 C170 220 225 190 260 240 C290 190 350 222 318 286 Z"/>
+    <path d="M410 260 C385 195 445 165 480 220 C510 180 568 210 536 260 Z"/>
+  </g>
+  <text x="58" y="82" fill="#1a1a1a" font-family="Arial, sans-serif" font-size="34" font-weight="700">Growth service</text>
+</svg>

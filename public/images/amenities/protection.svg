@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 420" role="img" aria-label="Protection amenity visual">
+  <rect width="700" height="420" fill="#1a1a1a"/>
+  <rect x="78" y="80" width="544" height="260" rx="12" fill="#fffaf1"/>
+  <path d="M128 132 H572 M128 200 H572 M128 268 H572 M210 100 V320 M350 100 V320 M490 100 V320" stroke="#1a1a1a" stroke-width="6" opacity=".55"/>
+  <path d="M350 146 l52 22 v52 c0 44 -28 70 -52 82 c-24 -12 -52 -38 -52 -82 v-52 Z" fill="#8b1538"/>
+  <path d="M326 217 l17 17 l36 -45" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

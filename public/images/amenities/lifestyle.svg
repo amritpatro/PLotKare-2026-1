@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 420" role="img" aria-label="Lifestyle amenity visual">
+  <rect width="700" height="420" fill="#fffaf1"/>
+  <path d="M0 312 C135 252 255 338 382 270 C505 206 615 242 700 195 V420 H0 Z" fill="#d7caa9"/>
+  <circle cx="505" cy="126" r="58" fill="#c9a962"/>
+  <path d="M164 300 V160 H300 V300" fill="none" stroke="#8b1538" stroke-width="12" stroke-linecap="round"/>
+  <path d="M195 174 C210 238 245 238 260 174" fill="none" stroke="#1a1a1a" stroke-width="7" stroke-linecap="round"/>
+  <text x="74" y="82" fill="#1a1a1a" font-family="Arial, sans-serif" font-size="34" font-weight="700">Lifestyle add-on</text>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" role="img" aria-label="Town plot listing visual">
+  <rect width="900" height="600" fill="#f4efe6"/>
+  <path d="M0 390 C180 345 290 405 455 360 C620 315 740 340 900 300 V600 H0 Z" fill="#d9d0ba"/>
+  <g fill="none" stroke="#1a1a1a" stroke-width="6" opacity=".65">
+    <path d="M80 480 H820"/>
+    <path d="M170 390 L240 570"/>
+    <path d="M360 360 L420 570"/>
+    <path d="M585 332 L640 570"/>
+    <path d="M735 315 L795 570"/>
+  </g>
+  <g fill="#8b1538" opacity=".9">
+    <rect x="230" y="405" width="95" height="62" rx="4"/>
+    <rect x="505" y="365" width="116" height="70" rx="4"/>
+  </g>
+  <text x="80" y="116" fill="#1a1a1a" font-family="Arial, sans-serif" font-size="38" font-weight="700">Verified plot corridor</text>
+  <text x="80" y="160" fill="#6b7280" font-family="Arial, sans-serif" font-size="22">local status, size, facing, and owner workflow</text>
+</svg>
