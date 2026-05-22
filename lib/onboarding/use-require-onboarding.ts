@@ -22,7 +22,7 @@ export function useRequireOnboarding() {
       if (!mounted) return
 
       if (!user) {
-        router.replace('/login?next=/dashboard')
+        router.replace('/login')
         return
       }
 

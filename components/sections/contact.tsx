@@ -49,14 +49,14 @@ export function ContactSection() {
   }
 
   return (
-    <section id="contact" className="bg-secondary py-16 lg:py-24">
+    <section id="contact" className="premium-section bg-secondary py-16 lg:py-24">
       <div className="mx-auto max-w-[720px] px-6 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.55 }}
-          className="text-center"
+          className="premium-reveal text-center"
         >
           <h2 className="font-serif text-4xl font-bold leading-tight text-foreground md:text-5xl">
             Talk to PlotKare in Visakhapatnam
@@ -72,7 +72,7 @@ export function ContactSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.08 }}
-          className="mt-10 grid gap-8 rounded-xl border border-border bg-card p-8 shadow-sm md:grid-cols-[1fr_minmax(0,1fr)] md:gap-10 md:p-10"
+          className="premium-surface mt-10 grid gap-8 rounded-xl border border-border bg-card p-8 md:grid-cols-[1fr_minmax(0,1fr)] md:gap-10 md:p-10"
         >
           <div className="space-y-5 text-left">
             <div className="flex items-start gap-3">
@@ -106,13 +106,13 @@ export function ContactSection() {
             <div className="flex flex-wrap gap-3 pt-2">
               <Link
                 href="/listings/"
-                className="inline-flex rounded-sm bg-primary px-6 py-3 font-sans text-sm font-medium text-white transition-colors hover:bg-primary/90"
+                className="premium-button inline-flex rounded-sm bg-primary px-6 py-3 font-sans text-sm font-medium text-white transition-colors hover:bg-primary/90"
               >
                 Browse listings
               </Link>
               <Link
                 href="/demo/plot-3d/"
-                className="inline-flex rounded-sm border border-foreground px-6 py-3 font-sans text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background"
+                className="premium-button-outline inline-flex rounded-sm border border-foreground px-6 py-3 font-sans text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background"
               >
                 Open 3D demo
               </Link>
@@ -151,7 +151,7 @@ export function ContactSection() {
                     autoComplete="name"
                     value={formData.name}
                     onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2.5 font-sans text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2.5 font-sans text-sm text-foreground shadow-sm transition-[border-color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     placeholder="Your name"
                   />
                 </div>
@@ -167,7 +167,7 @@ export function ContactSection() {
                     autoComplete="email"
                     value={formData.email}
                     onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2.5 font-sans text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2.5 font-sans text-sm text-foreground shadow-sm transition-[border-color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     placeholder="you@example.com"
                   />
                 </div>
@@ -182,7 +182,7 @@ export function ContactSection() {
                     autoComplete="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2.5 font-sans text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2.5 font-sans text-sm text-foreground shadow-sm transition-[border-color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     placeholder="Optional phone number"
                   />
                 </div>
@@ -197,14 +197,14 @@ export function ContactSection() {
                     required
                     value={formData.message}
                     onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
-                    className="w-full resize-y rounded-md border border-input bg-background px-3 py-2.5 font-sans text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="w-full resize-y rounded-md border border-input bg-background px-3 py-2.5 font-sans text-sm text-foreground shadow-sm transition-[border-color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     placeholder="Plot location, concerns, or expansion interest…"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-sm bg-primary py-3 font-sans text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+                  className="premium-button w-full rounded-sm bg-primary py-3 font-sans text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   {loading ? 'Sending…' : 'Send'}
                 </button>

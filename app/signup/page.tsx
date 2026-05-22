@@ -16,9 +16,11 @@ import {
   rememberPendingOnboardingPath,
   resolvePostLoginRedirect,
 } from '@/lib/onboarding/redirect'
+import { slugFromCustomerType, type CustomerType } from '@/lib/onboarding/types'
 import { signupSchema } from '@/lib/validation/auth'
 
 type SignupFormData = {
+  customerType: CustomerType | ''
   fullName: string
   email: string
   password: string
@@ -26,11 +28,34 @@ type SignupFormData = {
 }
 
 const initialFormData: SignupFormData = {
+  customerType: '',
   fullName: '',
   email: '',
   password: '',
   confirmPassword: '',
 }
+
+const roleOptions: Array<{
+  id: CustomerType
+  title: string
+  subtitle: string
+}> = [
+  {
+    id: 'land_owner',
+    title: 'Land Owner',
+    subtitle: 'Register and manage your own land or property.',
+  },
+  {
+    id: 'plot_seller',
+    title: 'Plot Seller',
+    subtitle: 'Manage plots, sales, customers, and documents.',
+  },
+  {
+    id: 'plot_buyer',
+    title: 'Customer',
+    subtitle: 'Track purchased property, documents, services, and support.',
+  },
+]
 
 function normalizeFieldValue(name: string, value: string) {
   if (name === 'postalCode') return value.replace(/\D/g, '').slice(0, 6)
@@ -50,7 +75,7 @@ function passwordChecks(password: string) {
 export default function SignupPage() {
   const router = useRouter()
   const supabase = createSupabaseBrowserClient()
-  const [nextPath, setNextPath] = useState('/dashboard')
+  const [nextPath, setNextPath] = useState('/auth/choose-role')
   const [intent, setIntent] = useState('')
   const [formData, setFormData] = useState<SignupFormData>(initialFormData)
   const [showPassword, setShowPassword] = useState(false)
@@ -104,7 +129,7 @@ export default function SignupPage() {
       return
     }
 
-    const onboardingPath = '/auth/choose-role'
+    const onboardingPath = `/onboarding/${slugFromCustomerType(parsed.data.customerType)}`
     rememberPendingOnboardingPath(onboardingPath)
 
     setSubmitting(true)
@@ -115,6 +140,8 @@ export default function SignupPage() {
         emailRedirectTo: buildAuthCallbackUrl(onboardingPath),
         data: {
           full_name: parsed.data.fullName,
+          customer_type: parsed.data.customerType,
+          onboarding_status: 'in_progress',
         },
       },
     })
@@ -147,14 +174,14 @@ export default function SignupPage() {
         </Link>
         <div className="max-w-md space-y-7">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#D4AF94]/80">
-            Owner onboarding
+            Role-based onboarding
           </p>
           <h1 className="font-serif text-5xl font-semibold leading-tight text-white">
             Build your property command room.
           </h1>
           <p className="font-sans text-base leading-8 text-white/65">
-            Share the details our team needs to prepare inspections, documents, support, and advisor-led next steps for
-            your property journey.
+            Choose the right workspace first. PlotKare then opens the exact setup flow for sellers, land owners, or
+            customers.
           </p>
         </div>
       </div>
@@ -211,6 +238,32 @@ export default function SignupPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-7">
+              <div>
+                <span className="font-mono text-xs uppercase tracking-[0.16em] text-white/45">I am joining as</span>
+                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  {roleOptions.map((role) => {
+                    const selected = formData.customerType === role.id
+
+                    return (
+                      <button
+                        key={role.id}
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, customerType: role.id }))}
+                        className={`rounded-xl border p-4 text-left transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF94] ${
+                          selected
+                            ? 'border-[#C0392B] bg-[#C0392B]/20 shadow-lg shadow-black/20'
+                            : 'border-white/10 bg-white/[0.025] hover:border-[#D4AF94]/40 hover:bg-white/[0.045]'
+                        }`}
+                        aria-pressed={selected}
+                      >
+                        <span className="font-sans text-sm font-semibold text-white">{role.title}</span>
+                        <span className="mt-2 block font-sans text-xs leading-5 text-white/55">{role.subtitle}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
               <div className="grid gap-5 md:grid-cols-2">
                 <label className="block">
                   <span className="font-mono text-xs uppercase tracking-[0.16em] text-white/45">Full name</span>

@@ -74,7 +74,7 @@ export function HowItWorksSection() {
   }, [])
 
   return (
-    <section id="how-it-works" ref={sectionRef} className="bg-charcoal py-24 lg:py-32">
+    <section id="how-it-works" ref={sectionRef} className="premium-section-dark bg-charcoal py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         {/* Header */}
         <motion.div
@@ -82,7 +82,7 @@ export function HowItWorksSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="mb-12 text-center"
+          className="premium-reveal mb-12 text-center"
         >
           <h2 className="font-serif text-4xl font-bold text-white md:text-5xl">
             How Property Monitoring Works in <span className="text-primary">Five Steps</span>
@@ -113,7 +113,7 @@ export function HowItWorksSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`scroll-snap-start min-w-[280px] flex-shrink-0 rounded-lg p-8 transition-all duration-500 ${
+              className={`premium-surface-dark scroll-snap-start min-w-[280px] flex-shrink-0 rounded-lg p-8 transition-all duration-500 ${
                 highlightedSteps.has(index)
                   ? 'bg-white/10 shadow-[0_0_20px_rgba(139,21,56,0.6)]'
                   : 'bg-white/5'
@@ -142,7 +142,7 @@ export function HowItWorksSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`group relative rounded-lg p-6 transition-all duration-500 ${
+              className={`premium-surface-dark group relative rounded-lg p-6 transition-all duration-500 ${
                 highlightedSteps.has(index)
                   ? 'bg-white/10 shadow-[0_0_20px_rgba(139,21,56,0.6)]'
                   : 'bg-white/5 hover:bg-white/10'

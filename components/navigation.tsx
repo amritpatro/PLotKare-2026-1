@@ -44,9 +44,8 @@ export function Navigation() {
     <>
       <motion.nav
         initial={false}
-        className={`fixed top-0 left-0 right-0 z-50 bg-white transition-shadow duration-300 ${
-          isScrolled ? 'shadow-md' : 'border-b border-border'
-        }`}
+        data-scrolled={isScrolled}
+        className="premium-nav fixed top-0 left-0 right-0 z-50 border-b border-border bg-white/95"
       >
         <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
           <div className="flex h-20 items-center justify-between">
@@ -56,12 +55,12 @@ export function Navigation() {
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden items-center gap-10 lg:flex">
+            <div className="hidden items-center gap-5 xl:gap-6 2xl:gap-9 lg:flex">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="font-sans text-sm font-medium text-foreground/80 transition-colors hover:text-primary"
+                  className="premium-nav-link font-sans text-sm font-medium text-foreground/80 transition-colors hover:text-primary"
                 >
                   {link.label}
                 </Link>
@@ -69,16 +68,16 @@ export function Navigation() {
             </div>
 
             {/* CTA */}
-            <div className="hidden items-center gap-6 lg:flex">
+            <div className="hidden items-center gap-4 xl:gap-6 lg:flex">
               <Link
                 href="/signup"
-                className="font-sans text-sm font-medium text-primary transition-colors hover:text-primary/90"
+                className="premium-nav-link font-sans text-sm font-medium text-primary transition-colors hover:text-primary/90"
               >
                 Sign Up
               </Link>
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center rounded-sm bg-foreground px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-foreground/90"
+                className="premium-button-dark inline-flex items-center justify-center rounded-sm bg-foreground px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-foreground/90"
               >
                 Owner Login
               </Link>
@@ -87,7 +86,7 @@ export function Navigation() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="flex h-10 w-10 items-center justify-center lg:hidden"
+              className="premium-interactive flex h-10 w-10 items-center justify-center rounded-sm lg:hidden"
               aria-label="Open menu"
             >
               <svg
@@ -155,7 +154,7 @@ export function Navigation() {
                     transition={{ delay: index * 0.1 }}
                   >
                     <Link
-                      href={link.href}
+                  href={link.href}
                       className="font-serif text-4xl font-semibold text-white transition-colors hover:text-primary"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
@@ -175,7 +174,7 @@ export function Navigation() {
                 </Link>
                 <Link
                   href="/login"
-                  className="inline-flex w-full items-center justify-center rounded-sm bg-primary px-6 py-4 font-sans text-base font-medium text-white"
+                  className="premium-button inline-flex w-full items-center justify-center rounded-sm bg-primary px-6 py-4 font-sans text-base font-medium text-white"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Owner Login

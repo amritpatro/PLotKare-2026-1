@@ -7,7 +7,10 @@ import {
   Users,
   MapPin,
   Building2,
+  BriefcaseBusiness,
   FileText,
+  ShieldCheck,
+  ScrollText,
   Zap,
   CreditCard,
   Settings,
@@ -16,14 +19,18 @@ import {
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 
 const items = [
-  { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/admin/dashboard/customers', label: 'Customers', icon: Users },
-  { href: '/admin/dashboard/plots', label: 'Plots', icon: MapPin },
-  { href: '/admin/dashboard/listings', label: 'Listings', icon: Building2 },
-  { href: '/admin/dashboard/inspection-reports', label: 'Inspection Reports', icon: FileText },
-  { href: '/admin/dashboard/amenities', label: 'Amenities', icon: Zap },
-  { href: '/admin/dashboard/payments', label: 'Payments', icon: CreditCard },
-  { href: '/admin/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/admin/dashboard', label: 'Overview', icon: LayoutDashboard, section: 'Command' },
+  { href: '/admin/dashboard/users', label: 'Users', icon: Users, section: 'Command' },
+  { href: '/admin/dashboard/verification', label: 'Verification', icon: ShieldCheck, section: 'Command' },
+  { href: '/admin/dashboard/customers', label: 'Customers', icon: Users, section: 'Records' },
+  { href: '/admin/dashboard/plots', label: 'Plots', icon: MapPin, section: 'Records' },
+  { href: '/admin/dashboard/listings', label: 'Listings', icon: Building2, section: 'Records' },
+  { href: '/admin/dashboard/employees', label: 'Employees', icon: BriefcaseBusiness, section: 'Operations' },
+  { href: '/admin/dashboard/inspection-reports', label: 'Inspection Reports', icon: FileText, section: 'Operations' },
+  { href: '/admin/dashboard/audit', label: 'Audit Logs', icon: ScrollText, section: 'Operations' },
+  { href: '/admin/dashboard/amenities', label: 'Amenities', icon: Zap, section: 'Operations' },
+  { href: '/admin/dashboard/payments', label: 'Payments', icon: CreditCard, section: 'Finance' },
+  { href: '/admin/dashboard/settings', label: 'Settings', icon: Settings, section: 'System' },
 ]
 
 export function AdminSidebar() {
@@ -35,27 +42,35 @@ export function AdminSidebar() {
       <div className="flex h-full flex-col">
         <div className="border-b border-[#E5E7EB] px-5 py-5">
           <p className="font-serif text-lg font-bold text-[#1F2937]">PlotKare</p>
-          <p className="font-mono text-[10px] uppercase tracking-wider text-[#C0392B]">Admin</p>
+          <p className="font-mono text-[10px] uppercase tracking-wider text-[#C0392B]">Control center</p>
         </div>
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
-          {items.map(({ href, label, icon: Icon }) => {
+          {items.map(({ href, label, icon: Icon, section }, index) => {
             const active =
               href === '/admin/dashboard'
                 ? pathname === '/admin/dashboard'
                 : pathname === href || pathname.startsWith(`${href}/`)
+            const showSection = index === 0 || items[index - 1]?.section !== section
             return (
-              <Link key={href} href={href}>
-                <span
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 font-sans text-sm font-medium transition-colors ${
-                    active
-                      ? 'border-l-[3px] border-l-[#C0392B] bg-[#FFF1F2] pl-[9px] text-[#C0392B]'
-                      : 'border-l-[3px] border-l-transparent pl-[9px] text-[#6B7280] hover:bg-[#F9FAFB]'
-                  }`}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {label}
-                </span>
-              </Link>
+              <div key={href}>
+                {showSection ? (
+                  <p className="px-3 pb-1 pt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-[#9CA3AF] first:pt-0">
+                    {section}
+                  </p>
+                ) : null}
+                <Link href={href}>
+                  <span
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 font-sans text-sm font-medium transition-colors ${
+                      active
+                        ? 'border-l-[3px] border-l-[#C0392B] bg-[#FFF1F2] pl-[9px] text-[#C0392B]'
+                        : 'border-l-[3px] border-l-transparent pl-[9px] text-[#6B7280] hover:bg-[#F9FAFB]'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {label}
+                  </span>
+                </Link>
+              </div>
             )
           })}
         </nav>

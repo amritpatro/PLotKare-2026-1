@@ -45,14 +45,14 @@ const pillars: Pillar[] = [
 
 export function StatisticsSection() {
   return (
-    <section id="investors" className="bg-secondary py-24 lg:py-32">
+    <section id="investors" className="premium-section bg-secondary py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <motion.h2
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.55 }}
-          className="mb-12 text-center font-serif text-3xl font-bold text-foreground md:text-4xl"
+          className="premium-reveal mb-12 text-center font-serif text-3xl font-bold text-foreground md:text-4xl"
         >
           Property Monitoring Built for Long-Distance Decisions
         </motion.h2>
@@ -72,8 +72,7 @@ export function StatisticsSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.08 }}
-              whileHover={{ y: -6 }}
-              className="group relative min-h-[280px] overflow-hidden rounded-xl border border-border bg-white/70 p-8 text-left shadow-sm backdrop-blur-sm"
+              className="premium-surface group relative min-h-[280px] overflow-hidden rounded-xl border border-border bg-white/70 p-8 text-left backdrop-blur-sm"
             >
               <motion.div
                 initial={{ rotate: -10, opacity: 0.22, y: 18 }}

@@ -123,7 +123,7 @@ export default function AmenitiesPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => router.push('/dashboard/payments')}
+                  onClick={() => router.push('/owner/support')}
                   className="mt-4 w-full rounded-lg bg-[#C0392B] py-3 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-95"
                 >
                   Request Consultation

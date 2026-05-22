@@ -6,7 +6,7 @@ import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { BODUVALASA_LAYOUT } from '@/lib/boduvalasa-layout'
-import { getPlotProfile } from '@/lib/plot-profile'
+import { getMappedPlotMarks, getPlotProfile } from '@/lib/plot-profile'
 
 const CRIMSON = '#8B1538'
 const GOLD = '#C9A962'
@@ -18,6 +18,13 @@ const GREEN = '#355f49'
 const GRASS = '#6f8f4e'
 const SOIL = '#6b5737'
 const LAYOUT_NORTH_DEGREES = -8
+const LAYOUT_BOUNDARY = {
+  x: [0, BODUVALASA_LAYOUT.viewBox.width] as const,
+  y: [14, BODUVALASA_LAYOUT.viewBox.height] as const,
+  width: BODUVALASA_LAYOUT.viewBox.width,
+  height: BODUVALASA_LAYOUT.viewBox.height - 14,
+}
+const PLOT_BOUNDARY_INSET = 12
 
 function normalizedPoint(x: number, y: number) {
   const w = BODUVALASA_LAYOUT.viewBox.width
@@ -42,6 +49,65 @@ function LineMesh({ segment }: { segment: readonly [number, number, number, numb
       <meshStandardMaterial color={INK} roughness={0.82} metalness={0.02} />
     </mesh>
   )
+}
+
+function clipSegmentToBoundary(segment: readonly [number, number, number, number]) {
+  const [minX, maxX] = LAYOUT_BOUNDARY.x
+  const [minY, maxY] = LAYOUT_BOUNDARY.y
+  let [x0, y0, x1, y1] = segment
+  const dx = x1 - x0
+  const dy = y1 - y0
+  let t0 = 0
+  let t1 = 1
+
+  const checks = [
+    [-dx, x0 - minX],
+    [dx, maxX - x0],
+    [-dy, y0 - minY],
+    [dy, maxY - y0],
+  ] as const
+
+  for (const [p, q] of checks) {
+    if (p === 0) {
+      if (q < 0) return null
+      continue
+    }
+    const r = q / p
+    if (p < 0) {
+      if (r > t1) return null
+      if (r > t0) t0 = r
+    } else {
+      if (r < t0) return null
+      if (r < t1) t1 = r
+    }
+  }
+
+  return [
+    x0 + t0 * dx,
+    y0 + t0 * dy,
+    x0 + t1 * dx,
+    y0 + t1 * dy,
+  ] as const
+}
+
+function getClippedLayoutSegments() {
+  return BODUVALASA_LAYOUT.segments
+    .map(clipSegmentToBoundary)
+    .filter((segment): segment is readonly [number, number, number, number] => Boolean(segment))
+}
+
+function getPlotBoundaryViolations(marks: LayoutPlotMark[]) {
+  return marks.filter(
+    (mark) =>
+      mark.x < LAYOUT_BOUNDARY.x[0] + PLOT_BOUNDARY_INSET ||
+      mark.x > LAYOUT_BOUNDARY.x[1] - PLOT_BOUNDARY_INSET ||
+      mark.y < LAYOUT_BOUNDARY.y[0] + PLOT_BOUNDARY_INSET ||
+      mark.y > LAYOUT_BOUNDARY.y[1] - PLOT_BOUNDARY_INSET,
+  )
+}
+
+function isPlotMarkInsideBoundary(mark: LayoutPlotMark) {
+  return !getPlotBoundaryViolations([mark]).length
 }
 
 function CameraRig() {
@@ -73,9 +139,50 @@ type Boduvalasa3DCanvasProps = {
   onPlotSelect?: (plotNumber: number) => void
 }
 
+type LayoutPlotMark = {
+  n: number
+  x: number
+  y: number
+  extent?: number
+  extentSqYards?: number
+}
+
+const TARGET_PLOT_COUNT = BODUVALASA_LAYOUT.plotCount
+const DEFAULT_PLOT_EXTENT = 133.33
+
+function normalizeLayoutMark(mark: LayoutPlotMark): LayoutPlotMark {
+  const extent = mark.extent ?? mark.extentSqYards ?? DEFAULT_PLOT_EXTENT
+
+  return {
+    ...mark,
+    extent,
+    extentSqYards: mark.extentSqYards ?? extent,
+  }
+}
+
+function getLayoutMarks(): LayoutPlotMark[] {
+  const sourceMarks = getMappedPlotMarks().map(normalizeLayoutMark)
+  const marksByPlot = new Map<number, LayoutPlotMark>()
+
+  for (const mark of sourceMarks) {
+    marksByPlot.set(mark.n, mark)
+  }
+
+  return Array.from(marksByPlot.values())
+    .filter((mark) => mark.n >= 1 && mark.n <= TARGET_PLOT_COUNT)
+    .filter(isPlotMarkInsideBoundary)
+    .sort((a, b) => a.n - b.n)
+}
+
 function BoduvalasaScene({ selectedPlot, onPlotSelect }: Boduvalasa3DCanvasProps) {
-  const plotMarks = useMemo(() => (BODUVALASA_LAYOUT as any).plotMarks ?? (BODUVALASA_LAYOUT as any).plots ?? [], [])
+  const plotMarks = useMemo(() => getLayoutMarks(), [])
+  const layoutSegments = useMemo(() => getClippedLayoutSegments(), [])
   const selectedProfile = selectedPlot ? getPlotProfile(selectedPlot) : null
+  const boundaryViolations = useMemo(() => getPlotBoundaryViolations(plotMarks), [plotMarks])
+
+  if (process.env.NODE_ENV !== 'production' && boundaryViolations.length > 0) {
+    console.warn('PlotKare layout boundary violations', boundaryViolations)
+  }
 
   return (
     <>
@@ -95,7 +202,7 @@ function BoduvalasaScene({ selectedPlot, onPlotSelect }: Boduvalasa3DCanvasProps
         <meshStandardMaterial color={PAPER} roughness={0.96} metalness={0.01} />
       </mesh>
 
-      {BODUVALASA_LAYOUT.segments.slice(0, 260).map((segment, index) => (
+      {layoutSegments.slice(0, 260).map((segment, index) => (
         <LineMesh key={`${segment.join('-')}-${index}`} segment={segment} />
       ))}
 
@@ -103,12 +210,12 @@ function BoduvalasaScene({ selectedPlot, onPlotSelect }: Boduvalasa3DCanvasProps
         const p = normalizedPoint(mark.x, mark.y)
         const selected = mark.n === selectedPlot
         const extentRatio = Math.min(1.2, Math.max(0.55, (mark.extent ?? 120) / 220))
-        const parcelW = (selected ? 0.4 : 0.26) * extentRatio
-        const parcelD = (selected ? 0.3 : 0.2) * Math.max(0.72, Math.min(1.05, extentRatio))
-        const height = selected ? 0.28 : 0.1
+        const parcelW = (selected ? 0.34 : 0.2) * extentRatio
+        const parcelD = (selected ? 0.26 : 0.15) * Math.max(0.72, Math.min(1.05, extentRatio))
+        const height = selected ? 0.16 : 0.035
         return (
           <group key={mark.n} position={[p.x, height / 2 + 0.08, p.z]}>
-            <mesh position={[0, -height / 2 - 0.025, 0]} receiveShadow>
+            <mesh position={[0, -height / 2 - 0.015, 0]} receiveShadow>
               <boxGeometry args={[parcelW * 1.06, 0.05, parcelD * 1.08]} />
               <meshStandardMaterial color={SOIL} roughness={0.88} metalness={0.02} />
             </mesh>
@@ -119,13 +226,46 @@ function BoduvalasaScene({ selectedPlot, onPlotSelect }: Boduvalasa3DCanvasProps
                 event.stopPropagation()
                 onPlotSelect?.(mark.n)
               }}
+              onPointerOver={(event) => {
+                event.stopPropagation()
+                document.body.style.cursor = 'pointer'
+              }}
+              onPointerOut={(event) => {
+                event.stopPropagation()
+                document.body.style.cursor = ''
+              }}
             >
               <boxGeometry args={[parcelW, height, parcelD]} />
               <meshStandardMaterial
                 color={selected ? CRIMSON : GRASS}
                 roughness={selected ? 0.58 : 0.92}
                 metalness={selected ? 0.12 : 0.02}
+                transparent={!selected}
+                opacity={selected ? 1 : 0.82}
               />
+            </mesh>
+            <mesh
+              onClick={(event) => {
+                event.stopPropagation()
+                onPlotSelect?.(mark.n)
+              }}
+              onPointerOver={(event) => {
+                event.stopPropagation()
+                document.body.style.cursor = 'pointer'
+              }}
+              onPointerOut={(event) => {
+                event.stopPropagation()
+                document.body.style.cursor = ''
+              }}
+            >
+              <boxGeometry
+                args={[
+                  Math.max(parcelW * 1.75, 0.28),
+                  Math.max(height + 0.2, 0.22),
+                  Math.max(parcelD * 1.85, 0.22),
+                ]}
+              />
+              <meshBasicMaterial transparent opacity={0} depthWrite={false} />
             </mesh>
             <mesh position={[0, height / 2 + 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
               <planeGeometry args={[parcelW * 0.86, parcelD * 0.78]} />
@@ -185,6 +325,7 @@ function Boduvalasa3DCanvasImpl({ className = '', selectedPlot, onPlotSelect }: 
   const selectedProfile = activePlot ? getPlotProfile(activePlot) : null
   const [zoom, setZoom] = useState(54)
   const cameraRef = useRef<THREE.OrthographicCamera | null>(null)
+  const plotCount = useMemo(() => getLayoutMarks().length, [])
 
   const applyZoom = (nextZoom: number) => {
     const bounded = Math.max(38, Math.min(82, nextZoom))
@@ -209,6 +350,9 @@ function Boduvalasa3DCanvasImpl({ className = '', selectedPlot, onPlotSelect }: 
             camera.updateProjectionMatrix()
           }
         }}
+        onPointerMissed={() => {
+          document.body.style.cursor = ''
+        }}
         style={{ height: '100%' }}
       >
         <BoduvalasaScene
@@ -221,7 +365,9 @@ function Boduvalasa3DCanvasImpl({ className = '', selectedPlot, onPlotSelect }: 
       </Canvas>
       <div className="pointer-events-none absolute left-4 top-4 rounded-sm border border-white/10 bg-black/40 px-3 py-2 backdrop-blur">
         <p className="font-mono text-[10px] uppercase tracking-wide text-white/55">Real layout artifact</p>
-        <p className="font-sans text-sm font-semibold text-white">173 clickable plots</p>
+        <p className="font-sans text-sm font-semibold text-white">
+          {plotCount} source-mapped boxes · {TARGET_PLOT_COUNT} total plots
+        </p>
       </div>
       <div className="pointer-events-none absolute right-4 top-4 h-20 w-20 rounded-full border border-white/20 bg-black/40 text-white shadow-xl backdrop-blur">
         <div className="absolute left-1/2 top-2 -translate-x-1/2 font-mono text-[10px] font-bold">N</div>
@@ -302,10 +448,12 @@ export function BoduvalasaPlanSvg({
   onPlotSelect,
   showBadge = !compact,
 }: BoduvalasaPlanSvgProps) {
-  const marks = (BODUVALASA_LAYOUT as any).plotMarks ?? (BODUVALASA_LAYOUT as any).plots ?? []
+  const marks = getLayoutMarks()
+  const layoutSegments = getClippedLayoutSegments()
   const visibleMarks = compact
-    ? marks.filter((mark: any) => mark.n % 7 === 0 || mark.n === 1 || mark.n === 173)
+    ? marks.filter((mark) => mark.n % 7 === 0 || mark.n === 1 || mark.n === 122)
     : marks
+  const clipId = compact ? 'boduvalasa-layout-clip-compact' : 'boduvalasa-layout-clip'
 
   return (
     <svg
@@ -314,73 +462,86 @@ export function BoduvalasaPlanSvg({
       aria-label="Real property layout with plot labels and proposed roads"
       className={`block w-full ${className}`}
     >
-      <rect width={BODUVALASA_LAYOUT.viewBox.width} height={BODUVALASA_LAYOUT.viewBox.height} rx="10" fill="#fffaf1" />
-      <g opacity={compact ? 0.44 : 0.68}>
-        {BODUVALASA_LAYOUT.segments.map((segment, index) => (
-          <line
-            key={`${segment.join('-')}-${index}`}
-            x1={segment[0]}
-            y1={segment[1]}
-            x2={segment[2]}
-            y2={segment[3]}
-            stroke={INK}
-            strokeWidth={compact ? 0.8 : 0.95}
-            strokeLinecap="round"
+      <defs>
+        <clipPath id={clipId}>
+          <rect
+            x={LAYOUT_BOUNDARY.x[0]}
+            y={LAYOUT_BOUNDARY.y[0]}
+            width={LAYOUT_BOUNDARY.width}
+            height={LAYOUT_BOUNDARY.height}
           />
-        ))}
-      </g>
-      <g>
-        {visibleMarks.map((mark) => {
-          const selected = mark.n === selectedPlot
-          const canSelect = Boolean(onPlotSelect)
-          return (
-          <g
-            key={mark.n}
-            role={canSelect ? 'button' : undefined}
-            tabIndex={canSelect ? 0 : undefined}
-            aria-label={canSelect ? `Select plot ${mark.n}` : undefined}
-            className={canSelect ? 'cursor-pointer outline-none' : undefined}
-            onClick={
-              canSelect
-                ? () => {
-                    onPlotSelect?.(mark.n)
-                  }
-                : undefined
-            }
-            onKeyDown={
-              canSelect
-                ? (event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      onPlotSelect?.(mark.n)
-                    }
-                  }
-                : undefined
-            }
-          >
-            <title>Plot {mark.n}</title>
-            <circle
-              cx={mark.x}
-              cy={mark.y}
-              r={selected ? (compact ? 7.4 : 9.6) : compact ? 5.5 : 7.2}
-              fill={selected || mark.n % 18 === 0 ? CRIMSON : '#ffffff'}
-              stroke={selected || mark.n % 18 === 0 ? CRIMSON : GOLD}
-              strokeWidth={selected ? 2.2 : 1}
+        </clipPath>
+      </defs>
+      <rect width={BODUVALASA_LAYOUT.viewBox.width} height={BODUVALASA_LAYOUT.viewBox.height} rx="10" fill="#fffaf1" />
+      <g clipPath={`url(#${clipId})`}>
+        <g opacity={compact ? 0.44 : 0.68}>
+          {layoutSegments.map((segment, index) => (
+            <line
+              key={`${segment.join('-')}-${index}`}
+              x1={segment[0]}
+              y1={segment[1]}
+              x2={segment[2]}
+              y2={segment[3]}
+              stroke={INK}
+              strokeWidth={compact ? 0.8 : 0.95}
+              strokeLinecap="round"
             />
-            <text
-              x={mark.x}
-              y={mark.y + (compact ? 2.2 : 2.9)}
-              textAnchor="middle"
-              fontSize={compact ? 5.4 : 6.8}
-              fontWeight="700"
-              fill={selected || mark.n % 18 === 0 ? '#ffffff' : INK}
-              pointerEvents="none"
-              style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
-            >
-              {mark.n}
-            </text>
-          </g>
-        )})}
+          ))}
+        </g>
+        <g>
+          {visibleMarks.map((mark) => {
+            const selected = mark.n === selectedPlot
+            const canSelect = Boolean(onPlotSelect)
+            return (
+              <g
+                key={mark.n}
+                role={canSelect ? 'button' : undefined}
+                tabIndex={canSelect ? 0 : undefined}
+                aria-label={canSelect ? `Select plot ${mark.n}` : undefined}
+                className={canSelect ? 'cursor-pointer outline-none' : undefined}
+                onClick={
+                  canSelect
+                    ? () => {
+                        onPlotSelect?.(mark.n)
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  canSelect
+                    ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          onPlotSelect?.(mark.n)
+                        }
+                      }
+                    : undefined
+                }
+              >
+                <title>Plot {mark.n}</title>
+                <circle
+                  cx={mark.x}
+                  cy={mark.y}
+                  r={selected ? (compact ? 7.4 : 9.6) : compact ? 5.5 : 7.2}
+                  fill={selected || mark.n % 18 === 0 ? CRIMSON : '#ffffff'}
+                  stroke={selected || mark.n % 18 === 0 ? CRIMSON : GOLD}
+                  strokeWidth={selected ? 2.2 : 1}
+                />
+                <text
+                  x={mark.x}
+                  y={mark.y + (compact ? 2.2 : 2.9)}
+                  textAnchor="middle"
+                  fontSize={compact ? 5.4 : 6.8}
+                  fontWeight="700"
+                  fill={selected || mark.n % 18 === 0 ? '#ffffff' : INK}
+                  pointerEvents="none"
+                  style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
+                >
+                  {mark.n}
+                </text>
+              </g>
+            )
+          })}
+        </g>
       </g>
       {showBadge ? (
         <g transform="translate(18 20)">

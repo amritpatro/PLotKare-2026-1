@@ -7,9 +7,7 @@ import { LogoMarkSmall } from '@/components/logo'
 import {
   BarChart3,
   FileText,
-  Zap,
   Lock,
-  DollarSign,
   Settings,
   Map,
   Box,
@@ -19,15 +17,13 @@ import {
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 
 const navItems = [
-  { href: '/dashboard', label: 'My Plots', icon: Map },
-  { href: '/dashboard/reports', label: 'Inspection Reports', icon: FileText },
-  { href: '/dashboard/amenities', label: 'Amenities', icon: Zap },
-  { href: '/dashboard/listings', label: 'Property Listings', icon: Building2 },
-  { href: '/dashboard/documents', label: 'Document Vault', icon: Box },
-  { href: '/dashboard/value-tracker', label: 'Value Tracker', icon: BarChart3 },
-  { href: '/dashboard/legal-status', label: 'Legal Status', icon: Lock },
-  { href: '/dashboard/payments', label: 'Payments', icon: DollarSign },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/owner', label: 'Overview', icon: BarChart3 },
+  { href: '/owner/properties', label: 'My Properties', icon: Map },
+  { href: '/owner/verification', label: 'Verification', icon: Lock },
+  { href: '/owner/documents', label: 'Document Vault', icon: Box },
+  { href: '/owner/services', label: 'Inspection Reports', icon: FileText },
+  { href: '/owner/services', label: 'Services', icon: Building2 },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
 export function DashboardSidebar() {

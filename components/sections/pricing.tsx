@@ -63,14 +63,14 @@ const plans: Plan[] = [
 
 export function PricingSection() {
   return (
-    <section id="pricing" className="bg-white py-24 lg:py-32">
+    <section id="pricing" className="premium-section bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="mb-12 text-center"
+          className="premium-reveal mb-12 text-center"
         >
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
             Property Monitoring <span className="text-primary">Consultation Plans</span>
@@ -91,10 +91,10 @@ export function PricingSection() {
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className={`relative rounded-xl p-8 ${
                 plan.variant === 'premium'
-                  ? 'bg-charcoal text-white'
+                  ? 'premium-surface-dark bg-charcoal text-white'
                   : plan.variant === 'featured'
-                    ? 'border-2 border-primary bg-white shadow-xl'
-                    : 'border border-border bg-white'
+                    ? 'premium-surface border-2 border-primary bg-white shadow-xl'
+                    : 'premium-surface border border-border bg-white'
               }`}
             >
               {plan.badge && (
@@ -164,8 +164,8 @@ export function PricingSection() {
                 href="#contact"
                 className={`mt-8 block w-full rounded-sm py-3 text-center font-sans text-sm font-medium transition-colors ${
                   plan.variant === 'premium'
-                    ? 'bg-accent text-charcoal hover:bg-accent/90'
-                    : 'bg-primary text-white hover:bg-primary/90'
+                    ? 'premium-button-outline bg-accent text-charcoal hover:bg-accent/90'
+                    : 'premium-button bg-primary text-white hover:bg-primary/90'
                 }`}
               >
                 Book Demo

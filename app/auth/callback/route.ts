@@ -9,7 +9,7 @@ function redirectTo(origin: string, path: string) {
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/dashboard'
+  const next = searchParams.get('next') ?? '/auth/choose-role'
 
   if (!code) {
     return redirectTo(origin, '/auth/login?error=no_code')
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   const destination = await resolvePostLoginRedirect(
     supabase,
     user.id,
-    next.startsWith('/') ? next : '/dashboard',
+    next.startsWith('/') && !next.startsWith('/dashboard') ? next : '/auth/choose-role',
   )
 
   return redirectTo(origin, destination)

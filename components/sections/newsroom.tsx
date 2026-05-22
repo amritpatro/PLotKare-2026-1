@@ -27,14 +27,14 @@ const news = [
 
 export function NewsroomSection() {
   return (
-    <section className="bg-white py-24 lg:py-32">
+    <section className="premium-section bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="mb-16"
+          className="premium-reveal mb-16"
         >
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
             Visakhapatnam Plot News, Guides &amp; <span className="text-primary">Market Notes</span>
@@ -56,7 +56,7 @@ export function NewsroomSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="group"
+              className="premium-interactive group rounded-lg border border-transparent p-4"
             >
               <p className="font-mono text-sm text-muted-foreground">{item.date}</p>
               <h3 className="mt-3 font-serif text-xl font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">

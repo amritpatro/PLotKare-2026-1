@@ -50,7 +50,7 @@ export function ProblemSection() {
   const [active, setActive] = useState<(typeof painPoints)[number] | null>(null)
 
   return (
-    <section id="about" className="bg-charcoal py-16 lg:py-20">
+    <section id="about" className="premium-section-dark bg-charcoal py-16 lg:py-20">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,0.86fr)_minmax(520px,1.14fr)] lg:items-center lg:gap-14">
           <motion.div
@@ -73,7 +73,7 @@ export function ProblemSection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.55, delay: 0.08 }}
-            className="grid gap-4 sm:grid-cols-2"
+            className="premium-reveal grid gap-4 sm:grid-cols-2"
           >
             {painPoints.map((point) => {
               const Icon = point.icon
@@ -82,7 +82,7 @@ export function ProblemSection() {
                   key={point.number}
                   type="button"
                   onClick={() => setActive(point)}
-                  className="relative min-h-[190px] overflow-hidden rounded-lg bg-white/5 p-6 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="premium-surface-dark premium-interactive relative min-h-[190px] overflow-hidden rounded-lg bg-white/5 p-6 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <span className="absolute -right-2 -top-4 font-mono text-7xl font-bold text-white/5">
                     {point.number}

@@ -10,6 +10,8 @@ export async function GET() {
     .from('listings')
     .select('*')
     .eq('status', 'Active')
+    .eq('approval_status', 'approved')
+    .eq('is_published', true)
     .order('created_at', { ascending: false })
 
   if (error) return apiError(error.message, 400, 'LISTINGS_FETCH_FAILED')
@@ -47,6 +49,11 @@ export async function POST(request: Request) {
       property_kind: parsed.data.propertyKind,
       bhk: parsed.data.bhk ?? null,
       floor_label: parsed.data.floorLabel ?? null,
+      approval_status: 'approved',
+      is_published: parsed.data.status === 'Active',
+      verified_at: new Date().toISOString(),
+      verified_by: context.user.id,
+      published_at: parsed.data.status === 'Active' ? new Date().toISOString() : null,
     })
     .select('*')
     .single()

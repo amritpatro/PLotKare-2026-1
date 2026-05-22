@@ -1,215 +1,171 @@
-'use client'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-import { useEffect, useState } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  loadAdminCustomers,
-  saveAdminCustomers,
-  type AdminCustomer,
-} from '@/lib/admin-demo-store'
+const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
+const inputClass = 'rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
 
-export default function AdminCustomersPage() {
-  const [rows, setRows] = useState<AdminCustomer[]>([])
-  const [detail, setDetail] = useState<AdminCustomer | null>(null)
-  const [addOpen, setAddOpen] = useState(false)
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    city: '',
-    plan: 'Standard' as AdminCustomer['plan'],
+type AdminCustomersPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+type CustomerRow = {
+  id: string
+  full_name: string
+  email: string | null
+  phone: string | null
+  address: string | null
+  account_status: string
+  kyc_status: string
+  created_at: string
+}
+
+type CustomerPropertyLink = {
+  customer_id: string
+  status: string
+}
+
+type SubscriptionRow = {
+  customer_id: string | null
+  plan: string
+  status: string
+}
+
+function getParam(params: Record<string, string | string[] | undefined>, key: string) {
+  const value = params[key]
+  return Array.isArray(value) ? value[0] : value
+}
+
+function statusBadge(status: string) {
+  return (
+    <span className="rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#6B7280]">
+      {status.replaceAll('_', ' ')}
+    </span>
+  )
+}
+
+export default async function AdminCustomersPage({ searchParams }: AdminCustomersPageProps) {
+  const supabase = await createSupabaseServerClient()
+  const params = (await searchParams) ?? {}
+  const q = getParam(params, 'q')?.trim() ?? ''
+  const status = getParam(params, 'status')?.trim() ?? ''
+
+  let customerQuery = supabase
+    .from('customers')
+    .select('id,full_name,email,phone,address,account_status,kyc_status,created_at')
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  if (q) {
+    const term = q.replaceAll('%', '\\%').replaceAll('_', '\\_')
+    customerQuery = customerQuery.or(`full_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`)
+  }
+
+  if (status) {
+    customerQuery = customerQuery.eq('account_status', status)
+  }
+
+  const [{ data: customers }, { data: links }, { data: subscriptions }] = await Promise.all([
+    customerQuery,
+    supabase.from('customer_property_links').select('customer_id,status'),
+    supabase.from('subscriptions').select('customer_id,plan,status').not('customer_id', 'is', null),
+  ])
+
+  const rows = (customers ?? []) as CustomerRow[]
+  const linkRows = (links ?? []) as CustomerPropertyLink[]
+  const subscriptionRows = (subscriptions ?? []) as SubscriptionRow[]
+  const plotCounts = new Map<string, number>()
+  const activeLinkCounts = new Map<string, number>()
+  const plans = new Map<string, string>()
+
+  linkRows.forEach((link) => {
+    plotCounts.set(link.customer_id, (plotCounts.get(link.customer_id) ?? 0) + 1)
+    if (link.status === 'active' || link.status === 'completed') {
+      activeLinkCounts.set(link.customer_id, (activeLinkCounts.get(link.customer_id) ?? 0) + 1)
+    }
   })
 
-  useEffect(() => setRows(loadAdminCustomers()), [])
-
-  const persist = (next: AdminCustomer[]) => {
-    saveAdminCustomers(next)
-    setRows(next)
-  }
-
-  const addCustomer = (e: React.FormEvent) => {
-    e.preventDefault()
-    const id = String(Date.now())
-    const row: AdminCustomer = {
-      id,
-      name: form.name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      city: form.city.trim(),
-      plan: form.plan,
-      plotsCount: 0,
-      joinedDate: new Date().toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      }),
-      plotDetails: [],
+  subscriptionRows.forEach((subscription) => {
+    if (subscription.customer_id && !plans.has(subscription.customer_id)) {
+      plans.set(subscription.customer_id, `${subscription.plan} · ${subscription.status}`)
     }
-    persist([...rows, row])
-    setAddOpen(false)
-    setForm({ name: '', email: '', phone: '', city: '', plan: 'Standard' })
-  }
+  })
 
   return (
     <div className="px-8 pb-12 pt-24">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="font-serif text-2xl font-bold text-[#1F2937]">Customers</h1>
-          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">Manage registered landowners</p>
+          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">Real customer records from Supabase.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          className="rounded-lg bg-[#C0392B] px-4 py-2 font-sans text-sm font-semibold text-white hover:opacity-95"
-        >
-          Add Customer
-        </button>
+        <form className="flex flex-wrap gap-2">
+          <input name="q" defaultValue={q} placeholder="Search name, email, phone" className={`${inputClass} w-64`} />
+          <select name="status" defaultValue={status} className={inputClass}>
+            <option value="">All accounts</option>
+            <option value="pending">Pending</option>
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="closed">Closed</option>
+          </select>
+          <button className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white" type="submit">
+            Filter
+          </button>
+        </form>
       </div>
 
-      <div className="mt-8 overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
-        <table className="w-full min-w-[900px] text-left text-sm">
+      <section className="mt-8 grid gap-4 sm:grid-cols-3">
+        {[
+          ['Customers shown', rows.length],
+          ['Linked properties', linkRows.length],
+          ['Active links', Array.from(activeLinkCounts.values()).reduce((sum, value) => sum + value, 0)],
+        ].map(([label, value]) => (
+          <div key={label} className={`${cardClass} p-5`}>
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-[#6B7280]">{label}</p>
+            <p className="mt-3 font-mono text-3xl font-bold text-[#C0392B]">{value}</p>
+          </div>
+        ))}
+      </section>
+
+      <div className={`${cardClass} mt-8 overflow-x-auto`}>
+        <table className="w-full min-w-[980px] text-left text-sm">
           <thead>
             <tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]">
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Phone</th>
-              <th className="px-4 py-3">City</th>
-              <th className="px-4 py-3">Plots</th>
-              <th className="px-4 py-3">Plan</th>
+              <th className="px-4 py-3">Address</th>
+              <th className="px-4 py-3">Properties</th>
+              <th className="px-4 py-3">Subscription</th>
+              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Joined</th>
-              <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#F3F4F6] font-sans text-[#1F2937]">
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <td className="px-4 py-3 font-medium">{r.name}</td>
-                <td className="px-4 py-3 text-[#6B7280]">{r.email}</td>
-                <td className="px-4 py-3 text-[#6B7280]">{r.phone}</td>
-                <td className="px-4 py-3 text-[#6B7280]">{r.city}</td>
-                <td className="px-4 py-3">{r.plotsCount}</td>
-                <td className="px-4 py-3">{r.plan}</td>
-                <td className="px-4 py-3 text-[#6B7280]">{r.joinedDate}</td>
-                <td className="px-4 py-3">
-                  <button
-                    type="button"
-                    onClick={() => setDetail(r)}
-                    className="rounded-lg border border-[#C0392B] px-3 py-1.5 text-xs font-semibold text-[#C0392B] hover:bg-[#FFF1F2]"
-                  >
-                    View
-                  </button>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={8} className="px-4 py-10 text-center text-[#6B7280]">
+                  No customers found.
                 </td>
+              </tr>
+            ) : null}
+            {rows.map((row) => (
+              <tr key={row.id}>
+                <td className="px-4 py-3 font-medium">{row.full_name || 'Unnamed customer'}</td>
+                <td className="px-4 py-3 text-[#6B7280]">{row.email || 'Pending'}</td>
+                <td className="px-4 py-3 text-[#6B7280]">{row.phone || 'Pending'}</td>
+                <td className="max-w-xs truncate px-4 py-3 text-[#6B7280]">{row.address || 'Pending'}</td>
+                <td className="px-4 py-3">{plotCounts.get(row.id) ?? 0}</td>
+                <td className="px-4 py-3 text-[#6B7280]">{plans.get(row.id) ?? 'No subscription'}</td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    {statusBadge(row.account_status)}
+                    {statusBadge(row.kyc_status)}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-[#6B7280]">{new Date(row.created_at).toLocaleDateString('en-IN')}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetail(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto border-[#E5E7EB] bg-white sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-[#1F2937]">{detail?.name}</DialogTitle>
-          </DialogHeader>
-          {detail && (
-            <div className="space-y-3 pt-2 font-sans text-sm text-[#6B7280]">
-              <p>
-                <span className="text-[#9CA3AF]">Email:</span> {detail.email}
-              </p>
-              <p>
-                <span className="text-[#9CA3AF]">Phone:</span> {detail.phone}
-              </p>
-              <p>
-                <span className="text-[#9CA3AF]">City:</span> {detail.city}
-              </p>
-              <p>
-                <span className="text-[#9CA3AF]">Plan:</span> {detail.plan}
-              </p>
-              <div className="border-t border-[#E5E7EB] pt-3">
-                <p className="font-medium text-[#1F2937]">Plots</p>
-                <ul className="mt-2 space-y-2">
-                  {detail.plotDetails.map((p) => (
-                    <li key={p.plotNumber} className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-2">
-                      <span className="font-mono text-[#C0392B]">{p.plotNumber}</span> — {p.location},{' '}
-                      {p.size}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="border-[#E5E7EB] bg-white sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-[#1F2937]">Add customer</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={addCustomer} className="space-y-3 pt-2">
-            <div>
-              <label className="font-mono text-xs text-[#6B7280]">Name</label>
-              <input
-                required
-                value={form.name}
-                onChange={(e) => setForm((s) => ({ ...s, name: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-[#1F2937]"
-              />
-            </div>
-            <div>
-              <label className="font-mono text-xs text-[#6B7280]">Email</label>
-              <input
-                required
-                value={form.email}
-                onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-[#1F2937]"
-              />
-            </div>
-            <div>
-              <label className="font-mono text-xs text-[#6B7280]">Phone</label>
-              <input
-                required
-                value={form.phone}
-                onChange={(e) => setForm((s) => ({ ...s, phone: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-[#1F2937]"
-              />
-            </div>
-            <div>
-              <label className="font-mono text-xs text-[#6B7280]">City</label>
-              <input
-                required
-                value={form.city}
-                onChange={(e) => setForm((s) => ({ ...s, city: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-[#1F2937]"
-              />
-            </div>
-            <div>
-              <label className="font-mono text-xs text-[#6B7280]">Plan</label>
-              <select
-                value={form.plan}
-                onChange={(e) =>
-                  setForm((s) => ({ ...s, plan: e.target.value as AdminCustomer['plan'] }))
-                }
-                className="mt-1 w-full rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-[#1F2937]"
-              >
-                <option>Basic</option>
-                <option>Standard</option>
-                <option>Premium</option>
-              </select>
-            </div>
-            <button
-              type="submit"
-              className="w-full rounded-lg bg-[#C0392B] py-2.5 font-sans text-sm font-semibold text-white"
-            >
-              Save
-            </button>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

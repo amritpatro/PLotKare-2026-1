@@ -9,6 +9,10 @@ export const loginSchema = z.object({
 
 export const signupSchema = z
   .object({
+    customerType: z.enum(['land_owner', 'plot_seller', 'plot_buyer'], {
+      required_error: 'Choose how you will use PlotKare',
+      invalid_type_error: 'Choose how you will use PlotKare',
+    }),
     fullName: z
       .string()
       .trim()

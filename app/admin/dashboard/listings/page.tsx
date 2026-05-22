@@ -1,427 +1,209 @@
-'use client'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 
-import { useEffect, useState } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import type { Facing } from '@/lib/plotkare-storage'
-import type { PropertyKind } from '@/lib/public-listings'
-import {
-  DEFAULT_PUBLIC_LISTINGS,
-  loadPublicListings,
-  savePublicListings,
-  getLocalListingImage,
-  type PublicPlotListing,
-} from '@/lib/public-listings'
-import {
-  SIZE_TILES,
-  VIZAG_LOCATIONS,
-  type VizagLocation,
-} from '@/lib/vizag-form-constants'
+const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
+const inputClass =
+  'rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
 
-function parseSq(tile: (typeof SIZE_TILES)[number], custom: string): number | null {
-  if (tile === 'Custom') {
-    const n = parseInt(custom, 10)
-    return Number.isFinite(n) && n > 0 ? n : null
-  }
-  const m = tile.match(/^(\d+)/)
-  return m ? parseInt(m[1], 10) : null
+type AdminListingsPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
-export default function AdminListingsPage() {
-  const [rows, setRows] = useState<PublicPlotListing[]>([])
-  const [addOpen, setAddOpen] = useState(false)
-  const [editRow, setEditRow] = useState<PublicPlotListing | null>(null)
+type ListingRow = {
+  id: string
+  owner_id: string | null
+  plot_id: string | null
+  property_id: string | null
+  seller_id: string | null
+  plot_number: string
+  location: string
+  size_label: string
+  size_sq_yards: number
+  facing: string
+  corner_plot: boolean
+  premium: boolean
+  price_display: string
+  status: string
+  approval_status: string | null
+  is_published: boolean | null
+  verified_at: string | null
+  inquiries_count: number
+  property_kind: string
+  bhk: number | null
+  floor_label: string | null
+  created_at: string
+}
 
-  const [plotNumber, setPlotNumber] = useState('')
-  const [location, setLocation] = useState<VizagLocation>(VIZAG_LOCATIONS[0])
-  const [listingKind, setListingKind] = useState<PropertyKind>('plot')
-  const [sizeTile, setSizeTile] = useState<(typeof SIZE_TILES)[number] | null>(null)
-  const [customSq, setCustomSq] = useState('')
-  const [aptSizeLabel, setAptSizeLabel] = useState('')
-  const [aptBhk, setAptBhk] = useState('')
-  const [aptFloor, setAptFloor] = useState('')
-  const [facing, setFacing] = useState<Facing>('East')
-  const [corner, setCorner] = useState(false)
+type ProfileRow = {
+  id: string
+  full_name: string | null
+  email: string | null
+}
 
-  const resetAddForm = () => {
-    setPlotNumber('')
-    setListingKind('plot')
-    setLocation(VIZAG_LOCATIONS[0])
-    setSizeTile(null)
-    setCustomSq('')
-    setAptSizeLabel('')
-    setAptBhk('')
-    setAptFloor('')
-    setFacing('East')
-    setCorner(false)
-  }
+type PlotRow = {
+  id: string
+  property_id: string | null
+  lifecycle_status: string
+  verification_status: string
+}
 
-  const refresh = () => {
-    const r = loadPublicListings()
-    setRows(r.length ? r : [...DEFAULT_PUBLIC_LISTINGS])
-  }
+function getParam(params: Record<string, string | string[] | undefined>, key: string) {
+  const value = params[key]
+  return Array.isArray(value) ? value[0] : value
+}
 
-  useEffect(() => refresh(), [])
-  useEffect(() => {
-    const h = () => refresh()
-    window.addEventListener('plotkare-listings-changed', h)
-    window.addEventListener('storage', h)
-    return () => {
-      window.removeEventListener('plotkare-listings-changed', h)
-      window.removeEventListener('storage', h)
-    }
-  }, [])
+function unique(values: Array<string | null>) {
+  return Array.from(new Set(values.filter(Boolean))) as string[]
+}
 
-  const persist = (next: PublicPlotListing[]) => {
-    savePublicListings(next)
-    setRows(next)
-  }
+function badge(value: string) {
+  return (
+    <span className="rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#6B7280]">
+      {value.replaceAll('_', ' ')}
+    </span>
+  )
+}
 
-  const addListing = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!plotNumber.trim()) return
+export default async function AdminListingsPage({ searchParams }: AdminListingsPageProps) {
+  const supabase = await createSupabaseServerClient()
+  const params = (await searchParams) ?? {}
+  const q = getParam(params, 'q')?.trim() ?? ''
+  const status = getParam(params, 'status')?.trim() ?? ''
+  const kind = getParam(params, 'kind')?.trim() ?? ''
 
-    if (listingKind === 'plot') {
-      const sq = sizeTile ? parseSq(sizeTile, customSq) : null
-      if (sq == null || !sizeTile) return
-      const row: PublicPlotListing = {
-        id: `new-${Date.now()}`,
-        plotNumber: plotNumber.trim(),
-        location,
-        sizeSqYards: sq,
-        sizeLabel: `${sq} sq yards`,
-        facing,
-        cornerPlot: corner,
-        premium: false,
-        priceLakhs: 0,
-        priceDisplay: 'Consult after verification',
-        imageUrl: getLocalListingImage({ propertyKind: 'plot' }),
-        status: 'Active',
-        inquiriesCount: 0,
-        propertyKind: 'plot',
-      }
-      persist([row, ...rows])
-    } else {
-      const sizeLabel = aptSizeLabel.trim()
-      const bhkN = parseInt(aptBhk, 10)
-      if (!sizeLabel || !Number.isFinite(bhkN) || bhkN < 1) return
-      const row: PublicPlotListing = {
-        id: `new-${Date.now()}`,
-        plotNumber: plotNumber.trim(),
-        location,
-        sizeSqYards: 0,
-        sizeLabel,
-        facing,
-        cornerPlot: false,
-        premium: false,
-        priceLakhs: 0,
-        priceDisplay: 'Consult after verification',
-        imageUrl: getLocalListingImage({ propertyKind: 'apartment' }),
-        status: 'Active',
-        inquiriesCount: 0,
-        propertyKind: 'apartment',
-        bhk: bhkN,
-        floorLabel: aptFloor.trim() || undefined,
-      }
-      persist([row, ...rows])
-    }
-
-    setAddOpen(false)
-    resetAddForm()
-  }
-
-  const markSold = (id: string) => {
-    persist(rows.map((r) => (r.id === id ? { ...r, status: 'Sold' as const } : r)))
-  }
-
-  const remove = (id: string) => {
-    persist(rows.filter((r) => r.id !== id))
-  }
-
-  const saveEdit = () => {
-    if (!editRow) return
-    persist(
-      rows.map((r) =>
-        r.id === editRow.id
-          ? {
-              ...r,
-              priceDisplay: 'Consult after verification',
-            }
-          : r,
-      ),
+  let listingQuery = supabase
+    .from('listings')
+    .select(
+      'id,owner_id,property_id,seller_id,plot_id,plot_number,location,size_label,size_sq_yards,facing,corner_plot,premium,price_display,status,approval_status,is_published,verified_at,inquiries_count,property_kind,bhk,floor_label,created_at',
     )
-    setEditRow(null)
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  if (q) {
+    const term = q.replaceAll('%', '\\%').replaceAll('_', '\\_')
+    listingQuery = listingQuery.or(`plot_number.ilike.%${term}%,location.ilike.%${term}%,size_label.ilike.%${term}%`)
   }
+
+  if (status) listingQuery = listingQuery.eq('status', status)
+  if (kind) listingQuery = listingQuery.eq('property_kind', kind)
+
+  const { data: listings } = await listingQuery
+  const rows = (listings ?? []) as ListingRow[]
+  const ownerIds = unique(rows.map((row) => row.owner_id))
+  const plotIds = unique(rows.map((row) => row.plot_id))
+
+  const [{ data: owners }, { data: plots }] = await Promise.all([
+    ownerIds.length ? supabase.from('profiles').select('id,full_name,email').in('id', ownerIds) : Promise.resolve({ data: [] }),
+    plotIds.length
+      ? supabase.from('plots').select('id,property_id,lifecycle_status,verification_status').in('id', plotIds)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const ownerById = new Map(((owners ?? []) as ProfileRow[]).map((row) => [row.id, row]))
+  const plotById = new Map(((plots ?? []) as PlotRow[]).map((row) => [row.id, row]))
+  const activeRows = rows.filter((row) => row.status === 'Active')
+  const soldRows = rows.filter((row) => row.status === 'Sold')
 
   return (
     <div className="px-8 pb-12 pt-24">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="font-serif text-2xl font-bold text-[#1F2937]">Listings</h1>
-          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">Public showcase & marketplace rows</p>
+          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">Real marketplace listings from Supabase.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            resetAddForm()
-            setAddOpen(true)
-          }}
-          className="rounded-lg bg-[#C0392B] px-4 py-2 font-sans text-sm font-semibold text-white"
-        >
-          Add Listing
-        </button>
+        <form className="flex flex-wrap gap-2">
+          <input name="q" defaultValue={q} placeholder="Search listing, location, size" className={`${inputClass} w-64`} />
+          <select name="kind" defaultValue={kind} className={inputClass}>
+            <option value="">All property types</option>
+            <option value="plot">Plots</option>
+            <option value="apartment">Apartments</option>
+          </select>
+          <select name="status" defaultValue={status} className={inputClass}>
+            <option value="">All statuses</option>
+            <option value="Active">Active</option>
+            <option value="Sold">Sold</option>
+          </select>
+          <button className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white" type="submit">
+            Filter
+          </button>
+        </form>
       </div>
 
-      <div className="mt-8 overflow-x-auto rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
-        <table className="w-full min-w-[800px] text-left text-sm">
+      <section className="mt-8 grid gap-4 sm:grid-cols-4">
+        {[
+          ['Listings shown', rows.length],
+          ['Published', activeRows.filter((row) => row.is_published && row.approval_status === 'approved').length],
+          ['Sold', soldRows.length],
+          ['Inquiries', rows.reduce((sum, row) => sum + Number(row.inquiries_count || 0), 0)],
+        ].map(([label, value]) => (
+          <div key={label} className={`${cardClass} p-5`}>
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-[#6B7280]">{label}</p>
+            <p className="mt-3 font-mono text-3xl font-bold text-[#C0392B]">{value}</p>
+          </div>
+        ))}
+      </section>
+
+      <div className={`${cardClass} mt-8 overflow-x-auto`}>
+        <table className="w-full min-w-[1080px] text-left text-sm">
           <thead>
             <tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]">
               <th className="px-3 py-3">Type</th>
-              <th className="px-3 py-3">Ref #</th>
+              <th className="px-3 py-3">Reference</th>
+              <th className="px-3 py-3">Owner</th>
               <th className="px-3 py-3">Location</th>
               <th className="px-3 py-3">Size</th>
-              <th className="px-3 py-3">Consultation</th>
-              <th className="px-3 py-3">Status</th>
+              <th className="px-3 py-3">Plot state</th>
+              <th className="px-3 py-3">Verification</th>
+              <th className="px-3 py-3">Pricing</th>
               <th className="px-3 py-3">Inquiries</th>
-              <th className="px-3 py-3">Actions</th>
+              <th className="px-3 py-3">Status</th>
+              <th className="px-3 py-3">Created</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#F3F4F6]">
-            {rows.map((r) => (
-              <tr key={r.id} className="font-sans text-[#1F2937]">
-                <td className="px-3 py-3 text-[#6B7280]">
-                  {r.propertyKind === 'apartment' ? 'Apt' : 'Plot'}
-                </td>
-                <td className="px-3 py-3 font-mono text-[#C0392B]">{r.plotNumber}</td>
-                <td className="px-3 py-3 text-[#6B7280]">{r.location}</td>
-                <td className="px-3 py-3">{r.sizeLabel}</td>
-                <td className="px-3 py-3 font-mono text-[#F59E0B]">Consult required</td>
-                <td className="px-3 py-3">{r.status}</td>
-                <td className="px-3 py-3">{r.inquiriesCount}</td>
-                <td className="px-3 py-3 space-x-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditRow(r)
-                    }}
-                    className="rounded border border-[#C0392B] px-2 py-1 text-xs text-[#C0392B]"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    disabled={r.status === 'Sold'}
-                    onClick={() => markSold(r.id)}
-                    className="rounded border border-[#E5E7EB] px-2 py-1 text-xs text-[#6B7280] disabled:opacity-40"
-                  >
-                    Mark Sold
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => remove(r.id)}
-                    className="rounded border border-red-200 px-2 py-1 text-xs text-red-600"
-                  >
-                    Delete
-                  </button>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={11} className="px-3 py-10 text-center text-[#6B7280]">
+                  No listings found.
                 </td>
               </tr>
-            ))}
+            ) : null}
+            {rows.map((row) => {
+              const owner = row.owner_id ? ownerById.get(row.owner_id) : null
+              const plot = row.plot_id ? plotById.get(row.plot_id) : null
+
+              return (
+                <tr key={row.id} className="font-sans text-[#1F2937]">
+                  <td className="px-3 py-3 text-[#6B7280]">{row.property_kind === 'apartment' ? 'Apartment' : 'Plot'}</td>
+                  <td className="px-3 py-3 font-mono text-[#C0392B]">{row.plot_number}</td>
+                  <td className="px-3 py-3 text-[#6B7280]">{owner?.full_name || owner?.email || 'Owner pending'}</td>
+                  <td className="px-3 py-3 text-[#6B7280]">{row.location}</td>
+                  <td className="px-3 py-3 text-[#6B7280]">
+                    {row.size_label}
+                    {row.bhk ? <span className="block text-xs text-[#9CA3AF]">{row.bhk} BHK {row.floor_label || ''}</span> : null}
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      {plot ? badge(plot.lifecycle_status) : badge('unlinked')}
+                      {plot ? badge(plot.verification_status) : null}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      {row.is_published && row.approval_status === 'approved' ? <PlotKareVerifiedStamp compact /> : badge(row.approval_status ?? 'submitted')}
+                      {row.verified_at ? badge('verified') : null}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3 text-[#6B7280]">{row.price_display}</td>
+                  <td className="px-3 py-3 font-mono text-[#1F2937]">{row.inquiries_count}</td>
+                  <td className="px-3 py-3">{badge(row.status)}</td>
+                  <td className="px-3 py-3 text-[#6B7280]">{new Date(row.created_at).toLocaleDateString('en-IN')}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
-
-      <Dialog
-        open={addOpen}
-        onOpenChange={(o) => {
-          setAddOpen(o)
-          if (!o) resetAddForm()
-        }}
-      >
-        <DialogContent className="max-h-[90vh] overflow-y-auto border-[#E5E7EB] bg-white sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-[#1F2937]">Add listing</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={addListing} className="space-y-4 pt-2">
-            <div>
-              <span className="font-mono text-xs text-[#6B7280]">Listing type</span>
-              <div className="mt-2 flex gap-2">
-                {(['plot', 'apartment'] as const).map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setListingKind(k)}
-                    className={`rounded-full border px-4 py-1.5 font-sans text-xs capitalize ${
-                      listingKind === k
-                        ? 'border-[#C0392B] bg-[#FFF1F2] text-[#C0392B]'
-                        : 'border-[#D1D5DB] text-[#6B7280]'
-                    }`}
-                  >
-                    {k}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="font-mono text-xs text-[#6B7280]">
-                {listingKind === 'apartment' ? 'Unit reference' : 'Plot number'}
-              </label>
-              <input
-                value={plotNumber}
-                onChange={(e) => setPlotNumber(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#D1D5DB] px-3 py-2"
-                required
-              />
-            </div>
-            <div>
-              <label className="font-mono text-xs text-[#6B7280]">Location</label>
-              <select
-                value={location}
-                onChange={(e) => setLocation(e.target.value as VizagLocation)}
-                className="mt-1 w-full rounded-lg border border-[#D1D5DB] px-3 py-2"
-              >
-                {VIZAG_LOCATIONS.filter((l) => l !== 'Other').map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {listingKind === 'plot' ? (
-              <div>
-                <label className="font-mono text-xs text-[#6B7280]">Size (sq yards)</label>
-                <div className="mt-2 grid max-h-36 grid-cols-3 gap-1 overflow-y-auto sm:grid-cols-4">
-                  {SIZE_TILES.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setSizeTile(t)}
-                      className={`rounded border px-1 py-2 font-mono text-[10px] ${
-                        sizeTile === t
-                          ? 'border-[#C0392B] bg-[#FFF1F2] text-[#C0392B]'
-                          : 'border-[#D1D5DB]'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-                {sizeTile === 'Custom' && (
-                  <input
-                    type="number"
-                    value={customSq}
-                    onChange={(e) => setCustomSq(e.target.value)}
-                    className="mt-2 w-full rounded-lg border border-[#D1D5DB] px-3 py-2"
-                    placeholder="Sq yards"
-                  />
-                )}
-              </div>
-            ) : (
-              <>
-                <div>
-                  <label className="font-mono text-xs text-[#6B7280]">Carpet / super built-up label</label>
-                  <input
-                    value={aptSizeLabel}
-                    onChange={(e) => setAptSizeLabel(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-[#D1D5DB] px-3 py-2 font-sans text-sm"
-                    placeholder="e.g. 1,650 sq ft"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="font-mono text-xs text-[#6B7280]">BHK</label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={aptBhk}
-                      onChange={(e) => setAptBhk(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-[#D1D5DB] px-3 py-2"
-                      placeholder="2"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="font-mono text-xs text-[#6B7280]">Floor (optional)</label>
-                    <input
-                      value={aptFloor}
-                      onChange={(e) => setAptFloor(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-[#D1D5DB] px-3 py-2 font-sans text-sm"
-                      placeholder="12th floor"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-            <div className="rounded-lg border border-[#FDE68A] bg-[#FFFBEB] p-3">
-              <p className="font-mono text-xs font-semibold uppercase tracking-wide text-[#B45309]">
-                Pricing policy
-              </p>
-              <p className="mt-1 font-sans text-sm text-[#6B7280]">
-                Listings show consultation-first pricing only. Advisors share scope after verification.
-              </p>
-            </div>
-            <div>
-              <span className="font-mono text-xs text-[#6B7280]">Facing</span>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {(['East', 'West', 'North', 'South'] as const).map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setFacing(d)}
-                    className={`rounded-full border px-4 py-1.5 text-xs ${
-                      facing === d
-                        ? 'border-[#C0392B] bg-[#FFF1F2] text-[#C0392B]'
-                        : 'border-[#D1D5DB] text-[#6B7280]'
-                    }`}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {listingKind === 'plot' && (
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-[#6B7280]">Corner plot</span>
-                <button
-                  type="button"
-                  onClick={() => setCorner(!corner)}
-                  className={`rounded-full border px-4 py-1.5 text-xs ${
-                    corner ? 'border-[#C0392B] bg-[#FFF1F2] text-[#C0392B]' : 'border-[#D1D5DB]'
-                  }`}
-                >
-                  {corner ? 'Yes' : 'No'}
-                </button>
-              </div>
-            )}
-            <button type="submit" className="w-full rounded-lg bg-[#C0392B] py-2.5 font-semibold text-white">
-              Save
-            </button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!editRow} onOpenChange={(o) => !o && setEditRow(null)}>
-        <DialogContent className="border-[#E5E7EB] bg-white sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-[#1F2937]">Edit listing</DialogTitle>
-          </DialogHeader>
-          <p className="pt-2 font-sans text-sm leading-relaxed text-[#6B7280]">
-            Public marketplace rows now use consultation-first pricing. Keep the listing active and route all pricing
-            questions to a PlotKare advisor.
-          </p>
-          <button
-            type="button"
-            onClick={saveEdit}
-            className="mt-4 w-full rounded-lg bg-[#C0392B] py-2.5 font-semibold text-white"
-          >
-            Save
-          </button>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

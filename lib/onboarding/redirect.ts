@@ -1,20 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   customerTypeFromSlug,
-  onboardingPathFromCategory,
   PENDING_ONBOARDING_STORAGE_KEY,
   resolveCustomerType,
   slugFromCustomerType,
   type CustomerType,
 } from '@/lib/onboarding/types'
+import { dashboardPathForRole, isUserRole } from '@/lib/supabase/types'
 
 export { onboardingPathFromCategory } from '@/lib/onboarding/types'
-
-const DETAIL_TABLE: Record<CustomerType, string> = {
-  land_owner: 'land_owner_details',
-  plot_seller: 'plot_seller_details',
-  plot_buyer: 'plot_buyer_details',
-}
 
 type ProfileRedirectState = {
   onboarding_completed?: boolean | null
@@ -22,40 +16,13 @@ type ProfileRedirectState = {
   customer_type?: string | null
   customer_category?: string | null
   role?: string | null
+  employee_role?: string | null
   full_name?: string | null
   phone?: string | null
   address_line?: string | null
   city?: string | null
   postal_code?: string | null
   referral_source?: string | null
-}
-
-function hasExistingCustomerProfileData(profile: ProfileRedirectState) {
-  return Boolean(
-    profile.full_name ||
-      profile.phone ||
-      profile.address_line ||
-      profile.city ||
-      profile.postal_code ||
-      profile.referral_source,
-  )
-}
-
-async function hasSavedOnboardingDetails(
-  supabase: SupabaseClient,
-  userId: string,
-  profile: ProfileRedirectState,
-): Promise<boolean> {
-  const customerType = resolveCustomerType(profile)
-  if (!customerType) return false
-
-  const { data, error } = await supabase
-    .from(DETAIL_TABLE[customerType])
-    .select('user_id')
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  return !error && !!data
 }
 
 export function onboardingPathForType(customerType: CustomerType): string {
@@ -67,7 +34,11 @@ function isComplete(profile: ProfileRedirectState | null) {
 }
 
 function safeFallback(path: string) {
-  return path.startsWith('/') ? path : '/dashboard'
+  if (!path.startsWith('/') || path === '/dashboard' || path.startsWith('/dashboard/')) {
+    return '/auth/choose-role'
+  }
+
+  return path
 }
 
 function readPendingOnboardingPath(): string | null {
@@ -101,11 +72,12 @@ export function clearPendingOnboardingPath() {
 async function loadProfile(
   supabase: SupabaseClient,
   userId: string,
+  authUserMetadata?: Record<string, unknown>,
 ): Promise<{ profile: ProfileRedirectState | null; migrationReady: boolean }> {
   const full = await supabase
     .from('profiles')
     .select(
-      'onboarding_completed, onboarding_status, customer_type, customer_category, role, full_name, phone, address_line, city, postal_code, referral_source',
+      'onboarding_completed, onboarding_status, customer_type, customer_category, role, employee_role, full_name, phone, address_line, city, postal_code, referral_source',
     )
     .eq('id', userId)
     .maybeSingle()
@@ -116,7 +88,7 @@ async function loadProfile(
 
   const fallback = await supabase
     .from('profiles')
-    .select('onboarding_status, customer_type, customer_category, role, full_name, phone, address_line, city, postal_code, referral_source')
+    .select('onboarding_status, customer_type, customer_category, role, employee_role, full_name, phone, address_line, city, postal_code, referral_source')
     .eq('id', userId)
     .maybeSingle()
 
@@ -124,12 +96,15 @@ async function loadProfile(
     return { profile: fallback.data as ProfileRedirectState, migrationReady: false }
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  let metadata = authUserMetadata
+  if (!metadata) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    metadata = user?.user_metadata as Record<string, unknown> | undefined
+  }
 
-  if (user?.user_metadata) {
-    const metadata = user.user_metadata as Record<string, unknown>
+  if (metadata) {
     const profileFromMetadata: ProfileRedirectState = {
       full_name: metadata.full_name ? String(metadata.full_name) : metadata.fullName ? String(metadata.fullName) : null,
       phone: metadata.phone ? String(metadata.phone) : null,
@@ -164,12 +139,13 @@ async function loadProfile(
 export async function resolvePostLoginRedirect(
   supabase: SupabaseClient,
   userId: string,
-  fallbackNext = '/dashboard',
+  fallbackNext = '/auth/choose-role',
   authUserMetadata?: Record<string, unknown>,
 ): Promise<string> {
   const { profile } = await loadProfile(supabase, userId, authUserMetadata)
 
-  if (profile?.role === 'admin') return '/admin'
+  if (profile?.role === 'admin') return dashboardPathForRole('admin')
+  if (profile?.role === 'employee') return dashboardPathForRole('employee')
 
   if (!profile) {
     clearPendingOnboardingPath()
@@ -178,22 +154,13 @@ export async function resolvePostLoginRedirect(
 
   if (isComplete(profile)) {
     clearPendingOnboardingPath()
-    return safeFallback(fallbackNext)
-  }
-
-  if (hasExistingCustomerProfileData(profile)) {
-    clearPendingOnboardingPath()
-    return safeFallback(fallbackNext)
+    return isUserRole(profile.role) && profile.role !== 'user'
+      ? dashboardPathForRole(profile.role)
+      : safeFallback(fallbackNext)
   }
 
   const customerType = resolveCustomerType(profile)
   if (customerType) {
-    const hasDetails = await hasSavedOnboardingDetails(supabase, userId, profile)
-    if (hasDetails) {
-      clearPendingOnboardingPath()
-      return safeFallback(fallbackNext)
-    }
-
     return onboardingPathForType(customerType)
   }
 
@@ -204,7 +171,7 @@ export async function resolvePostLoginRedirect(
 export async function resolveOnboardingRedirect(
   supabase: SupabaseClient,
   userId: string,
-  fallbackNext = '/dashboard',
+  fallbackNext = '/auth/choose-role',
 ): Promise<string> {
   return resolvePostLoginRedirect(supabase, userId, fallbackNext)
 }

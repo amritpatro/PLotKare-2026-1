@@ -1,10 +1,13 @@
 import { AdminSidebar } from '@/components/admin-sidebar'
+import { requirePageRole } from '@/lib/supabase/role-guard'
 
-export default function AdminDashboardLayout({
+export default async function AdminDashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  await requirePageRole(['admin'])
+
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       <AdminSidebar />

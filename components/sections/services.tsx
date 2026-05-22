@@ -64,7 +64,7 @@ const itemVariants = {
 
 export function ServicesSection() {
   return (
-    <section id="services" className="bg-white py-24 lg:py-32">
+    <section id="services" className="premium-section bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         {/* Header */}
         <motion.div
@@ -72,7 +72,7 @@ export function ServicesSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="mb-16 text-center"
+          className="premium-reveal mb-16 text-center"
         >
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
             Monthly Property Inspection, Legal Monitoring &amp; Document Vault
@@ -96,8 +96,7 @@ export function ServicesSection() {
               <motion.div
                 key={index}
                 variants={itemVariants}
-                whileHover={{ y: -8 }}
-                className="group rounded-lg border border-border bg-white p-8 transition-shadow hover:shadow-lg"
+                className="premium-surface group rounded-lg border border-border bg-white p-8"
               >
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                   <Icon className="h-6 w-6 text-primary" />

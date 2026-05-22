@@ -33,7 +33,7 @@ export default function UpdatePasswordPage() {
       return
     }
 
-    router.replace('/dashboard/settings')
+    router.replace('/settings')
     router.refresh()
   }
 

@@ -15,6 +15,7 @@ export type PublicPlotListing = {
   priceDisplay: string
   imageUrl: string
   status: 'Active' | 'Sold'
+  verified?: boolean
   inquiriesCount: number
   propertyKind: PropertyKind
   bhk?: number
@@ -61,6 +62,7 @@ export const DEFAULT_PUBLIC_LISTINGS: PublicPlotListing[] = [
     priceDisplay: 'Consult after verification',
     imageUrl: LISTING_IMAGES.plot,
     status: 'Active',
+    verified: true,
     inquiriesCount: 2,
     propertyKind: 'plot',
   },
@@ -77,6 +79,7 @@ export const DEFAULT_PUBLIC_LISTINGS: PublicPlotListing[] = [
     priceDisplay: 'Consult after verification',
     imageUrl: LISTING_IMAGES.premiumPlot,
     status: 'Active',
+    verified: true,
     inquiriesCount: 5,
     propertyKind: 'plot',
   },
@@ -93,6 +96,7 @@ export const DEFAULT_PUBLIC_LISTINGS: PublicPlotListing[] = [
     priceDisplay: 'Consult after verification',
     imageUrl: LISTING_IMAGES.apartment,
     status: 'Active',
+    verified: true,
     inquiriesCount: 3,
     propertyKind: 'apartment',
     bhk: 3,
@@ -111,6 +115,7 @@ export const DEFAULT_PUBLIC_LISTINGS: PublicPlotListing[] = [
     priceDisplay: 'Consult after verification',
     imageUrl: LISTING_IMAGES.town,
     status: 'Active',
+    verified: true,
     inquiriesCount: 1,
     propertyKind: 'plot',
   },
@@ -127,6 +132,7 @@ export const DEFAULT_PUBLIC_LISTINGS: PublicPlotListing[] = [
     priceDisplay: 'Consult after verification',
     imageUrl: LISTING_IMAGES.town,
     status: 'Active',
+    verified: true,
     inquiriesCount: 0,
     propertyKind: 'plot',
   },
@@ -167,6 +173,7 @@ function normalizeListing(raw: Record<string, unknown>): PublicPlotListing | nul
       imageUrl: String(raw.imageUrl ?? base?.imageUrl ?? ''),
     }),
     status,
+    verified: Boolean(raw.verified ?? base?.verified ?? true),
     inquiriesCount: Number(raw.inquiriesCount ?? 0) || 0,
     propertyKind,
     bhk: raw.bhk != null ? Number(raw.bhk) : base?.bhk,
@@ -212,7 +219,7 @@ export function filterPublicListings(
   filter: ListingFilter,
 ): PublicPlotListing[] {
   const active = listings.filter((p) => p.status === 'Active')
-  if (filter === 'Verified Plots') return active.filter((p) => p.propertyKind === 'plot')
+  if (filter === 'Verified Plots') return active.filter((p) => p.propertyKind === 'plot' && p.verified !== false)
   if (filter === 'Site Visit Ready') return active
   if (filter === 'Corner Plots') return active.filter((p) => p.cornerPlot)
   if (filter === 'Apartments') return active.filter((p) => p.propertyKind === 'apartment')
@@ -221,5 +228,5 @@ export function filterPublicListings(
 
 /** First three active listings for the landing page row */
 export function getLandingShowcaseListings(listings: PublicPlotListing[]): PublicPlotListing[] {
-  return listings.filter((p) => p.status === 'Active').slice(0, 3)
+  return listings.filter((p) => p.status === 'Active' && p.verified !== false).slice(0, 3)
 }

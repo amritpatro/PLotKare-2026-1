@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BadgeCheck } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -12,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { PlotTopdownSvg } from '@/components/plot-topdown-svg'
+import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 import {
   DEFAULT_PUBLIC_LISTINGS,
   getLandingShowcaseListings,
@@ -89,7 +89,7 @@ function ListingInquiryForm({
       </div>
       <button
         type="submit"
-        className="w-full rounded-lg py-3 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-95"
+        className="premium-button w-full rounded-lg py-3 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-95"
         style={{ backgroundColor: CRIMSON }}
       >
         Send Inquiry
@@ -111,7 +111,7 @@ function PlotCard({
     <motion.article
       whileHover={{ scale: 1.03 }}
       transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-      className="group relative h-[420px] overflow-hidden rounded-2xl border border-white/10 shadow-xl"
+      className="premium-interactive group relative h-[420px] overflow-hidden rounded-2xl border border-white/10 shadow-xl"
     >
       <Image
         src={withBasePath(plot.imageUrl)}
@@ -127,10 +127,7 @@ function PlotCard({
       />
       <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-5 md:p-6">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 font-sans text-[10px] font-semibold uppercase tracking-wide text-white/90">
-            <BadgeCheck className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
-            PlotKare Verified
-          </span>
+          {plot.verified !== false ? <PlotKareVerifiedStamp tone="dark" /> : null}
           {plot.propertyKind === 'apartment' && (
             <span className="rounded-full border border-white/25 bg-black/40 px-2.5 py-1 font-sans text-[10px] font-semibold uppercase tracking-wide text-white/80">
               Apartment
@@ -173,20 +170,20 @@ function PlotCard({
           <button
             type="button"
             onClick={onViewDetails}
-            className="rounded-xl border-2 border-white bg-transparent px-5 py-2.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-white/10"
+            className="premium-button-outline rounded-xl border-2 border-white bg-transparent px-5 py-2.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-white/10"
           >
             View Details
           </button>
           <Link
             href={`/demo/plot-3d/?listing=${encodeURIComponent(plot.plotNumber)}`}
-            className="rounded-xl border-2 border-accent/80 bg-accent/15 px-5 py-2.5 font-sans text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-accent/25"
+            className="premium-button-outline rounded-xl border-2 border-accent/80 bg-accent/15 px-5 py-2.5 font-sans text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-accent/25"
           >
             View in 3D
           </Link>
           <button
             type="button"
             onClick={onInquire}
-            className="rounded-xl px-5 py-2.5 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            className="premium-button rounded-xl px-5 py-2.5 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-90"
             style={{ backgroundColor: CRIMSON }}
           >
             Inquire Now
@@ -217,14 +214,14 @@ export function AvailablePlotsShowcaseSection() {
   const showcase = getLandingShowcaseListings(listings)
 
   return (
-    <section className="bg-charcoal py-24 lg:py-32">
+    <section className="premium-section-dark bg-charcoal py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.55 }}
-          className="mb-12 text-center"
+          className="premium-reveal mb-12 text-center"
         >
           <h2 className="font-serif text-4xl font-bold text-white md:text-5xl">
             Verified Property Marketplace Preview
@@ -261,7 +258,7 @@ export function AvailablePlotsShowcaseSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.55, delay: 0.1 }}
-          className="relative mt-14 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] px-6 py-10 text-center backdrop-blur-xl md:px-12"
+          className="premium-surface-dark relative mt-14 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] px-6 py-10 text-center backdrop-blur-xl md:px-12"
         >
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
           <p className="relative mx-auto max-w-2xl font-sans text-base text-white/75 md:text-lg">
@@ -271,13 +268,13 @@ export function AvailablePlotsShowcaseSection() {
           <div className="relative mt-6 flex flex-wrap justify-center gap-4">
             <Link
               href="/listings/"
-              className="inline-flex rounded-xl border border-white/30 bg-transparent px-8 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-white/10"
+              className="premium-button-outline inline-flex rounded-xl border border-white/30 bg-transparent px-8 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-white/10"
             >
               Browse listings hub
             </Link>
             <Link
               href="/login"
-              className="inline-flex rounded-xl px-10 py-3.5 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              className="premium-button inline-flex rounded-xl px-10 py-3.5 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: CRIMSON }}
             >
               Sign in for owner tools
@@ -342,7 +339,7 @@ export function AvailablePlotsShowcaseSection() {
                   setInquirySuccess(false)
                   setInquiryPlot(detailPlot)
                 }}
-                className="w-full rounded-lg py-3 font-sans text-sm font-semibold text-white"
+                className="premium-button w-full rounded-lg py-3 font-sans text-sm font-semibold text-white"
                 style={{ backgroundColor: CRIMSON }}
               >
                 Inquire Now

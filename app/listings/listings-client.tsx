@@ -10,6 +10,7 @@ import {
   type ListingFilter,
   type PublicPlotListing,
 } from '@/lib/public-listings'
+import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 import { withBasePath } from '@/lib/site-config'
 
 const FILTERS: ListingFilter[] = [
@@ -27,6 +28,7 @@ function ListingCard({ plot }: { plot: PublicPlotListing }) {
         <Image src={withBasePath(plot.imageUrl)} alt="" fill className="object-cover" sizes="(max-width:768px) 100vw, 33vw" />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
           <span className="rounded-full bg-black/60 px-2 py-0.5 font-mono text-[10px] text-white">Demo</span>
+          {plot.verified !== false ? <PlotKareVerifiedStamp compact tone="dark" /> : null}
           {plot.propertyKind === 'apartment' && (
             <span className="rounded-full bg-primary/90 px-2 py-0.5 font-mono text-[10px] text-white">Apartment</span>
           )}

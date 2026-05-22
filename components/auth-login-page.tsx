@@ -64,7 +64,7 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
         if (profile?.role === 'admin') router.replace('/admin/dashboard')
         return
       }
-      const next = searchParams.get('next') || '/dashboard'
+      const next = searchParams.get('next') || '/auth/choose-role'
       const destination = await resolvePostLoginRedirect(supabase, data.user.id, next)
       router.replace(destination)
     })
@@ -75,7 +75,7 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
 
   const redirectAfterLogin = async (userId: string, userMetadata?: Record<string, unknown>) => {
     const next = searchParams.get('next')
-    const fallback = next || (mode === 'admin' ? '/admin/dashboard' : '/dashboard')
+    const fallback = next || (mode === 'admin' ? '/admin/dashboard' : '/auth/choose-role')
     const destination =
       mode === 'admin'
         ? fallback
@@ -93,36 +93,37 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
     }
 
     setIsSigningIn(true)
-    const { data, error: signInError } = await supabase.auth.signInWithPassword(parsed.data)
 
-    if (signInError) {
-      setError(formatAuthError(signInError))
-      setIsSigningIn(false)
-      return
-    }
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...parsed.data,
+          mode,
+          next: searchParams.get('next'),
+        }),
+      })
+      const result = (await response.json()) as { destination?: string; error?: string }
 
-    if (mode === 'admin') {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .maybeSingle()
-
-      if (profileError || profile?.role !== 'admin') {
-        await supabase.auth.signOut()
-        setError('This account does not have admin access.')
+      if (!response.ok || !result.destination) {
+        setError(result.error ?? 'Unable to sign in. Please try again.')
         setIsSigningIn(false)
         return
       }
-    }
 
-    await redirectAfterLogin(data.user.id, data.user.user_metadata)
+      router.replace(result.destination)
+      router.refresh()
+    } catch {
+      setError('Network error. Check your connection and try again.')
+      setIsSigningIn(false)
+    }
   }
 
   const handleOAuth = async () => {
     setError('')
     setIsSigningIn(true)
-    const next = searchParams.get('next') || (mode === 'admin' ? '/admin/dashboard' : '/dashboard')
+    const next = searchParams.get('next') || (mode === 'admin' ? '/admin/dashboard' : '/auth/choose-role')
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

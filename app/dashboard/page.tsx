@@ -287,7 +287,7 @@ export default function DashboardPage() {
                         View Report
                       </button>
                       <Link
-                        href="/dashboard/amenities"
+                        href="/owner/services"
                         className="flex flex-1 items-center justify-center rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-2 font-sans text-sm font-medium text-[#1F2937] transition-colors hover:bg-[#F3F4F6]"
                       >
                         Manage Amenities

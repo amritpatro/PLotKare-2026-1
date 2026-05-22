@@ -17,7 +17,7 @@ const pillars = [
 
 export function HeroSection() {
   return (
-    <section className="relative isolate min-h-screen overflow-hidden bg-white pt-20">
+    <section className="premium-hero relative isolate min-h-screen overflow-hidden bg-white pt-20">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(110deg,#ffffff_0%,#ffffff_45%,#f8f6f3_100%)]" />
       <div className="pointer-events-none absolute right-[-12%] top-24 -z-10 hidden h-[72%] w-[62%] rounded-full bg-[#8B1538]/[0.035] blur-3xl lg:block" />
 
@@ -36,13 +36,13 @@ export function HeroSection() {
           <div className="mt-9 flex flex-wrap gap-4">
             <Link
               href="/demo/plot-3d/"
-              className="inline-flex min-h-12 items-center justify-center rounded-sm bg-[#8B1538] px-7 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-[#75112f] md:text-base"
+              className="premium-button inline-flex min-h-12 items-center justify-center rounded-sm bg-[#8B1538] px-7 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-[#75112f] md:text-base"
             >
               View Land Viewer
             </Link>
             <Link
-              href="/signup/?next=/dashboard&intent=add-property"
-              className="inline-flex min-h-12 items-center justify-center rounded-sm border border-[#1a1a1a] bg-white/70 px-7 py-3.5 font-sans text-sm font-semibold text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white md:text-base"
+              href="/signup/?intent=add-property"
+              className="premium-button-outline inline-flex min-h-12 items-center justify-center rounded-sm border border-[#1a1a1a] bg-white/70 px-7 py-3.5 font-sans text-sm font-semibold text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white md:text-base"
             >
               Add My Property
             </Link>
@@ -58,7 +58,7 @@ export function HeroSection() {
           </div>
         </div>
 
-        <div className="relative min-h-[420px] lg:min-h-[590px]">
+        <div className="premium-map-frame relative min-h-[420px] lg:min-h-[590px]">
           <div className="absolute inset-0 opacity-70 mix-blend-multiply lg:opacity-78">
             <IndiaHeroMapLazy />
           </div>

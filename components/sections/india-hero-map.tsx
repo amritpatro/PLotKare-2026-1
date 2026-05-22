@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * India admin-1 state map using full official-position boundaries in /public/geo/india-states.geojson.
- * The source keeps Jammu & Kashmir and Ladakh complete while the UI preserves PlotKare's pale map theme.
+ * India admin-1 hero map using the clean generated Natural Earth state source.
+ * Do not hand-patch geographic coordinates in the component; rebuild the GeoJSON source instead.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FeatureCollection } from 'geojson'
@@ -127,17 +127,25 @@ export function IndiaHeroMap() {
   }, [reduceMotion, fc])
 
   const openDialog = (row: PathRow) => setSelected(row)
+  const normalPaths = layout.paths.filter((p) => !p.ap)
+  const activePaths = layout.paths.filter((p) => p.ap)
 
   return (
-    <div ref={rootRef} className="relative w-full max-w-[720px] justify-self-start lg:max-w-none">
+    <div
+      ref={rootRef}
+      className="relative flex h-full min-h-[360px] w-full items-center justify-center [perspective:1200px]"
+    >
       <div
         className={cn(
-          'relative overflow-hidden bg-transparent',
+          'relative w-full max-w-[820px] overflow-visible px-2 sm:px-5 lg:max-w-[900px]',
         )}
       >
+        <div className="pointer-events-none absolute inset-[12%] rounded-full bg-[#8B1538]/[0.06] blur-3xl" />
+        <div className="pointer-events-none absolute inset-x-[14%] bottom-[4%] h-12 rounded-full bg-[#1a1a1a]/10 blur-2xl" />
         <svg
           viewBox={`0 0 ${layout.w} ${layout.h}`}
-          className="block h-auto w-full"
+          preserveAspectRatio="xMidYMid meet"
+          className="relative block h-auto w-full overflow-visible drop-shadow-[0_30px_42px_rgba(26,26,26,0.14)]"
           role="img"
           aria-label="Interactive map of India: choose a state or union territory for PlotKare coverage and expansion details"
         >
@@ -153,22 +161,25 @@ export function IndiaHeroMap() {
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
+            <filter id="stateLift" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="4" stdDeviation="2.2" floodColor="#8B1538" floodOpacity="0.16" />
+            </filter>
           </defs>
 
-          <rect width={layout.w} height={layout.h} rx={16} fill="url(#plotkareMapBg)" />
+          <rect width={layout.w} height={layout.h} rx={18} fill="url(#plotkareMapBg)" />
 
           <g className="state-layer">
-            {layout.paths
-              .filter((p) => !p.ap)
-              .map((p) => (
+            {normalPaths.map((p) => (
                 <path
                   key={p.key}
                   d={p.d}
-                  fill="rgba(139, 21, 56, 0.04)"
+                  fill="rgba(255, 255, 255, 0.58)"
                   stroke="#C9A962"
-                  strokeOpacity={0.55}
-                  strokeWidth={0.65}
-                  className="cursor-pointer transition-[fill,stroke-opacity] duration-200 hover:fill-[rgba(139,21,56,0.11)]"
+                  strokeOpacity={0.84}
+                  strokeWidth={0.82}
+                  strokeLinejoin="round"
+                  className="cursor-pointer transition-[fill,filter,stroke,stroke-opacity] duration-200 hover:fill-[rgba(139,21,56,0.11)] hover:stroke-[#8B1538] hover:stroke-opacity-80"
+                  filter="url(#stateLift)"
                   tabIndex={0}
                   role="button"
                   aria-label={`${p.name}. Opens details about PlotKare in this region.`}
@@ -181,9 +192,7 @@ export function IndiaHeroMap() {
                   }}
                 />
               ))}
-            {layout.paths
-              .filter((p) => p.ap)
-              .map((p) => (
+            {activePaths.map((p) => (
                 <g key={p.key}>
                   {!reduceMotion ? (
                     <path
@@ -198,11 +207,12 @@ export function IndiaHeroMap() {
                   ) : null}
                   <path
                     d={p.d}
-                    fill="rgba(139, 21, 56, 0.13)"
+                    fill="rgba(139, 21, 56, 0.18)"
                     stroke="#8B1538"
-                    strokeWidth={1.85}
+                    strokeWidth={2.1}
                     strokeLinejoin="round"
-                    className="cursor-pointer transition-[fill] duration-200 hover:fill-[rgba(139,21,56,0.2)]"
+                    filter="url(#stateLift)"
+                    className="cursor-pointer transition-[fill,filter] duration-200 hover:fill-[rgba(139,21,56,0.25)]"
                     tabIndex={0}
                     role="button"
                     aria-label={`${p.name}. Active coordination starting from Visakhapatnam and coastal Andhra Pradesh.`}

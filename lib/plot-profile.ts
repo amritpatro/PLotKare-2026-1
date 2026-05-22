@@ -17,10 +17,37 @@ const OWNER_NAMES = [
 
 const STATUS = ['Owner verified', 'Boundary check due', 'Document review', 'Inspection active']
 
+type MappedPlotMark = {
+  n: number
+  x: number
+  y: number
+  extent?: number
+  extentSqYards?: number
+}
+
+export function getMappedPlotMarks() {
+  const layout = BODUVALASA_LAYOUT as typeof BODUVALASA_LAYOUT & {
+    plotMarks?: readonly MappedPlotMark[]
+    plots?: readonly MappedPlotMark[]
+  }
+
+  return [...(layout.plotMarks ?? layout.plots ?? [])].sort((a, b) => a.n - b.n)
+}
+
+export function getMappedPlotNumbers() {
+  return getMappedPlotMarks().map((mark) => mark.n)
+}
+
 export function getPlotProfile(plotNumber: number) {
-  const marks = (BODUVALASA_LAYOUT as any).plotMarks ?? (BODUVALASA_LAYOUT as any).plots ?? []
-  const mark = marks.find((item: any) => item.n === plotNumber)
-  const extent = mark?.extent ?? BODUVALASA_LAYOUT.plotExtents.find((item) => item.plot === plotNumber)?.extentSqYards
+  const marks = getMappedPlotMarks()
+  const mark = marks.find((item) => item.n === plotNumber)
+
+  if (!mark) return null
+
+  const extent =
+    mark?.extent ??
+    BODUVALASA_LAYOUT.plotExtents.find((item) => item.plot === plotNumber)?.extentSqYards ??
+    mark?.extentSqYards
   const facing = mark
     ? mark.y < 120
       ? 'North facing'
@@ -31,7 +58,7 @@ export function getPlotProfile(plotNumber: number) {
           : mark.x < 120
             ? 'West facing'
             : 'Internal road facing'
-    : 'Road facing'
+    : 'Survey facing pending'
 
   const roadAccess = mark
     ? mark.y < 120 || mark.y > 450
@@ -39,7 +66,7 @@ export function getPlotProfile(plotNumber: number) {
       : mark.x > 500 || mark.x < 80
         ? 'Edge road access'
         : 'Internal plotted road'
-    : 'Internal plotted road'
+    : 'Survey access pending'
 
   return {
     plotNumber,

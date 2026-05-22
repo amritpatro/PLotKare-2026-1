@@ -12,7 +12,7 @@ const trustItems = [
 
 export function TrustStrip() {
   return (
-    <section className="relative overflow-hidden border-y border-border bg-white py-5">
+    <section className="premium-section relative overflow-hidden border-y border-border bg-white py-5">
       <div className="animate-marquee flex whitespace-nowrap">
         {[...trustItems, ...trustItems].map((item, index) => (
           <span key={index} className="flex items-center">

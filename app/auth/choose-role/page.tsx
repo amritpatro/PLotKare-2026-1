@@ -7,6 +7,12 @@ import { LogoMark } from '@/components/logo'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 import { slugFromCustomerType, type CustomerType } from '@/lib/onboarding/types'
 
+const dashboardByCustomerType: Record<CustomerType, string> = {
+  land_owner: '/owner',
+  plot_seller: '/seller',
+  plot_buyer: '/customer',
+}
+
 const ROLES: {
   id: CustomerType
   title: string
@@ -69,7 +75,7 @@ export default function ChooseRolePage() {
         if (profile.customer_type) {
           // If onboarding complete, go to dashboard
           if (profile.onboarding_completed) {
-            router.push('/dashboard')
+            router.push(dashboardByCustomerType[profile.customer_type as CustomerType] ?? '/auth/choose-role')
             return
           }
           // If onboarding incomplete, go to onboarding page

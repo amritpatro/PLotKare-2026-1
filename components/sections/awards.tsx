@@ -28,14 +28,14 @@ const governance = [
 
 export function AwardsSection() {
   return (
-    <section className="bg-charcoal py-24 lg:py-32">
+    <section className="premium-section-dark bg-charcoal py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="mb-16 text-center"
+          className="premium-reveal mb-16 text-center"
         >
           <h2 className="font-serif text-4xl font-bold text-white md:text-5xl">
             Visakhapatnam Plot Oversight: Evidence, Scope, and Escalation

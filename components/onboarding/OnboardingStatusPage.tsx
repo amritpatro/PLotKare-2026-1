@@ -13,20 +13,20 @@ const COPY = {
   land_owner: {
     title: 'Verification pending',
     body: 'Your property details are being reviewed. You will receive an email update within 24 hours. Meanwhile, you can explore amenities and your dashboard.',
-    primary: { href: '/dashboard/amenities', label: 'Explore amenities' },
-    secondary: { href: '/dashboard', label: 'Go to dashboard' },
+    primary: { href: '/owner', label: 'Go to owner dashboard' },
+    secondary: { href: '/owner/services', label: 'Explore services' },
   },
   plot_seller: {
     title: 'Documents under review',
     body: 'Our team is verifying your business documents and bank details. This usually takes 24–48 hours. We will email you at each milestone.',
-    primary: { href: '/dashboard', label: 'Go to dashboard' },
+    primary: { href: '/seller', label: 'Go to seller dashboard' },
     secondary: { href: '/support', label: 'Contact support' },
   },
   plot_buyer: {
     title: 'KYC under review',
     body: 'Your KYC documents and bank details are being verified. This usually takes 24–48 hours before you can inquire on verified listings.',
-    primary: { href: '/listings', label: 'View listings' },
-    secondary: { href: '/dashboard', label: 'Go to dashboard' },
+    primary: { href: '/customer/listings', label: 'View listings' },
+    secondary: { href: '/customer', label: 'Go to customer dashboard' },
   },
 } as const
 

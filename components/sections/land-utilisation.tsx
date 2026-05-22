@@ -76,14 +76,14 @@ export function LandUtilisationSection() {
     activeCategory === 'All' ? services : services.filter((service) => service.category === activeCategory)
 
   return (
-    <section className="bg-white py-20 lg:py-28">
+    <section className="premium-section bg-white py-20 lg:py-28">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.55 }}
-          className="mb-10"
+          className="premium-reveal mb-10"
         >
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
             Property Income, Protection, and Growth <span className="text-primary">Add-Ons</span>
@@ -99,7 +99,7 @@ export function LandUtilisationSection() {
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
-              className={`relative pb-2 font-sans text-sm font-medium transition-colors ${
+              className={`premium-interactive relative rounded-sm pb-2 font-sans text-sm font-medium transition-colors ${
                 activeCategory === category ? 'text-foreground' : 'text-muted-foreground'
               }`}
             >
@@ -120,7 +120,7 @@ export function LandUtilisationSection() {
                 key={service.title}
                 type="button"
                 onClick={() => setActiveService(service)}
-                className="min-h-[230px] rounded-lg border border-border bg-secondary p-7 text-left shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                className="premium-surface premium-interactive min-h-[230px] rounded-lg border border-border bg-secondary p-7 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <div
                   className="mb-5 flex h-12 w-12 items-center justify-center rounded-sm"

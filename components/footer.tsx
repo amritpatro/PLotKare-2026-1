@@ -79,7 +79,7 @@ export function Footer() {
   )
 
   return (
-    <footer className="bg-darker pt-20 pb-8">
+    <footer className="premium-section-dark bg-darker pt-20 pb-8">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         {/* Main Footer Content */}
         <div className="grid gap-12 pb-12 md:grid-cols-2 lg:grid-cols-5">
@@ -111,7 +111,7 @@ export function Footer() {
                 <a
                   key={social.name}
                   href={social.href}
-                  className="text-white/40 transition-colors hover:text-primary"
+                  className="premium-interactive rounded-sm text-white/40 transition-colors hover:text-primary"
                   aria-label={social.name}
                 >
                   {social.icon}
@@ -130,7 +130,7 @@ export function Footer() {
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="font-sans text-sm text-white/60 transition-colors hover:text-white"
+                    className="premium-nav-link font-sans text-sm text-white/60 transition-colors hover:text-white"
                   >
                     {link.label}
                   </Link>
@@ -149,7 +149,7 @@ export function Footer() {
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="font-sans text-sm text-white/60 transition-colors hover:text-white"
+                    className="premium-nav-link font-sans text-sm text-white/60 transition-colors hover:text-white"
                   >
                     {link.label}
                   </Link>
@@ -168,7 +168,7 @@ export function Footer() {
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="font-sans text-sm text-white/60 transition-colors hover:text-white"
+                    className="premium-nav-link font-sans text-sm text-white/60 transition-colors hover:text-white"
                   >
                     {link.label}
                   </Link>
@@ -187,7 +187,7 @@ export function Footer() {
                 <li key={link.label}>
                   <Link
                     href={link.href}
-                    className="font-sans text-sm text-white/60 transition-colors hover:text-white"
+                    className="premium-nav-link font-sans text-sm text-white/60 transition-colors hover:text-white"
                   >
                     {link.label}
                   </Link>

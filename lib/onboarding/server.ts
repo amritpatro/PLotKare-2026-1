@@ -245,6 +245,156 @@ function mapStepPayload(customerType: CustomerType, step: number, data: Record<s
   return {}
 }
 
+function facingFromShortCode(value: unknown) {
+  const facing = String(value ?? '').toUpperCase()
+  if (facing === 'N') return 'North'
+  if (facing === 'S') return 'South'
+  if (facing === 'W') return 'West'
+  return 'East'
+}
+
+function operationalReviewStatus(value: unknown) {
+  const status = String(value ?? '').toLowerCase()
+  if (status === 'verified') return 'approved'
+  if (status === 'rejected') return 'rejected'
+  if (status === 'under_review') return 'under_review'
+  if (status === 'needs_clarification') return 'needs_clarification'
+  return 'submitted'
+}
+
+function throwDbError(error: { message?: string } | null | undefined) {
+  if (error) throw new Error(error.message ?? 'Database operation failed.')
+}
+
+async function syncOperationalRecordsFromOnboarding(userId: string, customerType: CustomerType) {
+  const admin = createSupabaseAdminClient()
+  const row = await fetchDetailRow(admin, customerType, userId)
+  if (!row) return
+
+  if (customerType === 'land_owner') {
+    const { error: ownerError } = await admin
+      .from('owners')
+      .upsert({ profile_id: userId, verification_status: 'submitted' }, { onConflict: 'profile_id' })
+    throwDbError(ownerError)
+
+    const location = String(row.property_location ?? '').trim()
+    const sqYards = Number(row.property_size_sqyards ?? 0)
+    if (!location || !Number.isFinite(sqYards) || sqYards < 1) return
+
+    const plotNumber = `ONB-${userId.slice(0, 8).toUpperCase()}`
+    const title = `Onboarding plot - ${location}`
+
+    const { data: existingPlot, error: existingPlotError } = await admin
+      .from('plots')
+      .select('id,property_id')
+      .eq('owner_id', userId)
+      .eq('plot_number', plotNumber)
+      .limit(1)
+      .maybeSingle()
+    throwDbError(existingPlotError)
+
+    let propertyId = existingPlot?.property_id as string | null | undefined
+
+    if (propertyId) {
+      const { error: propertyUpdateError } = await admin
+        .from('properties')
+        .update({
+          title,
+          address: location,
+          city: location,
+          property_kind: 'plot',
+          lifecycle_status: 'registered',
+          verification_status: 'submitted',
+        })
+        .eq('id', propertyId)
+      throwDbError(propertyUpdateError)
+    } else {
+      const { data: property, error: propertyError } = await admin
+        .from('properties')
+        .insert({
+          owner_profile_id: userId,
+          property_kind: 'plot',
+          title,
+          address: location,
+          city: location,
+          lifecycle_status: 'registered',
+          verification_status: 'submitted',
+          created_by: userId,
+        })
+        .select('id')
+        .single()
+
+      throwDbError(propertyError)
+      if (!property) throw new Error('Property record was not returned after creation.')
+      propertyId = property.id
+    }
+
+    const plotPayload = {
+      owner_id: userId,
+      property_id: propertyId,
+      plot_number: plotNumber,
+      location,
+      sq_yards: sqYards,
+      facing: facingFromShortCode(row.property_facing),
+      corner_plot: Boolean(row.is_corner_plot),
+      purchase_price_lakhs: 0,
+      current_value_lakhs: 0,
+      status: 'registered',
+      lifecycle_status: 'registered',
+      verification_status: 'submitted',
+      last_inspection: new Date().toISOString().slice(0, 10),
+    }
+
+    if (existingPlot) {
+      const { error: plotUpdateError } = await admin.from('plots').update(plotPayload).eq('id', existingPlot.id)
+      throwDbError(plotUpdateError)
+    } else {
+      const { error: plotInsertError } = await admin.from('plots').insert(plotPayload)
+      throwDbError(plotInsertError)
+    }
+  }
+
+  if (customerType === 'plot_seller') {
+    const { error: sellerError } = await admin
+      .from('sellers')
+      .upsert(
+        {
+          profile_id: userId,
+          company_name: row.company_name ?? 'PlotKare Seller',
+          gst_number: row.gst_number || null,
+          pan_number: row.pan_number || null,
+          verification_status: operationalReviewStatus(row.verification_status),
+        },
+        { onConflict: 'profile_id' },
+      )
+    throwDbError(sellerError)
+  }
+
+  if (customerType === 'plot_buyer') {
+    const { data: profile, error: profileError } = await admin
+      .from('profiles')
+      .select('full_name,email,phone')
+      .eq('id', userId)
+      .maybeSingle()
+    throwDbError(profileError)
+
+    const { error: customerError } = await admin
+      .from('customers')
+      .upsert(
+        {
+          profile_id: userId,
+          full_name: profile?.full_name || profile?.email || 'PlotKare Customer',
+          email: profile?.email ?? null,
+          phone: profile?.phone ?? null,
+          account_status: 'active',
+          kyc_status: operationalReviewStatus(row.kyc_status),
+        },
+        { onConflict: 'profile_id' },
+      )
+    throwDbError(customerError)
+  }
+}
+
 async function fetchDetailRow(supabase: SupabaseClient, customerType: CustomerType, userId: string) {
   const { data } = await supabase.from(DETAIL_TABLE[customerType]).select('*').eq('user_id', userId).maybeSingle()
   return data as Record<string, unknown> | null
@@ -497,16 +647,28 @@ export async function submitOnboardingStepForUser(
 
   const isFinal = step === maxSteps
   if (isFinal) {
-    await supabase
+    if (customerType === 'plot_buyer') {
+      const { error: detailStatusError } = await supabase.from(table).update({ kyc_status: 'pending' }).eq('user_id', userId)
+      if (detailStatusError) return { error: detailStatusError.message, status: 400 }
+    } else {
+      const { error: detailStatusError } = await supabase.from(table).update({ verification_status: 'pending' }).eq('user_id', userId)
+      if (detailStatusError) return { error: detailStatusError.message, status: 400 }
+    }
+
+    try {
+      await syncOperationalRecordsFromOnboarding(userId, customerType)
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : 'Onboarding saved, but dashboard sync failed.',
+        status: 500,
+      }
+    }
+
+    const { error: profileCompleteError } = await supabase
       .from('profiles')
       .update({ onboarding_status: 'completed', onboarding_completed: true })
       .eq('id', userId)
-
-    if (customerType === 'plot_buyer') {
-      await supabase.from(table).update({ kyc_status: 'pending' }).eq('user_id', userId)
-    } else {
-      await supabase.from(table).update({ verification_status: 'pending' }).eq('user_id', userId)
-    }
+    if (profileCompleteError) return { error: profileCompleteError.message, status: 400 }
   } else {
     await supabase
       .from('profiles')
