@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from './server'
-import { dashboardPathForRole, isUserRole, type UserRole } from './types'
+import { dashboardPathForRole, effectiveRoleForProfile, isUserRole, type UserRole } from './types'
 
 export async function requirePageRole(allowedRoles: UserRole[]) {
   const supabase = await createSupabaseServerClient()
@@ -19,9 +19,12 @@ export async function requirePageRole(allowedRoles: UserRole[]) {
 
   if (!profile || !isUserRole(profile.role)) redirect('/auth/choose-role')
 
-  if (!allowedRoles.includes(profile.role)) {
-    redirect(dashboardPathForRole(profile.role))
+  const role = effectiveRoleForProfile(profile)
+  if (!role || !isUserRole(role)) redirect('/auth/choose-role')
+
+  if (!allowedRoles.includes(role)) {
+    redirect(dashboardPathForRole(role))
   }
 
-  return { user, profile: { ...profile, role: profile.role as UserRole } }
+  return { user, profile: { ...profile, role } }
 }

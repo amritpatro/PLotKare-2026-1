@@ -6,7 +6,7 @@ import {
   slugFromCustomerType,
   type CustomerType,
 } from '@/lib/onboarding/types'
-import { dashboardPathForRole, isUserRole } from '@/lib/supabase/types'
+import { dashboardPathForRole, effectiveRoleForProfile } from '@/lib/supabase/types'
 
 export { onboardingPathFromCategory } from '@/lib/onboarding/types'
 
@@ -144,8 +144,10 @@ export async function resolvePostLoginRedirect(
 ): Promise<string> {
   const { profile } = await loadProfile(supabase, userId, authUserMetadata)
 
-  if (profile?.role === 'admin') return dashboardPathForRole('admin')
-  if (profile?.role === 'employee') return dashboardPathForRole('employee')
+  const effectiveRole = effectiveRoleForProfile(profile)
+
+  if (effectiveRole === 'admin') return dashboardPathForRole('admin')
+  if (effectiveRole === 'employee') return dashboardPathForRole('employee')
 
   if (!profile) {
     clearPendingOnboardingPath()
@@ -154,9 +156,7 @@ export async function resolvePostLoginRedirect(
 
   if (isComplete(profile)) {
     clearPendingOnboardingPath()
-    return isUserRole(profile.role) && profile.role !== 'user'
-      ? dashboardPathForRole(profile.role)
-      : safeFallback(fallbackNext)
+    return effectiveRole && effectiveRole !== 'user' ? dashboardPathForRole(effectiveRole) : safeFallback(fallbackNext)
   }
 
   const customerType = resolveCustomerType(profile)

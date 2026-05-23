@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { requireSupabaseBrowserEnv } from './env'
-import { dashboardPathForRole, isUserRole, type UserRole } from './types'
+import { dashboardPathForRole, effectiveRoleForProfile, isUserRole, type UserRole } from './types'
 
 function isPrefix(pathname: string, prefixes: string[]) {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
@@ -106,7 +106,10 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(new URL('/auth/choose-role', request.url))
     }
 
-    const role = profile.role as UserRole
+    const role = effectiveRoleForProfile(profile)
+    if (!role || !isUserRole(role)) {
+      return NextResponse.redirect(new URL('/auth/choose-role', request.url))
+    }
     const isAdminRoute = isPrefix(pathname, adminRoutes)
     const isEmployeeRoute = isPrefix(pathname, employeeRoutes)
     const isSellerRoute = isPrefix(pathname, sellerRoutes)

@@ -1,5 +1,6 @@
 export type UserRole = 'user' | 'plot_seller' | 'land_owner' | 'customer' | 'employee' | 'admin'
 export type EmployeeRole = 'verification_agent' | 'field_inspection_agent' | 'support_staff'
+export type CustomerType = 'land_owner' | 'plot_seller' | 'plot_buyer'
 export type Facing = 'East' | 'West' | 'North' | 'South'
 export type PropertyKind = 'plot' | 'apartment'
 export type ListingStatus = 'Active' | 'Sold'
@@ -29,6 +30,23 @@ export function dashboardPathForRole(role: string | null | undefined) {
   return isUserRole(role) ? ROLE_DASHBOARD_PATHS[role] : ROLE_DASHBOARD_PATHS.user
 }
 
+export function roleFromCustomerType(customerType: string | null | undefined): UserRole | null {
+  if (customerType === 'land_owner') return 'land_owner'
+  if (customerType === 'plot_seller') return 'plot_seller'
+  if (customerType === 'plot_buyer') return 'customer'
+  return null
+}
+
+export function effectiveRoleForProfile(profile: {
+  role?: string | null
+  customer_type?: string | null
+} | null | undefined): UserRole | null {
+  if (!profile) return null
+  if (profile.role === 'admin' || profile.role === 'employee') return profile.role
+  if (profile.role === 'plot_seller' || profile.role === 'land_owner' || profile.role === 'customer') return profile.role
+  return roleFromCustomerType(profile.customer_type) ?? (profile.role === 'user' ? 'user' : null)
+}
+
 export type Profile = {
   id: string
   email: string
@@ -45,7 +63,7 @@ export type Profile = {
   notification_preferences: Record<string, boolean>
   profile_completion_status?: Record<string, unknown>
   security_preferences?: Record<string, unknown>
-  customer_type?: 'land_owner' | 'plot_seller' | 'plot_buyer' | null
+  customer_type?: CustomerType | null
   onboarding_status?: 'pending' | 'in_progress' | 'completed' | null
   onboarding_completed?: boolean | null
   verified?: boolean | null
