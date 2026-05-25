@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createOwnerServiceRequest, createOwnerSupportTicket, registerOwnerProperty, requestOwnerAmenity } from '@/app/owner/actions'
+import { AmenityCatalogRequestGrid } from '@/components/amenities/amenity-catalog-request-grid'
 import { AmenityWorkflowTable } from '@/components/amenities/amenity-workflow-table'
 import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
 import { PropertyDocumentUploadPanel } from '@/components/documents/property-document-upload-panel'
@@ -73,7 +74,20 @@ export default async function OwnerSectionPage({ params }: PageProps) {
     const rows = [...(services ?? []), ...(inspections ?? [])]
     content = <div className="space-y-6"><Title title="Service activity" body="Request inspections or maintenance support and track service records tied to your property." /><div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]"><form action={createOwnerServiceRequest} className={`${cardClass} grid gap-3`}><select name="propertyId" required className={inputClass} defaultValue=""><option value="" disabled>Select property</option>{propertyRows.map((property: any) => <option key={property.id} value={property.id}>{property.title || property.city || property.id}</option>)}</select><input name="title" required placeholder="Service request title" className={inputClass} /><textarea name="description" rows={5} placeholder="Describe the service needed" className={inputClass} /><select name="priority" className={inputClass} defaultValue="normal"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select><button className={buttonClass} disabled={propertyRows.length === 0}>Create service request</button></form><RecordTable rows={rows} /></div></div>
   } else if (section === 'amenities') {
-    content = <div className="space-y-6"><Title title="Amenities" body="Request PlotKare-managed amenities for owner properties and track active amenity records." /><div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]"><form action={requestOwnerAmenity} className={`${cardClass} grid gap-3`}><select name="plotId" required className={inputClass} defaultValue=""><option value="" disabled>Select plot</option>{(ownerPlots ?? []).map((plot: any) => <option key={plot.id} value={plot.id}>{plot.plot_number} · {plot.location}</option>)}</select><select name="amenityId" required className={inputClass} defaultValue=""><option value="" disabled>Select amenity</option>{(amenityCatalog ?? []).map((amenity: any) => <option key={amenity.id} value={amenity.id}>{amenity.name} · {amenity.category}</option>)}</select><button className={buttonClass} disabled={(ownerPlots ?? []).length === 0 || (amenityCatalog ?? []).length === 0}>Request amenity</button></form><AmenityWorkflowTable rows={activeAmenities} empty="No amenities requested yet." /></div></div>
+    content = (
+      <div className="space-y-6">
+        <Title title="Amenities" body="Explore PlotKare-managed amenities with real images, fit guidance, area expectations, and consultation requests." />
+        <AmenityCatalogRequestGrid
+          amenities={amenityCatalog ?? []}
+          targets={(ownerPlots ?? []).map((plot: any) => ({ id: plot.id, label: `${plot.plot_number} · ${plot.location}` }))}
+          targetName="plotId"
+          targetLabel="Select plot for consultation"
+          action={requestOwnerAmenity}
+          disabledText="Register a plot before requesting amenities."
+        />
+        <AmenityWorkflowTable rows={activeAmenities} empty="No amenities requested yet." />
+      </div>
+    )
   } else {
     const rows = section === 'documents' ? documents ?? [] : section === 'services' ? [...(services ?? []), ...(inspections ?? [])] : propertyRows
     content = <div className="space-y-6"><Title title={section === 'verification' ? 'Verification status' : section} body="Focused owner records with status, dates, and next operational state." />{section === 'documents' ? <><div className={`${cardClass} grid gap-4`}><p className="text-sm leading-6 text-[#6B7280]">Required owner documents: Aadhaar, PAN, EC, survey documents, tax receipts, and real property photos. Uploads are sent to admin/employee review.</p><PropertyDocumentUploadPanel role="owner" properties={propertyRows.map((property: any) => ({ id: property.id, label: property.title || property.city || property.id }))} /></div><PropertyDocumentRecordTable rows={(documents ?? []).map((row: any) => ({ ...row, linked_label: propertyRows.find((property: any) => property.id === row.property_id)?.title || row.property_id || 'Owner property' }))} empty="No documents uploaded yet." /></> : <RecordTable rows={rows} />}</div>

@@ -8,6 +8,9 @@ export type AmenityCatalogItem = {
   category: string
   image: string
   isLocalImage?: boolean
+  description?: string
+  suitableFor?: string
+  areaRange?: string
 } & AmenityCost
 
 const AMENITY_IMAGES = {
@@ -66,4 +69,67 @@ export function getAmenityById(id: string) {
 
 export function getAmenityByName(name: string) {
   return AMENITY_CATALOG.find((a) => a.name === name)
+}
+
+const amenityDetails: Record<string, Pick<AmenityCatalogItem, 'description' | 'suitableFor' | 'areaRange'>> = {
+  'container-farming': {
+    description: 'A managed container-based cultivation setup for unused plot corners where access, water, and basic supervision are available.',
+    suitableFor: 'Vacant plots near road access, peri-urban land, income-focused owners',
+    areaRange: 'Approx. 250-600 sq. yards clear usable patch',
+  },
+  'mushroom-kit': {
+    description: 'Small-format shaded cultivation support with setup guidance, monitoring, and harvest coordination through PlotKare partners.',
+    suitableFor: 'Covered/shaded spaces, farm-side plots, owners testing low-footprint income options',
+    areaRange: 'Approx. 80-200 sq. yards or covered utility area',
+  },
+  'solar-panel': {
+    description: 'Solar hosting feasibility review and partner coordination for open plots with strong sunlight and safe access.',
+    suitableFor: 'Open plots, commercial edges, long-hold land assets',
+    areaRange: 'Approx. 500+ sq. yards depending on shadow and access',
+  },
+  'boundary-fencing': {
+    description: 'Perimeter fencing consultation for physical protection, encroachment deterrence, and clearer site boundaries.',
+    suitableFor: 'Vacant plots, disputed edges, remote owner properties',
+    areaRange: 'Any plot size after boundary measurement',
+  },
+  cctv: {
+    description: 'Camera placement, site power/network feasibility, and monitoring setup for higher-risk plots and assets.',
+    suitableFor: 'Road-facing plots, construction sites, high-value properties',
+    areaRange: 'Approx. 120+ sq. yards with mounting and power access',
+  },
+  rainwater: {
+    description: 'Rainwater harvesting pit consultation based on soil, slope, access, and property usage pattern.',
+    suitableFor: 'Owners planning agriculture, gardens, or long-term land care',
+    areaRange: 'Approx. 150+ sq. yards with safe pit location',
+  },
+  'drip-irrigation': {
+    description: 'Water-efficient irrigation layout for garden, herbal, or small cultivation areas.',
+    suitableFor: 'Managed gardens, farming patches, semi-urban plots',
+    areaRange: 'Approx. 100-1000 sq. yards cultivated area',
+  },
+  'herbal-garden': {
+    description: 'Managed herbal planting plan with basic maintenance coordination and periodic site checks.',
+    suitableFor: 'Residential plots, farm plots, owners wanting low-maintenance green use',
+    areaRange: 'Approx. 100-400 sq. yards',
+  },
+  'legal-signboard': {
+    description: 'Ownership and warning signboard placement to communicate verified ownership and discourage misuse.',
+    suitableFor: 'Vacant land, newly purchased plots, properties under monitoring',
+    areaRange: 'Any plot size with visible frontage',
+  },
+  'portable-storage': {
+    description: 'Temporary storage feasibility for construction materials, maintenance tools, or site operations.',
+    suitableFor: 'Construction-ready plots, service teams, owners preparing development',
+    areaRange: 'Approx. 100+ sq. yards with vehicle access',
+  },
+}
+
+export function getAmenityDisplayDetails(id: string) {
+  return (
+    amenityDetails[id] ?? {
+      description: 'PlotKare reviews the site, access, safety, and owner goals before recommending this managed amenity.',
+      suitableFor: 'Owner-approved plots after verification and feasibility review',
+      areaRange: 'Depends on property layout, access, and usable open area',
+    }
+  )
 }

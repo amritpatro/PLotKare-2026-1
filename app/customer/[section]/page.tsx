@@ -7,6 +7,7 @@ import {
   saveListing,
   unsaveListing,
 } from '@/app/customer/actions'
+import { AmenityCatalogRequestGrid } from '@/components/amenities/amenity-catalog-request-grid'
 import { AmenityWorkflowTable } from '@/components/amenities/amenity-workflow-table'
 import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
 import { PropertyDocumentUploadPanel } from '@/components/documents/property-document-upload-panel'
@@ -255,21 +256,16 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
     if (page === 'amenities') {
       return (
         <div className="space-y-6">
-          <SectionTitle eyebrow="Amenities" title="Amenity requests" body="Request PlotKare-managed amenities only for properties linked to your customer account." />
-          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-            <form action={requestCustomerAmenity} className={`${cardClass} grid gap-3`}>
-              <select name="propertyId" required className={inputClass} defaultValue="">
-                <option value="" disabled>Select linked property</option>
-                {propertyOptions.map((property) => <option key={property.id} value={property.id}>{property.label}</option>)}
-              </select>
-              <select name="amenityId" required className={inputClass} defaultValue="">
-                <option value="" disabled>Select amenity</option>
-                {(amenityCatalog ?? []).map((amenity: any) => <option key={amenity.id} value={amenity.id}>{amenity.name} · {amenity.category}</option>)}
-              </select>
-              <button type="submit" className={buttonClass} disabled={propertyOptions.length === 0 || (amenityCatalog ?? []).length === 0}>Request amenity</button>
-            </form>
-            <AmenityWorkflowTable rows={amenityWorkflowRows} empty="No amenities requested yet." />
-          </div>
+          <SectionTitle eyebrow="Amenities" title="Amenity requests" body="Explore PlotKare-managed amenities with real images, fit guidance, area expectations, and consultation requests for linked customer properties." />
+          <AmenityCatalogRequestGrid
+            amenities={amenityCatalog ?? []}
+            targets={propertyOptions.map((property) => ({ id: property.id, label: property.label }))}
+            targetName="propertyId"
+            targetLabel="Select linked property for consultation"
+            action={requestCustomerAmenity}
+            disabledText="A linked property is required before requesting amenities."
+          />
+          <AmenityWorkflowTable rows={amenityWorkflowRows} empty="No amenities requested yet." />
         </div>
       )
     }

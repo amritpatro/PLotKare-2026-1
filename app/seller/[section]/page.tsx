@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { addSoldCustomer, createSellerPlot, createSellerServiceRequest, createSellerSupportTicket, requestSellerAmenity } from '@/app/seller/actions'
+import { AmenityCatalogRequestGrid } from '@/components/amenities/amenity-catalog-request-grid'
 import { AmenityWorkflowTable } from '@/components/amenities/amenity-workflow-table'
 import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
 import { PropertyDocumentUploadPanel } from '@/components/documents/property-document-upload-panel'
@@ -166,21 +167,16 @@ export default async function SellerSectionPage({ params }: PageProps) {
     if (section === 'amenities') {
       return (
         <div className="space-y-6">
-          <SectionTitle eyebrow="Seller amenities" title="Amenity requests" body="Attach PlotKare-managed amenities to seller plots. Employee/admin operations can review these requests from their workspace." />
-          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
-            <form action={requestSellerAmenity} className={`${cardClass} grid gap-3`}>
-              <select name="plotId" required className={inputClass} defaultValue="">
-                <option value="" disabled>Select plot</option>
-                {plotRows.map((plot: any) => <option key={plot.id} value={plot.id}>{plot.plot_number} · {plot.location}</option>)}
-              </select>
-              <select name="amenityId" required className={inputClass} defaultValue="">
-                <option value="" disabled>Select amenity</option>
-                {(amenityCatalog ?? []).map((amenity: any) => <option key={amenity.id} value={amenity.id}>{amenity.name} · {amenity.category}</option>)}
-              </select>
-              <button className={buttonClass} disabled={plotRows.length === 0 || (amenityCatalog ?? []).length === 0}>Request amenity</button>
-            </form>
-            <AmenityWorkflowTable rows={activeAmenities} empty="No amenities requested yet." />
-          </div>
+          <SectionTitle eyebrow="Seller amenities" title="Amenity requests" body="Explore PlotKare-managed amenities with real images, fit guidance, area expectations, and consultation requests for seller plots." />
+          <AmenityCatalogRequestGrid
+            amenities={amenityCatalog ?? []}
+            targets={plotRows.map((plot: any) => ({ id: plot.id, label: `${plot.plot_number} · ${plot.location}` }))}
+            targetName="plotId"
+            targetLabel="Select plot for consultation"
+            action={requestSellerAmenity}
+            disabledText="Add a seller plot before requesting amenities."
+          />
+          <AmenityWorkflowTable rows={activeAmenities} empty="No amenities requested yet." />
         </div>
       )
     }
