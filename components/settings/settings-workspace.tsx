@@ -67,6 +67,12 @@ const roleLabels: Record<UserRole, string> = {
   admin: 'Admin',
 }
 
+function resolveAvatarUrl(avatarPath: string | null | undefined, bucket: string, supabaseClient: ReturnType<typeof createSupabaseBrowserClient>) {
+  if (!avatarPath) return null
+  if (/^https?:\/\//i.test(avatarPath)) return avatarPath
+  return supabaseClient.storage.from(bucket).getPublicUrl(avatarPath).data.publicUrl
+}
+
 const commonNotifications = [
   ['monthlyReports', 'Monthly inspection reports'],
   ['encroachmentAlerts', 'Encroachment alerts'],
@@ -204,8 +210,7 @@ export function SettingsWorkspace({ initialData, mode }: SettingsWorkspaceProps)
 
   const avatarUrl = useMemo(() => {
     if (avatarPreview) return avatarPreview
-    if (!profile.avatar_path) return null
-    return supabase.storage.from(initialData.storageBucket).getPublicUrl(profile.avatar_path).data.publicUrl
+    return resolveAvatarUrl(profile.avatar_path, initialData.storageBucket, supabase)
   }, [avatarPreview, initialData.storageBucket, profile.avatar_path, supabase])
 
   const summary = roleSummary({ ...initialData, profile, roleDetails })
@@ -292,6 +297,7 @@ export function SettingsWorkspace({ initialData, mode }: SettingsWorkspaceProps)
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-')
     const objectPath = `${profile.id}/avatar/${Date.now()}-${safeName}`
     const { error } = await supabase.storage.from(initialData.storageBucket).upload(objectPath, file, { upsert: true })
+    const publicUrl = resolveAvatarUrl(objectPath, initialData.storageBucket, supabase)
 
     if (error) {
       toast.error(error.message)
@@ -299,7 +305,7 @@ export function SettingsWorkspace({ initialData, mode }: SettingsWorkspaceProps)
       return
     }
 
-    setProfile((current) => ({ ...current, avatar_path: objectPath }))
+    setProfile((current) => ({ ...current, avatar_path: publicUrl ?? objectPath }))
     setAvatarUploading(false)
     startTransition(async () => {
       const result = await updateCommonSettings({
@@ -308,10 +314,13 @@ export function SettingsWorkspace({ initialData, mode }: SettingsWorkspaceProps)
         city: profile.city ?? '',
         addressLine: text(profile.address_line),
         postalCode: text(profile.postal_code),
-        avatarPath: objectPath,
+        avatarPath: publicUrl ?? objectPath,
       })
       toast[result.ok ? 'success' : 'error'](result.message)
-      if (result.ok) setAvatarPreview(null)
+      if (result.ok) {
+        setAvatarPreview(null)
+        router.refresh()
+      }
     })
   }
 
@@ -643,7 +652,7 @@ export function SettingsWorkspace({ initialData, mode }: SettingsWorkspaceProps)
                 <Metric label="Consultation" value={pendingConsultation ? 'Pending' : 'Not pending'} />
               </div>
               <p className="mt-6 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
-                Payment checkout and signed invoices are handled in the billing workflow. Your current plan status is shown above from Supabase.
+                PlotKare is still consultation-led in this pilot. Plan status is shown here from Supabase, and live checkout will be enabled in a later billing release.
               </p>
             </TabsContent>
           </Tabs>

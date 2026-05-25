@@ -13,13 +13,12 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline' https:",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://checkout.razorpay.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://checkout.razorpay.com https://app.posthog.com https://*.posthog.com",
   "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
-  ...(isProduction ? ['upgrade-insecure-requests'] : []),
 ].join('; ')
 
 const securityHeaders = [

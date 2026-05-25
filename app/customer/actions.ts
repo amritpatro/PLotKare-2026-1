@@ -29,6 +29,11 @@ const supportTicketSchema = z.object({
   priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
 })
 
+const amenityRequestSchema = z.object({
+  propertyId: z.string().uuid(),
+  amenityId: z.string().trim().min(1),
+})
+
 type ActionKind = 'success' | 'error'
 
 function actionUrl(kind: ActionKind, code: string, section: string) {
@@ -38,6 +43,8 @@ function actionUrl(kind: ActionKind, code: string, section: string) {
     'saved-listings': '/customer/saved',
     inquiries: '/customer/inquiries',
     'site-visits': '/customer/site-visits',
+    amenities: '/customer/amenities',
+    documents: '/customer/documents',
     support: '/customer/support',
   }
   return `${routeBySection[section] ?? '/customer'}?${params.toString()}`
@@ -309,4 +316,65 @@ export async function createCustomerSupportTicket(formData: FormData) {
 
   revalidatePath('/customer')
   redirect(actionUrl('success', 'support_ticket_created', 'support'))
+}
+
+export async function requestCustomerAmenity(formData: FormData) {
+  const parsed = amenityRequestSchema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) {
+    redirect(actionUrl('error', 'invalid_amenity_form', 'amenities'))
+  }
+
+  let failure: string | null = null
+
+  try {
+    const { user, customerId } = await getCustomerActionContext()
+    const supabase = createSupabaseAdminClient()
+
+    const { data: link, error: linkError } = await supabase
+      .from('customer_property_links')
+      .select('property_id')
+      .eq('property_id', parsed.data.propertyId)
+      .eq('customer_id', customerId ?? '00000000-0000-0000-0000-000000000000')
+      .maybeSingle()
+
+    if (linkError) throw linkError
+    if (!link) throw new Error('Property is not linked to this customer.')
+
+    const { data: plot, error: plotError } = await supabase
+      .from('plots')
+      .select('id')
+      .eq('property_id', parsed.data.propertyId)
+      .maybeSingle()
+
+    if (plotError) throw plotError
+    if (!plot) throw new Error('This property does not have a plot record for amenities.')
+
+    const { error } = await supabase.from('active_amenities').upsert(
+      {
+        owner_id: user.id,
+        plot_id: plot.id,
+        amenity_id: parsed.data.amenityId,
+      },
+      { onConflict: 'owner_id,plot_id,amenity_id' },
+    )
+
+    if (error) throw error
+
+    await recordAuditLog({
+      actorId: user.id,
+      action: 'customer.amenity_requested',
+      entityType: 'active_amenity',
+      metadata: { propertyId: parsed.data.propertyId, amenityId: parsed.data.amenityId, customerId },
+    })
+  } catch (error) {
+    console.error('Customer amenity request failed:', error)
+    failure = 'amenity_request_failed'
+  }
+
+  if (failure) {
+    redirect(actionUrl('error', failure, 'amenities'))
+  }
+
+  revalidatePath('/customer')
+  redirect(actionUrl('success', 'amenity_requested', 'amenities'))
 }

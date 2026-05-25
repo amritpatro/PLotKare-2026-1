@@ -38,6 +38,14 @@ const verificationUpdateSchema = z.object({
   note: optionalNote,
 })
 
+const amenityReviewStatuses = ['requested', 'under_review', 'approved', 'rejected', 'scheduled', 'completed'] as const
+
+const amenityReviewSchema = z.object({
+  amenityRequestId: z.string().uuid(),
+  reviewStatus: z.enum(amenityReviewStatuses),
+  note: optionalNote,
+})
+
 const inspectionReportSchema = z.object({
   inspectionId: z.string().uuid(),
   status: z.enum(['in_progress', 'completed', 'needs_followup']),
@@ -86,6 +94,8 @@ function employeeRedirect(kind: 'success' | 'error', code: string, section = 'ta
     inspections: '/employee/inspections',
     support: '/employee/support',
     verification: '/employee/verification',
+    amenities: '/employee/amenities',
+    documents: '/employee/documents',
   }
   redirect(`${routeBySection[section] ?? '/employee'}?${kind}=${code}`)
 }
@@ -477,6 +487,142 @@ export async function updateAssignedVerificationStatus(formData: FormData) {
   revalidatePath('/admin/dashboard/verification')
   revalidatePath('/admin/dashboard/listings')
   employeeRedirect('success', 'verification_updated', 'verification')
+}
+
+function taskStatusFromAmenityReview(reviewStatus: (typeof amenityReviewStatuses)[number]) {
+  switch (reviewStatus) {
+    case 'requested':
+      return 'open'
+    case 'under_review':
+    case 'scheduled':
+      return 'in_progress'
+    case 'rejected':
+      return 'blocked'
+    case 'approved':
+    case 'completed':
+      return 'completed'
+    default:
+      return 'open'
+  }
+}
+
+export async function updateAssignedAmenityReview(formData: FormData) {
+  const parsed = amenityReviewSchema.safeParse({
+    amenityRequestId: formData.get('amenityRequestId'),
+    reviewStatus: formData.get('reviewStatus'),
+    note: formData.get('note') ?? undefined,
+  })
+
+  if (!parsed.success) employeeRedirect('error', 'invalid_amenity_update', 'amenities')
+
+  let requestId: string | null = null
+  let failure: string | null = null
+
+  try {
+    const context = await getEmployeeContext()
+    const { supabase, user, employee } = context
+    const { data: task, error: taskError } = await supabase
+      .from('admin_task_assignments')
+      .select('id,entity_id,status,priority,due_at,escalation_level,assigned_employee_id,metadata')
+      .eq('entity_type', 'active_amenity')
+      .eq('entity_id', parsed.data.amenityRequestId)
+      .eq('assigned_employee_id', employee.id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (taskError) throw taskError
+    if (!task) throw new Error('Assigned amenity review request not found.')
+
+    const taskMetadata =
+      task.metadata && typeof task.metadata === 'object' && !Array.isArray(task.metadata)
+        ? { ...(task.metadata as Record<string, unknown>) }
+        : {}
+    const previousReviewStatus =
+      typeof taskMetadata.review_status === 'string' ? (taskMetadata.review_status as string) : task.status
+
+    taskMetadata.review_status = parsed.data.reviewStatus
+    taskMetadata.review_note = parsed.data.note ?? null
+
+    const { error: updateTaskError } = await supabase
+      .from('admin_task_assignments')
+      .update({
+        status: taskStatusFromAmenityReview(parsed.data.reviewStatus),
+        last_employee_note: parsed.data.note ?? null,
+        completed_at:
+          parsed.data.reviewStatus === 'approved' || parsed.data.reviewStatus === 'completed' || parsed.data.reviewStatus === 'rejected'
+            ? nowIso()
+            : null,
+        metadata: taskMetadata,
+      })
+      .eq('id', task.id)
+      .eq('assigned_employee_id', employee.id)
+
+    if (updateTaskError) throw updateTaskError
+
+    if (parsed.data.note) {
+      const adminSupabase = createSupabaseAdminClient()
+      const { error: noteError } = await adminSupabase.from('admin_internal_notes').insert({
+        entity_type: 'active_amenity',
+        entity_id: parsed.data.amenityRequestId,
+        author_id: user.id,
+        note: parsed.data.note,
+        visibility: 'assigned_employee',
+        metadata: {
+          source: 'employee_amenity_review',
+          review_status: parsed.data.reviewStatus,
+          assigned_employee_id: employee.id,
+        },
+      })
+
+      if (noteError) throw noteError
+    }
+
+    await createEmployeeWorkLog(context, {
+      entityType: 'active_amenity',
+      entityId: parsed.data.amenityRequestId,
+      action: 'amenity_review_updated',
+      previousStatus: previousReviewStatus,
+      newStatus: parsed.data.reviewStatus,
+      note: parsed.data.note,
+      metadata: {
+        task_id: task.id,
+        priority: task.priority,
+        due_at: task.due_at,
+        escalation_level: task.escalation_level,
+      },
+    })
+
+    await recordAuditLog({
+      actorId: user.id,
+      action: `employee.amenity_review.${parsed.data.reviewStatus}`,
+      entityType: 'active_amenity',
+      entityId: parsed.data.amenityRequestId,
+      metadata: {
+        task_id: task.id,
+        assigned_employee_id: employee.id,
+        priority: task.priority,
+        due_at: task.due_at,
+        escalation_level: task.escalation_level,
+        note: parsed.data.note ?? null,
+      },
+    })
+
+    requestId = parsed.data.amenityRequestId
+  } catch (error) {
+    console.error('Employee amenity review update failed:', error)
+    failure = 'amenity_update_failed'
+  }
+
+  if (failure || !requestId) employeeRedirect('error', failure ?? 'amenity_update_failed', 'amenities')
+
+  revalidatePath('/employee')
+  revalidatePath('/employee/amenities')
+  revalidatePath('/admin/dashboard/amenities')
+  revalidatePath('/seller/amenities')
+  revalidatePath('/owner/amenities')
+  revalidatePath('/customer/amenities')
+  employeeRedirect('success', 'amenity_updated', 'amenities')
 }
 
 export async function submitInspectionReport(formData: FormData) {

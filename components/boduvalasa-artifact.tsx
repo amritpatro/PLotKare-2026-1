@@ -340,7 +340,7 @@ function Boduvalasa3DCanvasImpl({ className = '', selectedPlot, onPlotSelect }: 
     <div className={`relative h-[520px] min-h-[420px] overflow-hidden rounded-lg bg-[#142d40] ${className}`}>
       <Canvas
         orthographic
-        shadows
+        shadows={{ type: THREE.PCFShadowMap }}
         dpr={[1, 1.8]}
         camera={{ position: [0.2, 8.2, 6.8], zoom: 54, near: 0.1, far: 90 }}
         onCreated={({ camera }) => {

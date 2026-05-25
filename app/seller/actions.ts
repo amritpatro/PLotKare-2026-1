@@ -34,6 +34,11 @@ const serviceRequestSchema = z.object({
   priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
 })
 
+const amenityRequestSchema = z.object({
+  plotId: z.string().uuid(),
+  amenityId: z.string().trim().min(1),
+})
+
 const supportTicketSchema = z.object({
   propertyId: z.string().uuid().optional().or(z.literal('')),
   subject: z.string().trim().min(3),
@@ -50,6 +55,7 @@ function sellerActionUrl(kind: 'success' | 'error', code: string, section = 'plo
     support: '/seller/support',
     notifications: '/seller/notifications',
     documents: '/seller/documents',
+    amenities: '/seller/amenities',
   }
   return `${routeBySection[section] ?? '/seller'}?${params.toString()}`
 }
@@ -161,6 +167,52 @@ export async function createSellerPlot(formData: FormData) {
   })
 
   redirect(sellerActionUrl('success', 'plot_created', 'plots'))
+}
+
+export async function requestSellerAmenity(formData: FormData) {
+  const parsed = amenityRequestSchema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) {
+    redirect(sellerActionUrl('error', 'invalid_amenity_form', 'amenities'))
+  }
+
+  let userId: string | null = null
+  let failure: string | null = null
+
+  try {
+    const { supabase, user, seller } = await getSellerRecord()
+    userId = user.id
+
+    const { data: plot, error: plotError } = await supabase
+      .from('plots')
+      .select('id')
+      .eq('id', parsed.data.plotId)
+      .eq('seller_id', seller.id)
+      .maybeSingle()
+
+    if (plotError) throw plotError
+    if (!plot) throw new Error('Plot is not attached to this seller.')
+
+    const { error } = await supabase.from('active_amenities').upsert(
+      {
+        owner_id: user.id,
+        plot_id: parsed.data.plotId,
+        amenity_id: parsed.data.amenityId,
+      },
+      { onConflict: 'owner_id,plot_id,amenity_id' },
+    )
+
+    if (error) throw error
+  } catch (error) {
+    console.error('Seller amenity request failed:', error)
+    failure = 'amenity_request_failed'
+  }
+
+  if (failure || !userId) {
+    redirect(sellerActionUrl('error', failure ?? 'amenity_request_failed', 'amenities'))
+  }
+
+  revalidatePath('/seller')
+  redirect(sellerActionUrl('success', 'amenity_requested', 'amenities'))
 }
 
 export async function addSoldCustomer(formData: FormData) {

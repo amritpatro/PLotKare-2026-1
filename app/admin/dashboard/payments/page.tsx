@@ -131,8 +131,8 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
     <div className="px-8 pb-12 pt-24">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-[#1F2937]">Payments</h1>
-          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">Consultation, subscription, and service payment records from Supabase.</p>
+          <h1 className="font-serif text-2xl font-bold text-[#1F2937]">Billing records</h1>
+          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">Internal pilot visibility only. Live checkout is coming later; current records are read-only consultation and payment history from Supabase.</p>
         </div>
         <form className="flex flex-wrap gap-2">
           <input name="q" defaultValue={q} placeholder="Search description, provider" className={`${inputClass} w-64`} />
@@ -154,7 +154,7 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
           ['Payments shown', rows.length],
           ['Paid value', formatAmount(paidTotal)],
           ['Pending', rows.filter((row) => row.status === 'Pending').length],
-          ['Razorpay', rows.filter((row) => row.provider === 'razorpay').length],
+          ['Provider records', rows.filter((row) => row.provider === 'razorpay').length],
         ].map(([label, value]) => (
           <div key={label} className={`${cardClass} p-5`}>
             <p className="font-mono text-xs uppercase tracking-[0.16em] text-[#6B7280]">{label}</p>

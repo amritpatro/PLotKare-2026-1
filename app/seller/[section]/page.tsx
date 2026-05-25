@@ -1,11 +1,15 @@
 import { notFound } from 'next/navigation'
-import { addSoldCustomer, createSellerPlot, createSellerServiceRequest, createSellerSupportTicket } from '@/app/seller/actions'
+import { addSoldCustomer, createSellerPlot, createSellerServiceRequest, createSellerSupportTicket, requestSellerAmenity } from '@/app/seller/actions'
+import { AmenityWorkflowTable } from '@/components/amenities/amenity-workflow-table'
+import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
+import { PropertyDocumentUploadPanel } from '@/components/documents/property-document-upload-panel'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
+import { readAmenityWorkflowRows } from '@/lib/amenity-operations'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-const allowedSections = ['plots', 'customers', 'services', 'support', 'notifications', 'documents'] as const
+const allowedSections = ['plots', 'customers', 'services', 'amenities', 'support', 'notifications', 'documents'] as const
 type Section = (typeof allowedSections)[number]
 
 type PageProps = {
@@ -58,7 +62,7 @@ export default async function SellerSectionPage({ params }: PageProps) {
     .maybeSingle()
 
   const sellerId = seller?.id ?? ''
-  const [{ data: properties }, { data: plots }, { data: customers }, { data: links }, { data: listings }, { data: services }, { data: tickets }, { data: notifications }, { data: plans }] =
+  const [{ data: properties }, { data: plots }, { data: customers }, { data: links }, { data: listings }, { data: services }, { data: tickets }, { data: notifications }, { data: plans }, { data: amenityCatalog }] =
     await Promise.all([
       sellerId ? supabase.from('properties').select('id,title,city,address,lifecycle_status,verification_status,created_at').eq('seller_id', sellerId).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
       sellerId ? supabase.from('plots').select('id,property_id,plot_number,location,sq_yards,status,lifecycle_status,verification_status,current_value_lakhs,created_at').eq('seller_id', sellerId).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
@@ -69,6 +73,7 @@ export default async function SellerSectionPage({ params }: PageProps) {
       supabase.from('support_tickets').select('id,property_id,subject,priority,status,created_at').eq('requester_id', user.id).order('created_at', { ascending: false }).limit(100),
       supabase.from('notifications').select('id,title,message,category,read_at,created_at').eq('recipient_id', user.id).order('created_at', { ascending: false }).limit(100),
       supabase.from('plans').select('id,name,price_monthly,active').eq('audience_role', 'plot_seller').eq('active', true).order('price_monthly', { ascending: true }),
+      supabase.from('amenities').select('id,name,category,kind,amount,active').eq('active', true).order('category', { ascending: true }).order('name', { ascending: true }),
     ])
 
   const propertyRows = properties ?? []
@@ -84,6 +89,9 @@ export default async function SellerSectionPage({ params }: PageProps) {
   const linkRows = links ?? []
   const listingRows = listings ?? []
   const documentRows = documents ?? []
+  const activeAmenities = plotRows.length
+    ? await readAmenityWorkflowRows(supabase, { plotIds: plotRows.map((plot: any) => plot.id) })
+    : []
   const serviceRows = services ?? []
   const ticketRows = tickets ?? []
   const notificationRows = notifications ?? []
@@ -155,20 +163,52 @@ export default async function SellerSectionPage({ params }: PageProps) {
       )
     }
 
+    if (section === 'amenities') {
+      return (
+        <div className="space-y-6">
+          <SectionTitle eyebrow="Seller amenities" title="Amenity requests" body="Attach PlotKare-managed amenities to seller plots. Employee/admin operations can review these requests from their workspace." />
+          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+            <form action={requestSellerAmenity} className={`${cardClass} grid gap-3`}>
+              <select name="plotId" required className={inputClass} defaultValue="">
+                <option value="" disabled>Select plot</option>
+                {plotRows.map((plot: any) => <option key={plot.id} value={plot.id}>{plot.plot_number} · {plot.location}</option>)}
+              </select>
+              <select name="amenityId" required className={inputClass} defaultValue="">
+                <option value="" disabled>Select amenity</option>
+                {(amenityCatalog ?? []).map((amenity: any) => <option key={amenity.id} value={amenity.id}>{amenity.name} · {amenity.category}</option>)}
+              </select>
+              <button className={buttonClass} disabled={plotRows.length === 0 || (amenityCatalog ?? []).length === 0}>Request amenity</button>
+            </form>
+            <AmenityWorkflowTable rows={activeAmenities} empty="No amenities requested yet." />
+          </div>
+        </div>
+      )
+    }
+
     if (section === 'documents' || section === 'notifications') {
       const rows = section === 'documents' ? documentRows : notificationRows
       return (
         <div className="space-y-6">
           <SectionTitle eyebrow={section} title={section === 'documents' ? 'Seller documents' : 'Notifications'} body="Operational records connected to your seller workspace." />
-          <div className={`${cardClass} overflow-x-auto`}>
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Record</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Date</th></tr></thead>
-              <tbody className="divide-y divide-[#F3F4F6]">
-                {rows.length === 0 ? <tr><td colSpan={3} className="px-3 py-10 text-center text-[#6B7280]">No records yet.</td></tr> : null}
-                {rows.map((row: any) => <tr key={row.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{row.title}</td><td className="px-3 py-3">{badge(row.verification_status || row.category || (row.read_at ? 'read' : 'new'))}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(row.created_at)}</td></tr>)}
-              </tbody>
-            </table>
-          </div>
+          {section === 'documents' ? (
+            <>
+              <div className={`${cardClass} grid gap-4`}>
+                <p className="text-sm leading-6 text-[#6B7280]">Upload survey copies, layout images, ownership proof, tax receipts, and real property photos. Every upload enters PlotKare verification.</p>
+                <PropertyDocumentUploadPanel
+                  role="seller"
+                  properties={propertyRows.map((property: any) => ({ id: property.id, label: property.title || property.city || property.id }))}
+                />
+              </div>
+              <PropertyDocumentRecordTable
+                rows={documentRows.map((row: any) => ({
+                  ...row,
+                  linked_label: propertyRows.find((property: any) => property.id === row.property_id)?.title || row.property_id || 'Seller property',
+                }))}
+                empty="No documents uploaded yet."
+              />
+            </>
+          ) : null}
+          {section === 'notifications' ? <RecordTable rows={rows} /> : null}
         </div>
       )
     }
@@ -235,5 +275,19 @@ export default async function SellerSectionPage({ params }: PageProps) {
     >
       {content}
     </RoleDashboardShell>
+  )
+}
+
+function RecordTable({ rows }: { rows: any[] }) {
+  return (
+    <div className={`${cardClass} overflow-x-auto`}>
+      <table className="w-full min-w-[760px] text-left text-sm">
+        <thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Record</th><th className="px-3 py-3">Status/type</th><th className="px-3 py-3">Date</th></tr></thead>
+        <tbody className="divide-y divide-[#F3F4F6]">
+          {rows.length === 0 ? <tr><td colSpan={3} className="px-3 py-10 text-center text-[#6B7280]">No records yet.</td></tr> : null}
+          {rows.map((row: any) => <tr key={row.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{row.title || row.amenities?.name || row.name || row.subject || row.id}</td><td className="px-3 py-3">{badge(row.verification_status || row.category || row.amenities?.category || (row.read_at ? 'read' : 'new'))}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(row.created_at)}</td></tr>)}
+        </tbody>
+      </table>
+    </div>
   )
 }

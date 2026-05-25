@@ -11,8 +11,8 @@ import {
   FileText,
   ShieldCheck,
   ScrollText,
+  Headphones,
   Zap,
-  CreditCard,
   Settings,
   LogOut,
 } from 'lucide-react'
@@ -25,11 +25,12 @@ const items = [
   { href: '/admin/dashboard/customers', label: 'Customers', icon: Users, section: 'Records' },
   { href: '/admin/dashboard/plots', label: 'Plots', icon: MapPin, section: 'Records' },
   { href: '/admin/dashboard/listings', label: 'Listings', icon: Building2, section: 'Records' },
+  { href: '/admin/dashboard/documents', label: 'Documents', icon: FileText, section: 'Operations' },
+  { href: '/admin/dashboard/support', label: 'Support', icon: Headphones, section: 'Operations' },
   { href: '/admin/dashboard/employees', label: 'Employees', icon: BriefcaseBusiness, section: 'Operations' },
   { href: '/admin/dashboard/inspection-reports', label: 'Inspection Reports', icon: FileText, section: 'Operations' },
   { href: '/admin/dashboard/audit', label: 'Audit Logs', icon: ScrollText, section: 'Operations' },
   { href: '/admin/dashboard/amenities', label: 'Amenities', icon: Zap, section: 'Operations' },
-  { href: '/admin/dashboard/payments', label: 'Payments', icon: CreditCard, section: 'Finance' },
   { href: '/admin/dashboard/settings', label: 'Settings', icon: Settings, section: 'System' },
 ]
 

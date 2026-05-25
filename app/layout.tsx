@@ -3,6 +3,7 @@ import { Cormorant_Garamond, DM_Sans, DM_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { JsonLd } from '@/components/json-ld'
 import { PostHogPageview } from '@/components/posthog-pageview'
+import { ThreeConsoleSanitizer } from '@/components/three-console-sanitizer'
 import { SITE_NAME, canonicalPageUrl, absoluteUrl, getSiteUrl, withBasePath } from '@/lib/site-config'
 import './globals.css'
 
@@ -29,6 +30,7 @@ const dmMono = DM_Mono({
 
 const siteUrl = getSiteUrl()
 const defaultOgImage = absoluteUrl('/opengraph-default.svg')
+const shouldLoadVercelAnalytics = process.env.NODE_ENV === 'production' && process.env.VERCEL === '1'
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -126,9 +128,10 @@ export default function RootLayout({
     <html lang="en" className={`${cormorant.variable} ${dmSans.variable} ${dmMono.variable} bg-background`}>
       <body className="font-sans antialiased">
         <JsonLd data={[organizationJsonLd, websiteJsonLd]} />
+        <ThreeConsoleSanitizer />
         {children}
         <PostHogPageview />
-        {process.env.NODE_ENV === 'production' && <Analytics />}
+        {shouldLoadVercelAnalytics && <Analytics />}
       </body>
     </html>
   )

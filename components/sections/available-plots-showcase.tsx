@@ -13,15 +13,20 @@ import {
 import { PlotTopdownSvg } from '@/components/plot-topdown-svg'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 import {
-  DEFAULT_PUBLIC_LISTINGS,
   getLandingShowcaseListings,
-  loadPublicListings,
   type PublicPlotListing,
 } from '@/lib/public-listings'
 import { withBasePath } from '@/lib/site-config'
 
 const CRIMSON = '#C0392B'
 const GOLD = '#F59E0B'
+const VERIFICATION_CHECKLIST = [
+  'Real property photos from the owner or a PlotKare employee, not stock imagery.',
+  'Boundary, frontage, and approach-road photos with a clear current site condition.',
+  'Location pin, nearest landmark, and survey or layout reference for the exact parcel.',
+  'Vastu and facing notes verified with the owner before publication.',
+  'Title, tax, and approval documents uploaded before the listing is marked public.',
+] as const
 
 function ListingInquiryForm({
   plot,
@@ -34,6 +39,8 @@ function ListingInquiryForm({
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [message, setMessage] = useState('I am interested in this plot')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -41,9 +48,35 @@ function ListingInquiryForm({
     if (em) setEmail(em)
   }, [plot])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    onSuccess()
+    if (!plot) return
+
+    setLoading(true)
+    setError('')
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          message: `${message}\n\nListing reference: ${plot.plotNumber}\nLocation: ${plot.location}`,
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok || !result.success) {
+        setError(result.error || 'Unable to send inquiry. Please try again.')
+        return
+      }
+      onSuccess()
+    } catch {
+      setError('Network error. Please check your connection and try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (!plot) return null
@@ -89,11 +122,13 @@ function ListingInquiryForm({
       </div>
       <button
         type="submit"
-        className="premium-button w-full rounded-lg py-3 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-95"
+        disabled={loading}
+        className="premium-button w-full rounded-lg py-3 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
         style={{ backgroundColor: CRIMSON }}
       >
-        Send Inquiry
+        {loading ? 'Sending...' : 'Send Inquiry'}
       </button>
+      {error && <p className="font-sans text-sm text-red-300">{error}</p>}
     </form>
   )
 }
@@ -115,7 +150,7 @@ function PlotCard({
     >
       <Image
         src={withBasePath(plot.imageUrl)}
-        alt={`${plot.propertyKind === 'apartment' ? 'Apartment' : 'Plot'} listing ${plot.plotNumber} — ${plot.location}, Visakhapatnam area (demo)`}
+        alt={`${plot.propertyKind === 'apartment' ? 'Apartment' : 'Plot'} listing ${plot.plotNumber} — ${plot.location}, Visakhapatnam area`}
         fill
         className="object-cover transition-[filter,transform] duration-300 group-hover:brightness-[1.08]"
         sizes="(max-width:768px) 100vw, 33vw"
@@ -174,12 +209,6 @@ function PlotCard({
           >
             View Details
           </button>
-          <Link
-            href={`/demo/plot-3d/?listing=${encodeURIComponent(plot.plotNumber)}`}
-            className="premium-button-outline rounded-xl border-2 border-accent/80 bg-accent/15 px-5 py-2.5 font-sans text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-accent/25"
-          >
-            View in 3D
-          </Link>
           <button
             type="button"
             onClick={onInquire}
@@ -194,22 +223,15 @@ function PlotCard({
   )
 }
 
-export function AvailablePlotsShowcaseSection() {
-  const [listings, setListings] = useState<PublicPlotListing[]>(DEFAULT_PUBLIC_LISTINGS)
+export function AvailablePlotsShowcaseSection({
+  initialListings,
+}: {
+  initialListings: PublicPlotListing[]
+}) {
+  const [listings] = useState<PublicPlotListing[]>(initialListings)
   const [detailPlot, setDetailPlot] = useState<PublicPlotListing | null>(null)
   const [inquiryPlot, setInquiryPlot] = useState<PublicPlotListing | null>(null)
   const [inquirySuccess, setInquirySuccess] = useState(false)
-
-  useEffect(() => {
-    const sync = () => setListings(loadPublicListings())
-    sync()
-    window.addEventListener('plotkare-listings-changed', sync)
-    window.addEventListener('storage', sync)
-    return () => {
-      window.removeEventListener('plotkare-listings-changed', sync)
-      window.removeEventListener('storage', sync)
-    }
-  }, [])
 
   const showcase = getLandingShowcaseListings(listings)
 
@@ -227,13 +249,13 @@ export function AvailablePlotsShowcaseSection() {
             Verified Property Marketplace Preview
           </h2>
           <p className="mt-4 font-sans text-lg text-white/55">
-            Browse sample plots and apartments with PlotKare verified status, 3D previews, and inquiry tools before the
-            public marketplace goes live.
+            Browse approved plots and apartments with PlotKare verified status, detailed property notes, and inquiry tools.
           </p>
         </motion.div>
 
-        <div className="grid gap-6 md:grid-cols-3 md:gap-8">
-          {showcase.map((plot) => (
+        {showcase.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-3 md:gap-8">
+            {showcase.map((plot) => (
             <motion.div
               key={plot.id}
               initial={{ opacity: 0, y: 20 }}
@@ -250,8 +272,24 @@ export function AvailablePlotsShowcaseSection() {
                 }}
               />
             </motion.div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="premium-surface-dark rounded-2xl border border-white/10 bg-white/[0.06] px-6 py-12 text-center">
+            <h3 className="font-serif text-2xl font-semibold text-white">Verified listings are being reviewed</h3>
+            <p className="mx-auto mt-3 max-w-2xl font-sans text-sm leading-relaxed text-white/60">
+              Seller properties appear here only after admin or employee verification. Sign in to track your own
+              properties, or contact PlotKare to schedule a guided advisory call.
+            </p>
+            <Link
+              href="/#contact"
+              className="premium-button mt-6 inline-flex rounded-xl px-8 py-3 font-sans text-sm font-semibold text-white"
+              style={{ backgroundColor: CRIMSON }}
+            >
+              Contact PlotKare
+            </Link>
+          </div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -262,7 +300,7 @@ export function AvailablePlotsShowcaseSection() {
         >
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
           <p className="relative mx-auto max-w-2xl font-sans text-base text-white/75 md:text-lg">
-            Explore the public listings hub for every demo plot and apartment card, then sign in when you are ready to
+            Explore the public listings hub for every verified plot and apartment card, then sign in when you are ready to
             save notes or message an advisor.
           </p>
           <div className="relative mt-6 flex flex-wrap justify-center gap-4">
@@ -284,54 +322,89 @@ export function AvailablePlotsShowcaseSection() {
       </div>
 
       <Dialog open={!!detailPlot} onOpenChange={(o) => !o && setDetailPlot(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#141414] text-white sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#141414] text-white sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="font-serif text-xl text-white">Listing details</DialogTitle>
           </DialogHeader>
           {detailPlot && (
             <div className="space-y-5 pt-2">
-              <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg">
+              <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg border border-white/10">
                 <Image
                   src={withBasePath(detailPlot.imageUrl)}
-                  alt={`${detailPlot.propertyKind === 'apartment' ? 'Apartment' : 'Plot'} listing ${detailPlot.plotNumber} — ${detailPlot.location} (demo)`}
+                  alt={`${detailPlot.propertyKind === 'apartment' ? 'Apartment' : 'Plot'} listing ${detailPlot.plotNumber} — ${detailPlot.location}`}
                   fill
                   className="object-cover"
-                  sizes="500px"
+                  sizes="(max-width: 768px) 100vw, 700px"
                 />
               </div>
-              <div className="space-y-1 font-sans text-sm text-white/70">
-                <p>
-                  <span className="text-white/50">Reference:</span>{' '}
-                  <span className="font-mono" style={{ color: CRIMSON }}>
-                    {detailPlot.plotNumber}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-white/50">Location:</span>{' '}
-                  <span className="font-serif text-lg text-white">{detailPlot.location}</span>
-                </p>
-                <p>
-                  <span className="text-white/50">{detailPlot.propertyKind === 'apartment' ? 'Unit:' : 'Size:'}</span>{' '}
-                  {detailPlot.propertyKind === 'apartment'
-                    ? `${detailPlot.bhk ?? '—'} BHK${detailPlot.floorLabel ? ` · ${detailPlot.floorLabel}` : ''} · ${detailPlot.sizeLabel}`
-                    : detailPlot.sizeLabel}
-                </p>
-                <p>
-                  <span className="text-white/50">Facing:</span> {detailPlot.facing}
-                </p>
-                {detailPlot.propertyKind === 'plot' && (
-                <p>
-                  <span className="text-white/50">Corner plot:</span>{' '}
-                  {detailPlot.cornerPlot ? 'Yes' : 'No'}
-                </p>
-                )}
-                <p className="font-mono text-lg font-semibold uppercase tracking-wide" style={{ color: GOLD }}>
-                  Pricing shared after advisor consultation
-                </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                  <p className="font-mono text-xs uppercase tracking-[0.18em] text-white/45">Property snapshot</p>
+                  <div className="mt-3 space-y-2 font-sans text-sm text-white/80">
+                    <p>
+                      <span className="text-white/50">Reference:</span>{' '}
+                      <span className="font-mono" style={{ color: CRIMSON }}>
+                        {detailPlot.plotNumber}
+                      </span>
+                    </p>
+                    <p>
+                      <span className="text-white/50">Location:</span> {detailPlot.location}
+                    </p>
+                    <p>
+                      <span className="text-white/50">Type:</span>{' '}
+                      {detailPlot.propertyKind === 'apartment'
+                        ? `${detailPlot.bhk ?? '—'} BHK apartment`
+                        : 'Residential plot'}
+                    </p>
+                    <p>
+                      <span className="text-white/50">{detailPlot.propertyKind === 'apartment' ? 'Unit size:' : 'Plot size:'}</span>{' '}
+                      {detailPlot.propertyKind === 'apartment'
+                        ? `${detailPlot.sizeLabel}${detailPlot.floorLabel ? ` · ${detailPlot.floorLabel}` : ''}`
+                        : detailPlot.sizeLabel}
+                    </p>
+                    <p>
+                      <span className="text-white/50">Facing:</span> {detailPlot.facing}
+                    </p>
+                    {detailPlot.propertyKind === 'plot' && (
+                      <p>
+                        <span className="text-white/50">Corner plot:</span> {detailPlot.cornerPlot ? 'Yes' : 'No'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                  <p className="font-mono text-xs uppercase tracking-[0.18em] text-white/45">Vastu and access review</p>
+                  <p className="mt-3 text-sm leading-6 text-white/75">
+                    Confirm the approach road, exact orientation, and nearby landmark with the owner or PlotKare employee
+                    before this property is shown publicly. We use the facing, site photos, and survey notes to validate the file.
+                  </p>
+                  <div className="mt-4 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/70">
+                    <span className="text-white/50">Pricing:</span> shared only after advisor consultation
+                  </div>
+                </div>
               </div>
               {detailPlot.propertyKind === 'plot' && (
-              <PlotTopdownSvg cornerPlot={detailPlot.cornerPlot} className="border-white/15" />
+                <PlotTopdownSvg cornerPlot={detailPlot.cornerPlot} className="border-white/15" />
               )}
+              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+                <p className="font-mono text-xs uppercase tracking-[0.18em] text-white/45">Verification checklist</p>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-white/75">
+                  {VERIFICATION_CHECKLIST.map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: GOLD }} />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-xl border border-[#7A2E25] bg-[#2A1311] p-4">
+                <p className="font-mono text-xs uppercase tracking-[0.18em] text-[#F3C6BC]">Owner upload request</p>
+                <p className="mt-3 text-sm leading-6 text-[#F6DDD8]">
+                  Ask the owner or PlotKare employee to upload real property images and every necessary document before
+                  publication. Placeholder photos, copied images, or missing location details should never be used for a
+                  verified listing.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => {

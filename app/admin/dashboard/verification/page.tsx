@@ -407,7 +407,11 @@ function VerificationSection({
       <div className="mt-5 divide-y divide-[#E5E7EB]">
         {rows.length === 0 ? <p className="py-6 text-sm text-[#6B7280]">{empty}</p> : null}
         {rows.map((row) => (
-          <div key={row.id} className="grid gap-4 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.95fr)]">
+          <div
+            key={row.id}
+            className="grid gap-4 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.95fr)]"
+            data-verification-title={row.title}
+          >
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <p className="font-sans text-sm font-semibold text-[#1F2937]">{row.title}</p>

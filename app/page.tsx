@@ -17,6 +17,7 @@ import { NewsroomSection } from '@/components/sections/newsroom'
 import { ContactSection } from '@/components/sections/contact'
 import { Footer } from '@/components/footer'
 import { SITE_NAME, canonicalPageUrl } from '@/lib/site-config'
+import { getVerifiedPublicListings } from '@/lib/public-listings-server'
 
 const HOME_TITLE = `${SITE_NAME} — Property Asset Management in India | Protect, Track, Grow, and Trade`
 
@@ -43,7 +44,9 @@ export const metadata: Metadata = {
   },
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const verifiedListings = await getVerifiedPublicListings(3)
+
   return (
     <main>
       <Navigation />
@@ -55,7 +58,7 @@ export default function HomePage() {
       <HowItWorksSection />
       <LandUtilisationSection />
       <StatisticsSection />
-      <AvailablePlotsShowcaseSection />
+      <AvailablePlotsShowcaseSection initialListings={verifiedListings} />
       <PricingSection />
       <MonitoringInsightsSection />
       <AwardsSection />

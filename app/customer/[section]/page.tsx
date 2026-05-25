@@ -2,12 +2,17 @@ import { notFound } from 'next/navigation'
 import {
   createCustomerSupportTicket,
   createListingInquiry,
+  requestCustomerAmenity,
   createSiteVisitRequest,
   saveListing,
   unsaveListing,
 } from '@/app/customer/actions'
+import { AmenityWorkflowTable } from '@/components/amenities/amenity-workflow-table'
+import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
+import { PropertyDocumentUploadPanel } from '@/components/documents/property-document-upload-panel'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
+import { readAmenityWorkflowRows } from '@/lib/amenity-operations'
 import { linkedPropertyFrom, getCustomerWorkspaceData } from '@/lib/customer-workspace/data'
 import type { CustomerListing } from '@/lib/customer-workspace/types'
 import { requirePageRole } from '@/lib/supabase/role-guard'
@@ -20,7 +25,7 @@ const buttonClass = 'rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold tex
 const secondaryButtonClass =
   'rounded-lg border border-[#E5E7EB] bg-white px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#C0392B]/30 hover:text-[#C0392B]'
 
-const allowedSections = ['listings', 'saved', 'inquiries', 'site-visits', 'services', 'properties', 'documents', 'support'] as const
+const allowedSections = ['listings', 'saved', 'inquiries', 'site-visits', 'services', 'amenities', 'properties', 'documents', 'support'] as const
 
 type Section = (typeof allowedSections)[number]
 
@@ -129,6 +134,36 @@ function ListingsPage({ listings, savedIds }: { listings: CustomerListing[]; sav
   )
 }
 
+function RecordTable({ rows, empty }: { rows: any[]; empty: string }) {
+  return (
+    <div className={`${cardClass} overflow-x-auto`}>
+      <table className="w-full min-w-[760px] text-left text-sm">
+        <thead>
+          <tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]">
+            <th className="px-3 py-3">Record</th>
+            <th className="px-3 py-3">Status/type</th>
+            <th className="px-3 py-3">Created</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#F3F4F6]">
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={3} className="px-3 py-8 text-center text-[#6B7280]">{empty}</td>
+            </tr>
+          ) : null}
+          {rows.map((row: any) => (
+            <tr key={row.id}>
+              <td className="px-3 py-3 font-semibold text-[#1F2937]">{row.title || row.name || row.summary || row.id}</td>
+              <td className="px-3 py-3 text-[#6B7280]">{row.document_type || row.verification_status || row.status || row.category || 'active'}</td>
+              <td className="px-3 py-3 text-[#6B7280]">{formatDate(row.created_at)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default async function CustomerSectionPage({ params, searchParams }: PageProps) {
   const { section } = await params
   if (!allowedSections.includes(section as Section)) notFound()
@@ -136,7 +171,24 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
   const { user, profile } = await requirePageRole(['customer', 'admin'])
   const supabase = await createSupabaseServerClient()
   const data = await getCustomerWorkspaceData(supabase, user.id)
+  const { data: amenityCatalog } = await supabase
+    .from('amenities')
+    .select('id,name,category,kind,amount,active')
+    .eq('active', true)
+    .order('category', { ascending: true })
+    .order('name', { ascending: true })
   const savedIds = new Set(data.savedListings.map((saved) => saved.listing_id))
+  const propertyOptions = data.propertyLinks
+    .map((link) => {
+      const property = linkedPropertyFrom(link)
+      return {
+        id: link.property_id,
+        label: property?.title || property?.city || property?.address || 'Linked property',
+      }
+    })
+  const amenityWorkflowRows = propertyOptions.length
+    ? await readAmenityWorkflowRows(supabase, { propertyIds: propertyOptions.map((property) => property.id), requesterIds: [user.id] })
+    : []
   const page = section as Section
 
   const content = (() => {
@@ -200,20 +252,49 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
       )
     }
 
+    if (page === 'amenities') {
+      return (
+        <div className="space-y-6">
+          <SectionTitle eyebrow="Amenities" title="Amenity requests" body="Request PlotKare-managed amenities only for properties linked to your customer account." />
+          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
+            <form action={requestCustomerAmenity} className={`${cardClass} grid gap-3`}>
+              <select name="propertyId" required className={inputClass} defaultValue="">
+                <option value="" disabled>Select linked property</option>
+                {propertyOptions.map((property) => <option key={property.id} value={property.id}>{property.label}</option>)}
+              </select>
+              <select name="amenityId" required className={inputClass} defaultValue="">
+                <option value="" disabled>Select amenity</option>
+                {(amenityCatalog ?? []).map((amenity: any) => <option key={amenity.id} value={amenity.id}>{amenity.name} · {amenity.category}</option>)}
+              </select>
+              <button type="submit" className={buttonClass} disabled={propertyOptions.length === 0 || (amenityCatalog ?? []).length === 0}>Request amenity</button>
+            </form>
+            <AmenityWorkflowTable rows={amenityWorkflowRows} empty="No amenities requested yet." />
+          </div>
+        </div>
+      )
+    }
+
     if (page === 'documents' || page === 'services') {
-      const rows = page === 'documents' ? data.documents : [...data.inspections, ...data.maintenanceRequests, ...data.amenities]
+      const rows = page === 'documents' ? data.documents : [...data.inspections, ...data.maintenanceRequests]
       return (
         <div className="space-y-6">
           <SectionTitle eyebrow={page} title={page === 'documents' ? 'Document vault' : 'Service tracking'} body="Role-safe operational records linked to your customer profile." />
-          <div className={`${cardClass} overflow-x-auto`}>
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Record</th><th className="px-3 py-3">Status/type</th><th className="px-3 py-3">Created</th></tr></thead>
-              <tbody className="divide-y divide-[#F3F4F6]">
-                {rows.length === 0 ? <tr><td colSpan={3} className="px-3 py-8 text-center text-[#6B7280]">No records yet.</td></tr> : null}
-                {rows.map((row: any) => <tr key={row.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{row.title || row.name || row.summary || row.id}</td><td className="px-3 py-3 text-[#6B7280]">{row.document_type || row.status || row.category || 'active'}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(row.created_at)}</td></tr>)}
-              </tbody>
-            </table>
-          </div>
+          {page === 'documents' ? (
+            <>
+              <div className={`${cardClass} grid gap-4`}>
+                <p className="text-sm leading-6 text-[#6B7280]">Required customer documents: Aadhaar, PAN, agreement or registration copy, and current property photos. Every upload enters admin/employee verification.</p>
+                <PropertyDocumentUploadPanel role="customer" properties={propertyOptions} />
+              </div>
+              <PropertyDocumentRecordTable
+                rows={data.documents.map((row) => ({
+                  ...row,
+                  linked_label: propertyOptions.find((property) => property.id === row.property_id)?.label || row.property_id || 'Customer record',
+                }))}
+                empty="No documents uploaded yet."
+              />
+            </>
+          ) : null}
+          {page === 'services' ? <RecordTable rows={rows} empty="No records yet." /> : null}
         </div>
       )
     }

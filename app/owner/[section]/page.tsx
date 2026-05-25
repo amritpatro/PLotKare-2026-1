@@ -1,10 +1,14 @@
 import { notFound } from 'next/navigation'
-import { createOwnerServiceRequest, createOwnerSupportTicket, registerOwnerProperty } from '@/app/owner/actions'
+import { createOwnerServiceRequest, createOwnerSupportTicket, registerOwnerProperty, requestOwnerAmenity } from '@/app/owner/actions'
+import { AmenityWorkflowTable } from '@/components/amenities/amenity-workflow-table'
+import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
+import { PropertyDocumentUploadPanel } from '@/components/documents/property-document-upload-panel'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
+import { readAmenityWorkflowRows } from '@/lib/amenity-operations'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-const allowedSections = ['properties', 'register', 'verification', 'documents', 'services', 'support'] as const
+const allowedSections = ['properties', 'register', 'verification', 'documents', 'amenities', 'services', 'support'] as const
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass = 'w-full rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
@@ -33,12 +37,13 @@ export default async function OwnerSectionPage({ params }: PageProps) {
 
   const { user, profile } = await requirePageRole(['land_owner', 'admin'])
   const supabase = await createSupabaseServerClient()
-  const [{ data: owner }, { data: properties }, { data: documents }, { data: services }, { data: tickets }] = await Promise.all([
+  const [{ data: owner }, { data: properties }, { data: documents }, { data: services }, { data: tickets }, { data: amenityCatalog }] = await Promise.all([
     supabase.from('owners').select('id,verification_status,admin_notes').eq('profile_id', user.id).maybeSingle(),
     supabase.from('properties').select('id,title,property_kind,address,city,state,lifecycle_status,verification_status,created_at').eq('owner_profile_id', user.id).order('created_at', { ascending: false }),
     supabase.from('property_documents').select('id,title,document_type,verification_status,property_id,created_at').eq('uploaded_by', user.id).order('created_at', { ascending: false }),
     supabase.from('maintenance_requests').select('id,property_id,title,priority,status,created_at').eq('requester_id', user.id).order('created_at', { ascending: false }).limit(100),
     supabase.from('support_tickets').select('id,property_id,subject,priority,status,created_at').eq('requester_id', user.id).order('created_at', { ascending: false }).limit(100),
+    supabase.from('amenities').select('id,name,category,kind,amount,active').eq('active', true).order('category', { ascending: true }).order('name', { ascending: true }),
   ])
 
   const propertyRows = properties ?? []
@@ -50,6 +55,14 @@ export default async function OwnerSectionPage({ params }: PageProps) {
         .order('created_at', { ascending: false })
         .limit(100)
     : { data: [] }
+  const { data: ownerPlots } = await supabase
+    .from('plots')
+    .select('id,property_id,plot_number,location')
+    .eq('owner_id', user.id)
+    .order('created_at', { ascending: false })
+  const activeAmenities = (ownerPlots ?? []).length
+    ? await readAmenityWorkflowRows(supabase, { plotIds: (ownerPlots ?? []).map((plot: any) => plot.id) })
+    : []
   let content: React.ReactNode
 
   if (section === 'register') {
@@ -59,14 +72,16 @@ export default async function OwnerSectionPage({ params }: PageProps) {
   } else if (section === 'services') {
     const rows = [...(services ?? []), ...(inspections ?? [])]
     content = <div className="space-y-6"><Title title="Service activity" body="Request inspections or maintenance support and track service records tied to your property." /><div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]"><form action={createOwnerServiceRequest} className={`${cardClass} grid gap-3`}><select name="propertyId" required className={inputClass} defaultValue=""><option value="" disabled>Select property</option>{propertyRows.map((property: any) => <option key={property.id} value={property.id}>{property.title || property.city || property.id}</option>)}</select><input name="title" required placeholder="Service request title" className={inputClass} /><textarea name="description" rows={5} placeholder="Describe the service needed" className={inputClass} /><select name="priority" className={inputClass} defaultValue="normal"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select><button className={buttonClass} disabled={propertyRows.length === 0}>Create service request</button></form><RecordTable rows={rows} /></div></div>
+  } else if (section === 'amenities') {
+    content = <div className="space-y-6"><Title title="Amenities" body="Request PlotKare-managed amenities for owner properties and track active amenity records." /><div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]"><form action={requestOwnerAmenity} className={`${cardClass} grid gap-3`}><select name="plotId" required className={inputClass} defaultValue=""><option value="" disabled>Select plot</option>{(ownerPlots ?? []).map((plot: any) => <option key={plot.id} value={plot.id}>{plot.plot_number} · {plot.location}</option>)}</select><select name="amenityId" required className={inputClass} defaultValue=""><option value="" disabled>Select amenity</option>{(amenityCatalog ?? []).map((amenity: any) => <option key={amenity.id} value={amenity.id}>{amenity.name} · {amenity.category}</option>)}</select><button className={buttonClass} disabled={(ownerPlots ?? []).length === 0 || (amenityCatalog ?? []).length === 0}>Request amenity</button></form><AmenityWorkflowTable rows={activeAmenities} empty="No amenities requested yet." /></div></div>
   } else {
     const rows = section === 'documents' ? documents ?? [] : section === 'services' ? [...(services ?? []), ...(inspections ?? [])] : propertyRows
-    content = <div className="space-y-6"><Title title={section === 'verification' ? 'Verification status' : section} body="Focused owner records with status, dates, and next operational state." /><RecordTable rows={rows} /></div>
+    content = <div className="space-y-6"><Title title={section === 'verification' ? 'Verification status' : section} body="Focused owner records with status, dates, and next operational state." />{section === 'documents' ? <><div className={`${cardClass} grid gap-4`}><p className="text-sm leading-6 text-[#6B7280]">Required owner documents: Aadhaar, PAN, EC, survey documents, tax receipts, and real property photos. Uploads are sent to admin/employee review.</p><PropertyDocumentUploadPanel role="owner" properties={propertyRows.map((property: any) => ({ id: property.id, label: property.title || property.city || property.id }))} /></div><PropertyDocumentRecordTable rows={(documents ?? []).map((row: any) => ({ ...row, linked_label: propertyRows.find((property: any) => property.id === row.property_id)?.title || row.property_id || 'Owner property' }))} empty="No documents uploaded yet." /></> : <RecordTable rows={rows} />}</div>
   }
 
   return <RoleDashboardShell role="owner" title="Property care workspace" subtitle="Register properties, track verification, and manage service activity tied to your account." userLabel={profile.full_name || profile.email} userId={user.id}>{content}</RoleDashboardShell>
 }
 
 function RecordTable({ rows }: { rows: any[] }) {
-  return <div className={`${cardClass} overflow-x-auto`}><table className="w-full min-w-[820px] text-left text-sm"><thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Record</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Location/type</th><th className="px-3 py-3">Date</th></tr></thead><tbody className="divide-y divide-[#F3F4F6]">{rows.length === 0 ? <tr><td colSpan={4} className="px-3 py-10 text-center text-[#6B7280]">No records yet.</td></tr> : null}{rows.map((row) => <tr key={row.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{row.title || row.subject || row.summary || row.id}</td><td className="px-3 py-3">{badge(row.verification_status || row.status || row.priority)}</td><td className="px-3 py-3 text-[#6B7280]">{row.city || row.address || row.document_type || row.property_kind || row.property_id || 'Account'}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(row.created_at || row.scheduled_for)}</td></tr>)}</tbody></table></div>
+  return <div className={`${cardClass} overflow-x-auto`}><table className="w-full min-w-[820px] text-left text-sm"><thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Record</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Location/type</th><th className="px-3 py-3">Date</th></tr></thead><tbody className="divide-y divide-[#F3F4F6]">{rows.length === 0 ? <tr><td colSpan={4} className="px-3 py-10 text-center text-[#6B7280]">No records yet.</td></tr> : null}{rows.map((row) => <tr key={row.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{row.title || row.subject || row.summary || row.amenities?.name || row.id}</td><td className="px-3 py-3">{badge(row.verification_status || row.status || row.priority || row.amenities?.category)}</td><td className="px-3 py-3 text-[#6B7280]">{row.city || row.address || row.document_type || row.property_kind || row.property_id || row.plot_id || 'Account'}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(row.created_at || row.scheduled_for)}</td></tr>)}</tbody></table></div>
 }

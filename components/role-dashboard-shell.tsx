@@ -18,6 +18,7 @@ import {
   UserRound,
   WalletCards,
   Wrench,
+  Zap,
 } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { LogoMarkSmall } from '@/components/logo'
@@ -39,6 +40,7 @@ const navByRole = {
     { href: '/seller/plots', label: 'My Plots', icon: Map },
     { href: '/seller/customers', label: 'Sold Customers', icon: UserRound },
     { href: '/seller/services', label: 'Plans & Services', icon: WalletCards },
+    { href: '/seller/amenities', label: 'Amenities', icon: Zap },
     { href: '/seller/support', label: 'Support', icon: Headphones },
     { href: '/seller/notifications', label: 'Notifications', icon: Bell },
     { href: '/seller/documents', label: 'Documents', icon: FileText },
@@ -49,6 +51,7 @@ const navByRole = {
     { href: '/owner/register', label: 'Register Property', icon: Building2 },
     { href: '/owner/verification', label: 'Verification', icon: ShieldCheck },
     { href: '/owner/documents', label: 'Documents', icon: FileText },
+    { href: '/owner/amenities', label: 'Amenities', icon: Zap },
     { href: '/owner/services', label: 'Service Activity', icon: Wrench },
     { href: '/owner/support', label: 'Support', icon: Headphones },
     { href: '/settings', label: 'Settings', icon: Settings },
@@ -60,6 +63,7 @@ const navByRole = {
     { href: '/customer/inquiries', label: 'Inquiries', icon: BriefcaseBusiness },
     { href: '/customer/site-visits', label: 'Site Visits', icon: ClipboardCheck },
     { href: '/customer/services', label: 'Services', icon: Wrench },
+    { href: '/customer/amenities', label: 'Amenities', icon: Zap },
     { href: '/customer/properties', label: 'My Property', icon: Building2 },
     { href: '/customer/documents', label: 'Documents Vault', icon: FileText },
     { href: '/customer/support', label: 'Support Center', icon: Headphones },
@@ -69,7 +73,9 @@ const navByRole = {
     { href: '/employee', label: 'Overview', icon: ClipboardCheck },
     { href: '/employee/tasks', label: 'Tasks', icon: BriefcaseBusiness },
     { href: '/employee/verification', label: 'Verification', icon: ShieldCheck },
+    { href: '/employee/documents', label: 'Documents', icon: FileText },
     { href: '/employee/inspections', label: 'Inspections', icon: Map },
+    { href: '/employee/amenities', label: 'Amenities', icon: Zap },
     { href: '/employee/support', label: 'Support', icon: Headphones },
     { href: '/employee/operations', label: 'Operations', icon: Wrench },
     { href: '/settings', label: 'Settings', icon: Settings },

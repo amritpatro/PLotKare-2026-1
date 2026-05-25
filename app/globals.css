@@ -273,7 +273,7 @@
   }
 
   .premium-map-frame {
-    filter: drop-shadow(0 26px 42px rgb(26 26 26 / 0.1));
+    filter: drop-shadow(0 28px 54px rgb(139 21 56 / 0.045));
   }
 
   @supports (animation-timeline: view()) {

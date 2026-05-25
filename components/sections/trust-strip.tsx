@@ -7,7 +7,7 @@ const trustItems = [
   'Digital report archive you can share with family',
   'Document due-date reminders (tax, EC, registrations)',
   'One coordinator per property file',
-  'Transparent pricing tiers on the site',
+  'Consultation-led pricing before plan activation',
 ]
 
 export function TrustStrip() {

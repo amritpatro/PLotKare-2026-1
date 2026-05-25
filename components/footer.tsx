@@ -14,6 +14,7 @@ const footerLinks = {
   services: [
     { label: 'Monthly Inspection', href: '#services' },
     { label: 'Legal Monitoring', href: '#services' },
+    { label: 'Amenities', href: '#services' },
     { label: 'Document Vault', href: '#services' },
     { label: 'Value Tracker', href: '#services' },
     { label: 'Income Generation', href: '#services' },

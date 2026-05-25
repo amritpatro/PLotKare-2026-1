@@ -1,12 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  DEFAULT_PUBLIC_LISTINGS,
   filterPublicListings,
-  loadPublicListings,
   type ListingFilter,
   type PublicPlotListing,
 } from '@/lib/public-listings'
@@ -27,7 +25,6 @@ function ListingCard({ plot }: { plot: PublicPlotListing }) {
       <div className="relative aspect-[16/10] w-full">
         <Image src={withBasePath(plot.imageUrl)} alt="" fill className="object-cover" sizes="(max-width:768px) 100vw, 33vw" />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-          <span className="rounded-full bg-black/60 px-2 py-0.5 font-mono text-[10px] text-white">Demo</span>
           {plot.verified !== false ? <PlotKareVerifiedStamp compact tone="dark" /> : null}
           {plot.propertyKind === 'apartment' && (
             <span className="rounded-full bg-primary/90 px-2 py-0.5 font-mono text-[10px] text-white">Apartment</span>
@@ -50,20 +47,13 @@ function ListingCard({ plot }: { plot: PublicPlotListing }) {
   )
 }
 
-export default function ListingsPageClient() {
-  const [listings, setListings] = useState<PublicPlotListing[]>(DEFAULT_PUBLIC_LISTINGS)
+export default function ListingsPageClient({
+  initialListings,
+}: {
+  initialListings: PublicPlotListing[]
+}) {
+  const [listings] = useState<PublicPlotListing[]>(initialListings)
   const [filter, setFilter] = useState<ListingFilter>('All Plots')
-
-  useEffect(() => {
-    const sync = () => setListings(loadPublicListings())
-    sync()
-    window.addEventListener('plotkare-listings-changed', sync)
-    window.addEventListener('storage', sync)
-    return () => {
-      window.removeEventListener('plotkare-listings-changed', sync)
-      window.removeEventListener('storage', sync)
-    }
-  }, [])
 
   const visible = useMemo(() => filterPublicListings(listings, filter), [listings, filter])
 
@@ -76,11 +66,11 @@ export default function ListingsPageClient() {
           </Link>
         </p>
         <h1 className="mt-4 font-serif text-4xl font-bold text-foreground md:text-5xl">
-          Visakhapatnam Open Plots &amp; Apartments — Demo Listings
+          Visakhapatnam Verified Plots &amp; Apartments
         </h1>
         <p className="mt-3 max-w-2xl font-sans text-muted-foreground">
-          Filter by verification status, site-visit readiness, corner plots, or apartments. Data is illustrative —
-          always verify title and layout approvals with an advisor before making any commitment.
+          Filter by verification status, site-visit readiness, corner plots, or apartments. Public cards appear only
+          after PlotKare approval and publication.
         </p>
 
         <div className="mt-8 flex flex-wrap gap-2">
@@ -105,7 +95,19 @@ export default function ListingsPageClient() {
         </div>
 
         {visible.length === 0 && (
-          <p className="mt-12 text-center font-sans text-muted-foreground">No listings match this filter.</p>
+          <div className="mt-12 rounded-2xl border border-border bg-white p-8 text-center shadow-sm">
+            <h2 className="font-serif text-2xl font-semibold text-foreground">No verified listings are public yet</h2>
+            <p className="mx-auto mt-3 max-w-xl font-sans text-muted-foreground">
+              Listings become visible here after seller submission and PlotKare verification. Check back soon or contact
+              the team for private advisory.
+            </p>
+            <Link
+              href="/#contact"
+              className="mt-6 inline-flex rounded-xl bg-primary px-6 py-3 font-sans text-sm font-semibold text-white"
+            >
+              Contact PlotKare
+            </Link>
+          </div>
         )}
       </div>
     </div>

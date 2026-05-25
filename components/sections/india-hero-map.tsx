@@ -78,8 +78,8 @@ export function IndiaHeroMap() {
 
   const layout = useMemo(() => {
     const w = 560
-    const h = 440
-    const pad = 12
+    const h = 420
+    const pad = 2
     if (!fc?.features?.length) {
       return {
         w,
@@ -133,26 +133,25 @@ export function IndiaHeroMap() {
   return (
     <div
       ref={rootRef}
-      className="relative flex h-full min-h-[360px] w-full items-center justify-center [perspective:1200px]"
+      className="relative flex h-full min-h-[320px] w-full items-center justify-center overflow-hidden [perspective:1200px] sm:min-h-[400px]"
     >
       <div
-        className={cn(
-          'relative w-full max-w-[820px] overflow-visible px-2 sm:px-5 lg:max-w-[900px]',
-        )}
+        className={cn('relative w-[112%] max-w-none -translate-x-[3%] overflow-visible px-0 sm:w-[108%]')}
       >
         <div className="pointer-events-none absolute inset-[12%] rounded-full bg-[#8B1538]/[0.06] blur-3xl" />
         <div className="pointer-events-none absolute inset-x-[14%] bottom-[4%] h-12 rounded-full bg-[#1a1a1a]/10 blur-2xl" />
         <svg
           viewBox={`0 0 ${layout.w} ${layout.h}`}
           preserveAspectRatio="xMidYMid meet"
-          className="relative block h-auto w-full overflow-visible drop-shadow-[0_30px_42px_rgba(26,26,26,0.14)]"
+          className="relative block h-auto w-full scale-[1.1] overflow-visible drop-shadow-[0_30px_42px_rgba(26,26,26,0.14)]"
           role="img"
           aria-label="Interactive map of India: choose a state or union territory for PlotKare coverage and expansion details"
         >
           <defs>
             <linearGradient id="plotkareMapBg" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity={0.08} />
-              <stop offset="100%" stopColor="#F8F6F3" stopOpacity={0.18} />
+              <stop offset="0%" stopColor="#ffffff" stopOpacity={0.18} />
+              <stop offset="52%" stopColor="#F8F6F3" stopOpacity={0.16} />
+              <stop offset="100%" stopColor="#ffffff" stopOpacity={0} />
             </linearGradient>
             <filter id="apGlow" x="-60%" y="-60%" width="220%" height="220%">
               <feGaussianBlur stdDeviation="2.8" result="blur" />
@@ -173,12 +172,12 @@ export function IndiaHeroMap() {
                 <path
                   key={p.key}
                   d={p.d}
-                  fill="rgba(255, 255, 255, 0.58)"
-                  stroke="#C9A962"
-                  strokeOpacity={0.84}
-                  strokeWidth={0.82}
+                  fill="rgba(255, 255, 255, 0.88)"
+                  stroke="#A67C2D"
+                  strokeOpacity={0.98}
+                  strokeWidth={1.18}
                   strokeLinejoin="round"
-                  className="cursor-pointer transition-[fill,filter,stroke,stroke-opacity] duration-200 hover:fill-[rgba(139,21,56,0.11)] hover:stroke-[#8B1538] hover:stroke-opacity-80"
+                  className="cursor-pointer transition-[fill,filter,stroke,stroke-opacity] duration-200 hover:fill-[rgba(139,21,56,0.12)] hover:stroke-[#8B1538] hover:stroke-opacity-90"
                   filter="url(#stateLift)"
                   tabIndex={0}
                   role="button"
@@ -207,9 +206,9 @@ export function IndiaHeroMap() {
                   ) : null}
                   <path
                     d={p.d}
-                    fill="rgba(139, 21, 56, 0.18)"
+                    fill="rgba(139, 21, 56, 0.28)"
                     stroke="#8B1538"
-                    strokeWidth={2.1}
+                    strokeWidth={2.35}
                     strokeLinejoin="round"
                     filter="url(#stateLift)"
                     className="cursor-pointer transition-[fill,filter] duration-200 hover:fill-[rgba(139,21,56,0.25)]"

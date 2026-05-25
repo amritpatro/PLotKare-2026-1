@@ -28,6 +28,11 @@ const serviceRequestSchema = z.object({
   priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
 })
 
+const amenityRequestSchema = z.object({
+  plotId: z.string().uuid(),
+  amenityId: z.string().trim().min(1),
+})
+
 const supportTicketSchema = z.object({
   propertyId: z.string().uuid().optional().or(z.literal('')),
   subject: z.string().trim().min(3),
@@ -43,6 +48,7 @@ function ownerActionUrl(kind: 'success' | 'error', code: string, section = 'regi
     documents: '/owner/documents',
     services: '/owner/services',
     support: '/owner/support',
+    amenities: '/owner/amenities',
   }
   return `${routeBySection[section] ?? '/owner'}?${params.toString()}`
 }
@@ -134,6 +140,50 @@ export async function registerOwnerProperty(formData: FormData) {
   })
 
   redirect(ownerActionUrl('success', 'property_registered', 'verification'))
+}
+
+export async function requestOwnerAmenity(formData: FormData) {
+  const parsed = amenityRequestSchema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) {
+    redirect(ownerActionUrl('error', 'invalid_amenity_form', 'amenities'))
+  }
+
+  const { user } = await requirePageRole(['land_owner', 'admin'])
+  const supabase = createSupabaseAdminClient()
+  let failure: string | null = null
+
+  try {
+    const { data: plot, error: plotError } = await supabase
+      .from('plots')
+      .select('id,owner_id')
+      .eq('id', parsed.data.plotId)
+      .eq('owner_id', user.id)
+      .maybeSingle()
+
+    if (plotError) throw plotError
+    if (!plot) throw new Error('Plot is not attached to this owner.')
+
+    const { error } = await supabase.from('active_amenities').upsert(
+      {
+        owner_id: user.id,
+        plot_id: parsed.data.plotId,
+        amenity_id: parsed.data.amenityId,
+      },
+      { onConflict: 'owner_id,plot_id,amenity_id' },
+    )
+
+    if (error) throw error
+  } catch (error) {
+    console.error('Owner amenity request failed:', error)
+    failure = 'amenity_request_failed'
+  }
+
+  if (failure) {
+    redirect(ownerActionUrl('error', failure, 'amenities'))
+  }
+
+  revalidatePath('/owner')
+  redirect(ownerActionUrl('success', 'amenity_requested', 'amenities'))
 }
 
 async function ensureOwnerProperty(supabase: ReturnType<typeof createSupabaseAdminClient>, userId: string, propertyId: string) {

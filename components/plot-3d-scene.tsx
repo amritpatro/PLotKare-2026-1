@@ -157,7 +157,7 @@ function PlotCanvasInner({ plotLabel, sizeRatio }: { plotLabel: string; sizeRati
   return (
     <Canvas
       className="h-full w-full"
-      shadows
+      shadows={{ type: THREE.PCFShadowMap }}
       camera={{ position: [7.5, 6.5, 8.5], fov: 42, near: 0.1, far: 80 }}
       gl={{ alpha: false, antialias: true, powerPreference: 'high-performance' }}
       dpr={[1, 2]}

@@ -18,8 +18,9 @@ const pillars = [
 export function HeroSection() {
   return (
     <section className="premium-hero relative isolate min-h-screen overflow-hidden bg-white pt-20">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(110deg,#ffffff_0%,#ffffff_45%,#f8f6f3_100%)]" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(110deg,#ffffff_0%,#ffffff_44%,#f8f6f3_100%)]" />
       <div className="pointer-events-none absolute right-[-12%] top-24 -z-10 hidden h-[72%] w-[62%] rounded-full bg-[#8B1538]/[0.035] blur-3xl lg:block" />
+      <div className="pointer-events-none absolute right-[3%] top-[16%] -z-10 hidden h-[68%] w-[54%] rounded-full bg-[radial-gradient(circle_at_center,rgba(248,246,243,0.92)_0%,rgba(248,246,243,0.58)_42%,rgba(255,255,255,0)_72%)] lg:block" />
 
       <div className="mx-auto grid min-h-[calc(100svh-5rem)] max-w-[1500px] gap-10 px-6 py-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(460px,1.08fr)] lg:items-center lg:px-12 lg:py-16">
         <div className="min-w-0 text-[#1a1a1a]">
@@ -58,12 +59,12 @@ export function HeroSection() {
           </div>
         </div>
 
-        <div className="premium-map-frame relative min-h-[420px] lg:min-h-[590px]">
-          <div className="absolute inset-0 opacity-70 mix-blend-multiply lg:opacity-78">
+        <div className="premium-map-frame relative min-h-[340px] overflow-hidden rounded-sm bg-transparent sm:min-h-[430px] lg:min-h-[590px]">
+          <div className="pointer-events-none absolute inset-[-8%] bg-[radial-gradient(circle_at_54%_45%,rgba(248,246,243,0.82)_0%,rgba(248,246,243,0.46)_44%,rgba(255,255,255,0)_76%)]" />
+          <div className="pointer-events-none absolute inset-y-[8%] right-[-8%] w-1/2 bg-[radial-gradient(circle_at_center,rgba(139,21,56,0.045)_0%,rgba(255,255,255,0)_70%)]" />
+          <div className="absolute inset-0 flex items-center justify-center opacity-100">
             <IndiaHeroMapLazy />
           </div>
-          <div className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-white to-transparent" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-white to-transparent" />
         </div>
       </div>
     </section>
