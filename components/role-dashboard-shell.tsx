@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useMemo, useState } from 'react'
 import {
   BarChart3,
   Bell,
@@ -20,7 +21,7 @@ import {
   Wrench,
   Zap,
 } from 'lucide-react'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { LogoMarkSmall } from '@/components/logo'
 import { RoleRealtimeBridge } from '@/components/realtime/role-realtime-bridge'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
@@ -30,6 +31,7 @@ type RoleDashboardShellProps = {
   title: string
   subtitle: string
   userLabel: string
+  avatarUrl?: string | null
   userId?: string
   children: React.ReactNode
 }
@@ -97,14 +99,29 @@ function initialsFrom(label: string) {
     .join('') || 'PK'
 }
 
-export function RoleDashboardShell({ role, title, subtitle, userLabel, userId, children }: RoleDashboardShellProps) {
+export function RoleDashboardShell({ role, title, subtitle, userLabel, avatarUrl, userId, children }: RoleDashboardShellProps) {
   const pathname = usePathname()
   const router = useRouter()
   const nav = navByRole[role]
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const [sessionError, setSessionError] = useState<string | null>(null)
+  const resolvedAvatarUrl = useMemo(() => {
+    if (!avatarUrl) return null
+    if (/^https?:\/\//i.test(avatarUrl)) return avatarUrl
+    return createSupabaseBrowserClient().storage.from('profile-assets').getPublicUrl(avatarUrl).data.publicUrl
+  }, [avatarUrl])
 
   const handleLogout = async () => {
+    if (isSigningOut) return
+    setSessionError(null)
+    setIsSigningOut(true)
     const supabase = createSupabaseBrowserClient()
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      setSessionError('Sign out failed. Please retry.')
+      setIsSigningOut(false)
+      return
+    }
     router.replace('/')
     router.refresh()
   }
@@ -151,11 +168,13 @@ export function RoleDashboardShell({ role, title, subtitle, userLabel, userId, c
 
           <div className="border-t border-[#E5E7EB] p-4">
             <button
+              type="button"
               onClick={() => void handleLogout()}
-              className="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-sans text-sm font-medium text-[#C0392B] transition-colors hover:bg-[#FFF1F2]"
+              disabled={isSigningOut}
+              className="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-sans text-sm font-medium text-[#C0392B] transition-colors hover:bg-[#FFF1F2] disabled:cursor-wait disabled:opacity-60"
             >
               <LogOut className="h-5 w-5" />
-              Logout
+              {isSigningOut ? 'Signing out...' : 'Logout'}
             </button>
           </div>
         </div>
@@ -170,6 +189,7 @@ export function RoleDashboardShell({ role, title, subtitle, userLabel, userId, c
           </div>
           <div className="flex items-center gap-3">
             <Avatar className="h-10 w-10 bg-[#C0392B]">
+              {resolvedAvatarUrl ? <AvatarImage src={resolvedAvatarUrl} alt={`${userLabel} profile photo`} /> : null}
               <AvatarFallback className="font-mono text-sm font-semibold text-white">{initialsFrom(userLabel)}</AvatarFallback>
             </Avatar>
             <div className="hidden text-right sm:block">
@@ -185,10 +205,12 @@ export function RoleDashboardShell({ role, title, subtitle, userLabel, userId, c
               <Settings className="h-4 w-4" />
             </Link>
             <button
+              type="button"
               onClick={() => void handleLogout()}
-              className="rounded-lg border border-[#E5E7EB] p-2 text-[#C0392B] transition-colors hover:bg-[#FFF1F2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C0392B]/25"
-              aria-label="Logout"
-              title="Logout"
+              disabled={isSigningOut}
+              className="rounded-lg border border-[#E5E7EB] p-2 text-[#C0392B] transition-colors hover:bg-[#FFF1F2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C0392B]/25 disabled:cursor-wait disabled:opacity-60"
+              aria-label={isSigningOut ? 'Signing out' : 'Logout'}
+              title={isSigningOut ? 'Signing out' : 'Logout'}
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -196,21 +218,36 @@ export function RoleDashboardShell({ role, title, subtitle, userLabel, userId, c
         </div>
       </header>
 
-      <main className="px-4 pb-12 pt-28 md:ml-64 md:px-8">
+      {sessionError ? (
+        <div role="alert" className="fixed right-4 top-24 z-50 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {sessionError}
+        </div>
+      ) : null}
+
+      <main className="px-4 pb-24 pt-28 md:ml-64 md:px-8 md:pb-12">
         <div className="mx-auto max-w-7xl">{children}</div>
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 border-t border-[#E5E7EB] bg-white md:hidden">
-        {nav.slice(0, 5).map((item) => {
+      <nav className="fixed bottom-0 left-0 right-0 z-40 overflow-x-auto border-t border-[#E5E7EB] bg-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden" aria-label="Mobile workspace sections">
+        <div className="flex min-w-max">
+        {nav.map((item) => {
           const Icon = item.icon
+          const isActive = pathname === item.href
           return (
-            <Link key={item.href} href={item.href} className="flex flex-col items-center gap-1 px-1 py-2 text-[10px] text-[#6B7280]">
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex w-[76px] flex-col items-center gap-1 border-t-2 px-1 py-2 text-[10px] ${
+                isActive ? 'border-[#C0392B] text-[#C0392B]' : 'border-transparent text-[#6B7280]'
+              }`}
+            >
               <Icon className="h-4 w-4" />
               <span className="truncate">{item.label.split(' ')[0]}</span>
             </Link>
           )
         })}
-      </div>
+        </div>
+      </nav>
     </div>
   )
 }

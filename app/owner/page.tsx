@@ -1,4 +1,5 @@
 import { createOwnerServiceRequest, createOwnerSupportTicket, registerOwnerProperty } from './actions'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
@@ -130,6 +131,7 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
       title="Property care workspace"
       subtitle="Register properties, track verification, and view inspections, documents, and service activity."
       userLabel={profile.full_name || profile.email}
+      avatarUrl={profile.avatar_path}
       userId={user.id}
     >
       <section className="space-y-8">
@@ -240,9 +242,9 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
                   </select>
                 </div>
               </div>
-              <button className="rounded-lg bg-[#C0392B] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A93225]" type="submit">
+              <PendingActionButton pendingText="Submitting..." className="rounded-lg bg-[#C0392B] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A93225]">
                 Submit for verification
-              </button>
+              </PendingActionButton>
             </form>
           </div>
 
@@ -389,13 +391,13 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
                   Register a property before opening a service request.
                 </p>
               ) : null}
-              <button
+              <PendingActionButton
+                pendingText="Creating..."
                 className="rounded-lg bg-[#C0392B] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A93225] disabled:cursor-not-allowed disabled:opacity-50"
-                type="submit"
                 disabled={propertyRows.length === 0}
               >
                 Create service request
-              </button>
+              </PendingActionButton>
             </form>
           </div>
 
@@ -426,9 +428,9 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
                 <option value="high">High</option>
                 <option value="urgent">Urgent</option>
               </select>
-              <button className="rounded-lg bg-[#C0392B] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A93225]" type="submit">
+              <PendingActionButton pendingText="Opening..." className="rounded-lg bg-[#C0392B] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A93225]">
                 Open support ticket
-              </button>
+              </PendingActionButton>
             </form>
             <div className="mt-5 divide-y divide-[#E5E7EB]">
               {ticketRows.length === 0 ? <p className="py-4 text-sm text-[#6B7280]">No support tickets raised yet.</p> : null}

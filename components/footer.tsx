@@ -7,9 +7,9 @@ import { LogoMark } from '@/components/logo'
 const footerLinks = {
   company: [
     { label: 'About PlotKare', href: '#about' },
-    { label: 'Our Team', href: '#' },
-    { label: 'Careers', href: '#' },
-    { label: 'Press & Media', href: '#' },
+    { label: 'Contact PlotKare', href: '#contact' },
+    { label: 'Plot Management Guides', href: '/blog/' },
+    { label: 'Visakhapatnam Services', href: '/visakhapatnam/' },
   ],
   services: [
     { label: 'Monthly Inspection', href: '#services' },
@@ -21,8 +21,9 @@ const footerLinks = {
   ],
   resources: [
     { label: 'Plots & apartments', href: '/listings/' },
-    { label: '3D plot demo', href: '/demo/plot-3d/' },
+    { label: 'Real plot layout', href: '/demo/plot-3d/' },
     { label: 'Blog', href: '/blog/' },
+    { label: 'Plot management in Visakhapatnam', href: '/visakhapatnam/' },
     { label: 'Bheemunipatnam', href: '/corridors/bheemunipatnam-plot-management/' },
     { label: 'Madhurawada', href: '/corridors/madhurawada-land-monitoring/' },
   ],
@@ -74,10 +75,10 @@ const socialLinks = [
 ]
 
 export function Footer() {
-  const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL || 'https://wa.me/'
-  const resolvedSocialLinks = socialLinks.map((social) =>
-    social.name === 'WhatsApp' ? { ...social, href: whatsappUrl } : social,
-  )
+  const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL?.trim()
+  const resolvedSocialLinks = whatsappUrl?.match(/^https:\/\/wa\.me\/\d+$/)
+    ? socialLinks.filter((social) => social.name === 'WhatsApp').map((social) => ({ ...social, href: whatsappUrl }))
+    : []
 
   return (
     <footer className="premium-section-dark bg-darker pt-20 pb-8">
@@ -107,8 +108,9 @@ export function Footer() {
             </div>
             
             {/* Social Icons */}
-            <div className="mt-6 flex gap-4">
-              {resolvedSocialLinks.map((social) => (
+            {resolvedSocialLinks.length > 0 ? (
+              <div className="mt-6 flex gap-4">
+                {resolvedSocialLinks.map((social) => (
                 <a
                   key={social.name}
                   href={social.href}
@@ -117,8 +119,9 @@ export function Footer() {
                 >
                   {social.icon}
                 </a>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : null}
           </div>
 
           {/* Company Column */}
@@ -201,8 +204,8 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="border-t border-white/10 pt-8">
           <p className="text-center font-sans text-sm text-white/40">
-            PlotKare 2026. All rights reserved. Made with{' '}
-            <span className="text-primary">love</span> in Vizag.
+            PlotKare 2026. All rights reserved. Property monitoring for owners across{' '}
+            <span className="text-primary">India</span>.
           </p>
         </div>
       </div>

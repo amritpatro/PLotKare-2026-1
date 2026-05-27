@@ -1,4 +1,5 @@
 import { replyToSupportTicket, updateSupportTicket } from './actions'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
@@ -54,7 +55,7 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
   const [{ data: tickets }, { data: employees }, { data: replies }, { data: notes }] = await Promise.all([
     supabase
       .from('support_tickets')
-      .select('id,requester_id,assigned_employee_id,property_id,subject,description,priority,status,created_at,updated_at')
+      .select('id,ticket_reference,category,requester_id,assigned_employee_id,property_id,subject,description,priority,status,due_at,escalation_level,created_at,updated_at')
       .order('created_at', { ascending: false })
       .limit(100),
     supabase
@@ -104,17 +105,9 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
   const employeeLabelById = new Map(employeeOptions.map((employee) => [employee.id, employee.label]))
   const requesterById = new Map((requesterProfiles ?? []).map((profile: any) => [profile.id, profile]))
   const propertyById = new Map((properties ?? []).map((property: any) => [property.id, property]))
-  const latestReplyByTicketId = new Map<string, any>()
-  for (const reply of replies ?? []) {
-    if (!latestReplyByTicketId.has(reply.ticket_id)) latestReplyByTicketId.set(reply.ticket_id, reply)
-  }
-  const latestNoteByTicketId = new Map<string, any>()
-  for (const note of notes ?? []) {
-    if (!latestNoteByTicketId.has(note.entity_id)) latestNoteByTicketId.set(note.entity_id, note)
-  }
 
   return (
-    <div className="px-8 pb-12 pt-24">
+    <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#C9A962]">Support operations</p>
@@ -160,8 +153,8 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
         {(tickets ?? []).map((ticket: any) => {
           const requester = requesterById.get(ticket.requester_id)
           const property = propertyById.get(ticket.property_id)
-          const latestReply = latestReplyByTicketId.get(ticket.id)
-          const latestNote = latestNoteByTicketId.get(ticket.id)
+          const thread = (replies ?? []).filter((reply: any) => reply.ticket_id === ticket.id).reverse()
+          const internalNotes = (notes ?? []).filter((note: any) => note.entity_id === ticket.id).reverse()
 
           return (
             <div key={ticket.id} className={cardClass} data-support-ticket-id={ticket.id}>
@@ -174,6 +167,9 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
                       {ticket.priority}
                     </span>
                   </div>
+                  <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[#C0392B]">
+                    {ticket.ticket_reference || `Ticket ${ticket.id.slice(0, 8).toUpperCase()}`} · {ticket.category || 'general'}
+                  </p>
                   <p className="mt-3 text-sm leading-6 text-[#4B5563]">{ticket.description}</p>
 
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -208,19 +204,17 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
                     </div>
                   </div>
 
-                  {latestReply ? (
+                  {thread.length ? (
                     <div className="mt-4 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">
-                        Latest {latestReply.visibility} reply
-                      </p>
-                      <p className="mt-2 text-sm leading-6 text-[#4B5563]">{latestReply.body}</p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">Conversation thread</p>
+                      {thread.map((reply: any) => <p key={reply.id} className="mt-2 text-sm leading-6 text-[#4B5563]"><span className="font-mono text-[10px] uppercase text-[#9CA3AF]">{reply.visibility}:</span> {reply.body}</p>)}
                     </div>
                   ) : null}
 
-                  {latestNote ? (
+                  {internalNotes.length ? (
                     <div className="mt-4 rounded-lg border border-dashed border-[#E5E7EB] bg-white px-4 py-3">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">Latest internal note</p>
-                      <p className="mt-2 text-sm leading-6 text-[#4B5563]">{latestNote.note}</p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">Internal notes</p>
+                      {internalNotes.map((note: any) => <p key={note.id} className="mt-2 text-sm leading-6 text-[#4B5563]">{note.note}</p>)}
                     </div>
                   ) : null}
                 </div>
@@ -231,7 +225,7 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
                     <textarea
                       name="note"
                       rows={3}
-                      defaultValue={latestNote?.note ?? ''}
+                      defaultValue=""
                       className={inputClass}
                       placeholder="Internal operational note"
                     />
@@ -252,16 +246,16 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
                         ))}
                       </select>
                       <select name="status" defaultValue={ticket.status} className={inputClass}>
-                        {['open', 'assigned', 'in_progress', 'waiting_on_customer', 'resolved', 'closed'].map((status) => (
+                        {['open', 'assigned', 'in_progress', 'waiting_on_customer', 'waiting_on_admin', 'escalated', 'resolved', 'closed'].map((status) => (
                           <option key={status} value={status}>
                             {status.replaceAll('_', ' ')}
                           </option>
                         ))}
                       </select>
                     </div>
-                    <button className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#A93226]">
+                    <PendingActionButton pendingText="Updating..." className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#A93226]">
                       Update ticket
-                    </button>
+                    </PendingActionButton>
                   </form>
 
                   <form action={replyToSupportTicket} className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-white p-4">
@@ -277,9 +271,9 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
                       placeholder="Write the next support response or internal handoff note."
                       required
                     />
-                    <button className="rounded-lg border border-[#D1D5DB] bg-white px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#C0392B] hover:text-[#C0392B]">
+                    <PendingActionButton pendingText="Saving..." className="rounded-lg border border-[#D1D5DB] bg-white px-4 py-2 text-sm font-semibold text-[#1F2937] transition hover:border-[#C0392B] hover:text-[#C0392B]">
                       Save reply
-                    </button>
+                    </PendingActionButton>
                   </form>
                 </div>
               </div>

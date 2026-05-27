@@ -7,7 +7,7 @@ import { recordAuditLog } from '@/lib/audit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 
-const supportStatuses = ['open', 'assigned', 'in_progress', 'waiting_on_customer', 'resolved', 'closed'] as const
+const supportStatuses = ['open', 'assigned', 'in_progress', 'waiting_on_customer', 'waiting_on_admin', 'escalated', 'resolved', 'closed'] as const
 const priorities = ['low', 'normal', 'high', 'urgent'] as const
 
 const updateSupportSchema = z.object({

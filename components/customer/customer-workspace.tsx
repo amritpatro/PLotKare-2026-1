@@ -20,6 +20,7 @@ import {
   saveListing,
   unsaveListing,
 } from '@/app/customer/actions'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 import { linkedPropertyFrom } from '@/lib/customer-workspace/data'
 import type {
@@ -197,10 +198,10 @@ function ListingActions({
     <div className="mt-5 grid gap-3 xl:grid-cols-2">
       <form action={saved ? unsaveListing : saveListing}>
         <input type="hidden" name="listingId" value={listing.id} />
-        <button type="submit" disabled={!readiness.save} className={secondaryButtonClass}>
+        <PendingActionButton pendingText="Saving..." disabled={!readiness.save} className={secondaryButtonClass}>
           {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
           {saved ? 'Saved' : 'Save'}
-        </button>
+        </PendingActionButton>
       </form>
       <form action={createSiteVisitRequest} className="space-y-2">
         <input type="hidden" name="listingId" value={listing.id} />
@@ -209,10 +210,10 @@ function ListingActions({
         </label>
         <input id={`visit-${listing.id}`} type="datetime-local" name="preferredDate" disabled={!readiness.siteVisit} className={inputClass} />
         <input type="hidden" name="notes" value={`Interested in ${listing.plot_number}`} />
-        <button type="submit" disabled={!readiness.siteVisit} className={primaryButtonClass}>
+        <PendingActionButton pendingText="Requesting..." disabled={!readiness.siteVisit} className={primaryButtonClass}>
           <CalendarDays className="h-4 w-4" />
           Request
-        </button>
+        </PendingActionButton>
       </form>
       <form action={createListingInquiry} className="space-y-2 xl:col-span-2">
         <input type="hidden" name="listingId" value={listing.id} />
@@ -227,10 +228,10 @@ function ListingActions({
           className={inputClass}
           placeholder="Ask about documents, pricing, availability, or loan support."
         />
-        <button type="submit" disabled={!readiness.inquiry} className={secondaryButtonClass}>
+        <PendingActionButton pendingText="Sending..." disabled={!readiness.inquiry} className={secondaryButtonClass}>
           <MessageSquare className="h-4 w-4" />
           Send inquiry
-        </button>
+        </PendingActionButton>
       </form>
     </div>
   )
@@ -320,9 +321,9 @@ function SavedListingsSection({ listings, savedListings, schemaReady }: { listin
               </div>
               <form action={unsaveListing}>
                 <input type="hidden" name="listingId" value={saved.listing_id} />
-                <button type="submit" disabled={!schemaReady} className={secondaryButtonClass}>
+                <PendingActionButton pendingText="Removing..." disabled={!schemaReady} className={secondaryButtonClass}>
                   Remove
-                </button>
+                </PendingActionButton>
               </form>
             </div>
           )
@@ -606,9 +607,9 @@ export function CustomerWorkspace({ data, profileLabel, successCode, errorCode }
                 <option value="high">High</option>
                 <option value="urgent">Urgent</option>
               </select>
-              <button type="submit" className={primaryButtonClass}>
+              <PendingActionButton pendingText="Opening..." className={primaryButtonClass}>
                 Open support ticket
-              </button>
+              </PendingActionButton>
             </form>
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#9CA3AF]">Maintenance</p>

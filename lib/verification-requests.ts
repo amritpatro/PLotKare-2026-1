@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-type VerificationEntityType = 'property' | 'seller' | 'owner' | 'customer' | 'document'
+type VerificationEntityType = 'property' | 'seller' | 'owner' | 'customer' | 'document' | 'property_link_request'
 
 type VerificationRequestInput = {
   entityType: VerificationEntityType

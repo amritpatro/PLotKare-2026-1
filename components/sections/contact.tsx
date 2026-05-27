@@ -5,7 +5,15 @@ import { motion } from 'framer-motion'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 import Link from 'next/link'
 
-export function ContactSection() {
+export function ContactSection({
+  heading = 'Talk to PlotKare',
+  description = 'Tell us where your property is located and what records or monitoring you need. The team will respond with an appropriate next step.',
+  supportingLink,
+}: {
+  heading?: string
+  description?: string
+  supportingLink?: { href: string; label: string }
+}) {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -59,12 +67,19 @@ export function ContactSection() {
           className="premium-reveal text-center"
         >
           <h2 className="font-serif text-4xl font-bold leading-tight text-foreground md:text-5xl">
-            Talk to PlotKare in Visakhapatnam
+            {heading}
           </h2>
           <p className="mx-auto mt-4 max-w-xl font-sans text-base text-muted-foreground">
-            Prefer quick replies? Use the floating WhatsApp placeholder (replace with your business number when ready) or
-            email — this short form is optional so we do not duplicate long intake twice on the page.
+            {description}
           </p>
+          {supportingLink ? (
+            <Link
+              href={supportingLink.href}
+              className="mt-4 inline-flex font-sans text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              {supportingLink.label}
+            </Link>
+          ) : null}
         </motion.div>
 
         <motion.div
@@ -108,7 +123,7 @@ export function ContactSection() {
                 href="/listings/"
                 className="premium-button inline-flex rounded-sm bg-primary px-6 py-3 font-sans text-sm font-medium text-white transition-colors hover:bg-primary/90"
               >
-                Browse listings
+                Browse Verified Listings
               </Link>
               <Link
                 href="/demo/plot-3d/"

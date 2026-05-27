@@ -4,28 +4,43 @@ import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 
-const news = [
+type NewsItem = {
+  href: string
+  date: string
+  headline: string
+  excerpt: string
+}
+
+const news: NewsItem[] = [
   {
-    slug: 'nri-plot-inspection-visakhapatnam-guide',
-    date: 'April 2026',
-    headline: 'New guide: NRI plot inspection checklist for Visakhapatnam owners',
-    excerpt: 'What to demand in every field report — four-sided photos, access paths, and escalation wording.',
+    href: '/blog/how-to-protect-your-plot-from-encroachment-india/',
+    date: 'May 2026',
+    headline: 'How to protect a vacant plot from encroachment in India',
+    excerpt: 'A practical guide to boundary evidence, inspection cadence, and escalation records.',
   },
   {
-    slug: 'encroachment-prevention-vizag-boundaries',
-    date: 'March 2026',
-    headline: 'Encroachment prevention: early signals on Vizag boundaries',
-    excerpt: 'Why low-drama monitoring beats high-drama court timelines for coastal layouts.',
+    href: '/blog/ec-certificate-renewal-and-property-document-checklist/',
+    date: 'May 2026',
+    headline: 'EC certificate and property document checklist for owners',
+    excerpt: 'Records to organize before inspection, transfer, finance, or a verified listing.',
   },
   {
-    slug: 'andhra-pradesh-land-documents-checklist',
-    date: 'February 2026',
-    headline: 'AP land documents checklist for out-of-town owners',
-    excerpt: 'Keep EC, tax, and mutation threads aligned with inspection dates.',
+    href: '/blog/from-vizag-launch-to-national-property-management/',
+    date: 'May 2026',
+    headline: 'From local field operations to national property management',
+    excerpt: 'How an inspection and documentation workflow can expand responsibly across cities.',
   },
 ]
 
-export function NewsroomSection() {
+export function NewsroomSection({
+  heading = 'Plot Management Guides and',
+  accentedHeading = 'Market Notes',
+  items = news,
+}: {
+  heading?: string
+  accentedHeading?: string
+  items?: NewsItem[]
+}) {
   return (
     <section className="premium-section bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
@@ -37,7 +52,7 @@ export function NewsroomSection() {
           className="premium-reveal mb-16"
         >
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
-            Visakhapatnam Plot News, Guides &amp; <span className="text-primary">Market Notes</span>
+            {heading} <span className="text-primary">{accentedHeading}</span>
           </h2>
           <p className="mt-3 max-w-2xl font-sans text-sm text-muted-foreground">
             Longer reads live on the{' '}
@@ -49,9 +64,9 @@ export function NewsroomSection() {
         </motion.div>
 
         <div className="grid gap-8 md:grid-cols-3">
-          {news.map((item, index) => (
+          {items.map((item, index) => (
             <motion.article
-              key={item.slug}
+              key={item.href}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -60,14 +75,14 @@ export function NewsroomSection() {
             >
               <p className="font-mono text-sm text-muted-foreground">{item.date}</p>
               <h3 className="mt-3 font-serif text-xl font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">
-                <Link href={`/blog/${item.slug}/`}>{item.headline}</Link>
+                <Link href={item.href}>{item.headline}</Link>
               </h3>
               <p className="mt-3 font-sans text-sm leading-relaxed text-muted-foreground">{item.excerpt}</p>
               <Link
-                href={`/blog/${item.slug}/`}
+                href={item.href}
                 className="mt-4 inline-flex items-center gap-2 text-primary transition-transform group-hover:translate-x-1"
               >
-                <span className="font-sans text-sm font-medium">Read on blog</span>
+                <span className="font-sans text-sm font-medium">{`Read: ${item.headline}`}</span>
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </motion.article>

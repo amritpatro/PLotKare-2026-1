@@ -17,7 +17,13 @@ const steps = [
   },
 ]
 
-export function MonitoringInsightsSection() {
+export function MonitoringInsightsSection({
+  heading = 'How Each Inspection Cycle Works',
+  introduction = 'Each cycle is intended to create dated records an authorized owner can review later, without invented testimonials or unsourced performance claims.',
+}: {
+  heading?: string
+  introduction?: string
+}) {
   return (
     <section className="premium-section bg-secondary py-16 lg:py-24">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
@@ -28,9 +34,9 @@ export function MonitoringInsightsSection() {
           transition={{ duration: 0.55 }}
           className="premium-reveal mb-10 max-w-3xl"
         >
-          <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">How monitoring works</h2>
+          <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">{heading}</h2>
           <p className="mt-3 font-sans text-sm text-muted-foreground md:text-base">
-            Every cycle produces dated artefacts you can audit later — no fabricated quotes or fictional clients.
+            {introduction}
           </p>
         </motion.div>
 

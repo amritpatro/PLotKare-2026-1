@@ -12,7 +12,7 @@ const navLinks = [
   { href: '#services', label: 'Services' },
   { href: '#how-it-works', label: 'How It Works' },
   { href: '#pricing', label: 'Pricing' },
-  { href: '#presence', label: 'Cities' },
+  { href: '/visakhapatnam/', label: 'Visakhapatnam Services' },
   { href: '#investors', label: 'For Investors' },
   { href: '#contact', label: 'Contact' },
 ]
@@ -116,7 +116,7 @@ export function Navigation() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[60] bg-charcoal"
           >
-            <div className="flex h-full flex-col px-6 py-8">
+            <div className="flex h-full min-h-0 flex-col px-6 py-8">
               <div className="flex items-center justify-between">
                 <Link
                   href="/"
@@ -145,7 +145,7 @@ export function Navigation() {
                 </button>
               </div>
 
-              <nav className="mt-16 flex flex-1 flex-col gap-8">
+              <nav className="mt-10 flex min-h-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto pb-6">
                 {navLinks.map((link, index) => (
                   <motion.div
                     key={link.href}
@@ -155,7 +155,7 @@ export function Navigation() {
                   >
                     <Link
                   href={link.href}
-                      className="font-serif text-4xl font-semibold text-white transition-colors hover:text-primary"
+                      className="block max-w-full break-words font-serif text-3xl font-semibold leading-tight text-white transition-colors hover:text-primary sm:text-4xl"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       {link.label}
@@ -164,7 +164,7 @@ export function Navigation() {
                 ))}
               </nav>
 
-              <div className="mt-auto flex flex-col gap-4">
+              <div className="mt-6 flex shrink-0 flex-col gap-4">
                 <Link
                   href="/signup"
                   className="text-center font-sans text-base font-medium text-primary transition-colors hover:text-primary/90"

@@ -68,7 +68,15 @@ const services: Service[] = [
 
 const categories: Category[] = ['All', 'Income Generation', 'Protection', 'Development']
 
-export function LandUtilisationSection() {
+export function LandUtilisationSection({
+  heading = 'Plot Services: Income, Protection, and',
+  accentedHeading = 'Development',
+  description = 'Optional services can be considered after the property record, owner approval, and operating scope are clear.',
+}: {
+  heading?: string
+  accentedHeading?: string
+  description?: string
+}) {
   const [activeCategory, setActiveCategory] = useState<Category>('All')
   const [activeService, setActiveService] = useState<Service | null>(null)
 
@@ -86,11 +94,10 @@ export function LandUtilisationSection() {
           className="premium-reveal mb-10"
         >
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
-            Property Income, Protection, and Growth <span className="text-primary">Add-Ons</span>
+            {heading} <span className="text-primary">{accentedHeading}</span>
           </h2>
           <p className="mt-4 max-w-2xl font-sans text-lg text-muted-foreground">
-            Optional services sit behind the core property record. Owners can explore them without turning the landing
-            page into a heavy image gallery.
+            {description}
           </p>
         </motion.div>
 

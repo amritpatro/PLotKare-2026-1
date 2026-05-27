@@ -13,7 +13,7 @@ export async function requirePageRole(allowedRoles: UserRole[]) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id,email,full_name,role,employee_role,onboarding_completed,onboarding_status,customer_type')
+    .select('id,email,full_name,avatar_path,role,employee_role,onboarding_completed,onboarding_status,customer_type')
     .eq('id', user.id)
     .single()
 

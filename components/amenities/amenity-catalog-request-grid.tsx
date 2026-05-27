@@ -1,4 +1,5 @@
 import { getAmenityById, getAmenityDisplayDetails } from '@/lib/amenity-catalog'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 
 type AmenityOption = {
   id: string
@@ -6,6 +7,7 @@ type AmenityOption = {
   category: string | null
   kind: string | null
   amount: number | null
+  image_path?: string | null
 }
 
 type TargetOption = {
@@ -54,11 +56,12 @@ export function AmenityCatalogRequestGrid({
         {amenities.map((amenity) => {
           const catalog = getAmenityById(amenity.id)
           const details = getAmenityDisplayDetails(amenity.id)
+          const imagePath = amenity.image_path || catalog?.image
           return (
             <form key={amenity.id} action={action} className="flex min-h-full flex-col overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#FCFCFB]">
               <div className="relative aspect-[16/9] overflow-hidden bg-[#F3F4F6]">
-                {catalog?.image ? (
-                  <img src={catalog.image} alt="" className="h-full w-full object-cover" loading="lazy" />
+                {imagePath ? (
+                  <img src={imagePath} alt={`${amenity.name} managed property amenity`} className="h-full w-full object-cover" loading="lazy" />
                 ) : (
                   <div className="h-full w-full bg-[#F9FAFB]" />
                 )}
@@ -91,9 +94,9 @@ export function AmenityCatalogRequestGrid({
                   </select>
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs font-semibold text-[#6B7280]">{priceLabel(amenity)}</span>
-                    <button type="submit" disabled={!hasTargets} className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#A93226] disabled:cursor-not-allowed disabled:bg-[#D1D5DB]">
+                    <PendingActionButton pendingText="Requesting..." disabled={!hasTargets} className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#A93226] disabled:cursor-not-allowed disabled:bg-[#D1D5DB]">
                       Consult PlotKare
-                    </button>
+                    </PendingActionButton>
                   </div>
                 </div>
               </div>

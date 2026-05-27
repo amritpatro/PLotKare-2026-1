@@ -77,7 +77,7 @@ export function AmenitiesSection() {
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-sans text-xs uppercase tracking-[0.16em] text-white/45">Available after review</span>
                   <Link
-                    href="/login?next=/dashboard/amenities"
+                    href="/login?next=/owner/amenities"
                     className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-4 py-2 font-sans text-sm font-semibold text-white transition-colors hover:bg-white/10"
                   >
                     Open catalog

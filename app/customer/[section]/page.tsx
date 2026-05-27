@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import {
   createCustomerSupportTicket,
   createListingInquiry,
+  requestAdditionalPropertyLink,
   requestCustomerAmenity,
   createSiteVisitRequest,
   saveListing,
@@ -11,8 +12,10 @@ import { AmenityCatalogRequestGrid } from '@/components/amenities/amenity-catalo
 import { AmenityWorkflowTable } from '@/components/amenities/amenity-workflow-table'
 import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
 import { PropertyDocumentUploadPanel } from '@/components/documents/property-document-upload-panel'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
+import { SupportTicketThreadList } from '@/components/support/support-ticket-thread-list'
 import { readAmenityWorkflowRows } from '@/lib/amenity-operations'
 import { linkedPropertyFrom, getCustomerWorkspaceData } from '@/lib/customer-workspace/data'
 import type { CustomerListing } from '@/lib/customer-workspace/types'
@@ -33,6 +36,38 @@ type Section = (typeof allowedSections)[number]
 type PageProps = {
   params: Promise<{ section: string }>
   searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+const actionMessages = {
+  success: {
+    listing_saved: 'Listing saved to your workspace.',
+    listing_unsaved: 'Listing removed from your saved list.',
+    inquiry_created: 'Your inquiry has been sent to PlotKare operations.',
+    site_visit_created: 'Your site visit request has been submitted.',
+    support_ticket_created: 'Support ticket opened successfully.',
+    amenity_requested: 'Amenity consultation requested.',
+    property_request_submitted: 'Property link request submitted for PlotKare verification.',
+  },
+  error: {
+    invalid_listing: 'This listing is no longer available for that action.',
+    invalid_inquiry: 'Complete the inquiry details and try again.',
+    invalid_site_visit: 'Choose a visit date and try again.',
+    invalid_support_form: 'Complete the support form and try again.',
+    invalid_amenity_form: 'Select a property and amenity to request consultation.',
+    marketplace_schema_pending: 'Marketplace services are temporarily unavailable.',
+    save_failed: 'The listing could not be saved.',
+    unsave_failed: 'The saved listing could not be removed.',
+    inquiry_failed: 'Your inquiry could not be sent.',
+    site_visit_failed: 'Your site visit request could not be sent.',
+    support_ticket_failed: 'Your support ticket could not be opened.',
+    amenity_request_failed: 'Your amenity consultation request could not be saved.',
+    invalid_property_request: 'Complete the property details before submitting.',
+    property_request_failed: 'The property request could not be submitted.',
+  },
+} as const
+
+function searchParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
 }
 
 function formatDate(value: string | null | undefined) {
@@ -111,18 +146,20 @@ function ListingsPage({ listings, savedIds }: { listings: CustomerListing[]; sav
                   <div className="grid gap-2">
                     <form action={savedIds.has(listing.id) ? unsaveListing : saveListing}>
                       <input type="hidden" name="listingId" value={listing.id} />
-                      <button type="submit" className={secondaryButtonClass}>{savedIds.has(listing.id) ? 'Remove saved' : 'Save listing'}</button>
+                      <PendingActionButton pendingText="Saving..." className={secondaryButtonClass}>
+                        {savedIds.has(listing.id) ? 'Remove saved' : 'Save listing'}
+                      </PendingActionButton>
                     </form>
                     <form action={createListingInquiry} className="grid gap-2">
                       <input type="hidden" name="listingId" value={listing.id} />
                       <input name="message" required className={inputClass} placeholder="Ask about documents or site visit" />
-                      <button type="submit" className={buttonClass}>Send inquiry</button>
+                      <PendingActionButton pendingText="Sending..." className={buttonClass}>Send inquiry</PendingActionButton>
                     </form>
                     <form action={createSiteVisitRequest} className="grid gap-2">
                       <input type="hidden" name="listingId" value={listing.id} />
                       <input type="datetime-local" name="preferredDate" required className={inputClass} />
                       <input type="hidden" name="notes" value={`Visit request for ${listing.plot_number}`} />
-                      <button type="submit" className={secondaryButtonClass}>Request visit</button>
+                      <PendingActionButton pendingText="Requesting..." className={secondaryButtonClass}>Request visit</PendingActionButton>
                     </form>
                   </div>
                 </td>
@@ -168,13 +205,18 @@ function RecordTable({ rows, empty }: { rows: any[]; empty: string }) {
 export default async function CustomerSectionPage({ params, searchParams }: PageProps) {
   const { section } = await params
   if (!allowedSections.includes(section as Section)) notFound()
+  const query = (await searchParams) ?? {}
+  const successCode = searchParam(query.success) as keyof typeof actionMessages.success | undefined
+  const errorCode = searchParam(query.error) as keyof typeof actionMessages.error | undefined
+  const successMessage = successCode ? actionMessages.success[successCode] : undefined
+  const errorMessage = errorCode ? actionMessages.error[errorCode] : undefined
 
   const { user, profile } = await requirePageRole(['customer', 'admin'])
   const supabase = await createSupabaseServerClient()
   const data = await getCustomerWorkspaceData(supabase, user.id)
   const { data: amenityCatalog } = await supabase
     .from('amenities')
-    .select('id,name,category,kind,amount,active')
+    .select('id,name,category,kind,amount,image_path,active')
     .eq('active', true)
     .order('category', { ascending: true })
     .order('name', { ascending: true })
@@ -191,6 +233,24 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
     ? await readAmenityWorkflowRows(supabase, { propertyIds: propertyOptions.map((property) => property.id), requesterIds: [user.id] })
     : []
   const page = section as Section
+  const { data: propertyRequests } = page === 'properties' || page === 'documents'
+    ? await supabase
+        .from('customer_property_requests')
+        .select('id,property_title,property_kind,address,city,state,relationship_type,status,review_notes,created_at')
+        .eq('requester_id', user.id)
+        .order('created_at', { ascending: false })
+    : { data: [] }
+  const { data: supportReplies } = page === 'support' && data.supportTickets.length
+    ? await supabase
+        .from('ticket_replies')
+        .select('id,ticket_id,body,visibility,created_at')
+        .in('ticket_id', data.supportTickets.map((ticket) => ticket.id))
+        .eq('visibility', 'public')
+        .order('created_at', { ascending: true })
+    : { data: [] }
+  const documentPropertyRequests = (propertyRequests ?? [])
+    .filter((request: any) => ['submitted', 'under_review', 'needs_clarification'].includes(request.status))
+    .map((request: any) => ({ id: request.id, label: `${request.property_title} - ${request.city}` }))
 
   const content = (() => {
     if (page === 'listings') return <ListingsPage listings={data.listings} savedIds={savedIds} />
@@ -206,7 +266,7 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
                 {data.savedListings.length === 0 ? <tr><td colSpan={3} className="px-3 py-8 text-center text-[#6B7280]">No saved listings yet.</td></tr> : null}
                 {data.savedListings.map((saved) => {
                   const listing = data.listings.find((item) => item.id === saved.listing_id)
-                  return <tr key={saved.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{listing?.location ?? saved.listing_id}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(saved.created_at)}</td><td className="px-3 py-3"><form action={unsaveListing}><input type="hidden" name="listingId" value={saved.listing_id} /><button className={secondaryButtonClass}>Remove</button></form></td></tr>
+                  return <tr key={saved.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{listing?.location ?? saved.listing_id}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(saved.created_at)}</td><td className="px-3 py-3"><form action={unsaveListing}><input type="hidden" name="listingId" value={saved.listing_id} /><PendingActionButton pendingText="Removing..." className={secondaryButtonClass}>Remove</PendingActionButton></form></td></tr>
                 })}
               </tbody>
             </table>
@@ -249,6 +309,33 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
               </tbody>
             </table>
           </div>
+          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+            <form action={requestAdditionalPropertyLink} className={`${cardClass} grid gap-3`}>
+              <h3 className="font-serif text-xl font-semibold text-[#1F2937]">Request another property link</h3>
+              <p className="text-sm leading-6 text-[#6B7280]">Submit a property claim for verification. Access becomes active only after approval.</p>
+              <select name="propertyKind" className={inputClass} defaultValue="plot"><option value="plot">Plot</option><option value="apartment">Apartment</option><option value="rental">Rental</option><option value="managed_property">Managed property</option></select>
+              <input name="propertyTitle" required className={inputClass} placeholder="Property title or plot reference" />
+              <input name="address" required className={inputClass} placeholder="Address or survey location" />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input name="city" required className={inputClass} placeholder="City" />
+                <input name="state" required className={inputClass} defaultValue="Andhra Pradesh" />
+              </div>
+              <input name="postalCode" className={inputClass} placeholder="Postal code" />
+              <select name="relationshipType" className={inputClass} defaultValue="buyer"><option value="buyer">Buyer</option><option value="owner">Owner</option><option value="renter">Renter</option><option value="tenant">Tenant</option><option value="nominee">Nominee</option></select>
+              <textarea name="notes" rows={3} className={inputClass} placeholder="Evidence available or notes for verification" />
+              <PendingActionButton pendingText="Submitting..." className={buttonClass}>Submit verification request</PendingActionButton>
+            </form>
+            <div className={`${cardClass} overflow-x-auto`}>
+              <h3 className="font-serif text-xl font-semibold text-[#1F2937]">Pending requests</h3>
+              <table className="mt-4 w-full min-w-[620px] text-left text-sm">
+                <thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Request</th><th className="px-3 py-3">Relationship</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Next step</th></tr></thead>
+                <tbody className="divide-y divide-[#F3F4F6]">
+                  {(propertyRequests ?? []).length === 0 ? <tr><td colSpan={4} className="px-3 py-8 text-center text-[#6B7280]">No property link requests yet.</td></tr> : null}
+                  {(propertyRequests ?? []).map((request: any) => <tr key={request.id}><td className="px-3 py-3"><p className="font-semibold text-[#1F2937]">{request.property_title}</p><p className="text-xs text-[#6B7280]">{request.city}, {request.state}</p></td><td className="px-3 py-3 text-[#6B7280]">{request.relationship_type}</td><td className="px-3 py-3">{statusPill(request.status)}</td><td className="px-3 py-3 text-[#6B7280]">{request.review_notes || (request.status === 'approved' ? 'Property access activated.' : 'Upload supporting documents in Document vault.')}</td></tr>)}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )
     }
@@ -279,12 +366,15 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
             <>
               <div className={`${cardClass} grid gap-4`}>
                 <p className="text-sm leading-6 text-[#6B7280]">Required customer documents: Aadhaar, PAN, agreement or registration copy, and current property photos. Every upload enters admin/employee verification.</p>
-                <PropertyDocumentUploadPanel role="customer" properties={propertyOptions} />
+                <PropertyDocumentUploadPanel role="customer" properties={propertyOptions} propertyRequests={documentPropertyRequests} documents={data.documents} />
               </div>
               <PropertyDocumentRecordTable
                 rows={data.documents.map((row) => ({
                   ...row,
-                  linked_label: propertyOptions.find((property) => property.id === row.property_id)?.label || row.property_id || 'Customer record',
+                  linked_label: propertyOptions.find((property) => property.id === row.property_id)?.label ||
+                    documentPropertyRequests.find((request) => request.id === row.property_request_id)?.label ||
+                    row.property_id ||
+                    'Customer record',
                 }))}
                 empty="No documents uploaded yet."
               />
@@ -310,17 +400,9 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
             <input name="subject" required placeholder="Subject" className={inputClass} />
             <textarea name="description" required rows={5} placeholder="Describe what support should resolve." className={inputClass} />
             <select name="priority" className={inputClass} defaultValue="normal"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select>
-            <button type="submit" className={buttonClass}>Open support ticket</button>
+            <PendingActionButton pendingText="Opening..." className={buttonClass}>Open support ticket</PendingActionButton>
           </form>
-          <div className={`${cardClass} overflow-x-auto`}>
-            <table className="w-full min-w-[620px] text-left text-sm">
-              <thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Ticket</th><th className="px-3 py-3">Priority</th><th className="px-3 py-3">Status</th></tr></thead>
-              <tbody className="divide-y divide-[#F3F4F6]">
-                {data.supportTickets.length === 0 ? <tr><td colSpan={3} className="px-3 py-8 text-center text-[#6B7280]">No support tickets yet.</td></tr> : null}
-                {data.supportTickets.map((ticket) => <tr key={ticket.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{ticket.subject}</td><td className="px-3 py-3 text-[#6B7280]">{ticket.priority}</td><td className="px-3 py-3">{statusPill(ticket.status)}</td></tr>)}
-              </tbody>
-            </table>
-          </div>
+          <SupportTicketThreadList tickets={data.supportTickets} replies={supportReplies ?? []} />
         </div>
       </div>
     )
@@ -332,8 +414,15 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
       title="Buyer workspace"
       subtitle="Browse listings, save opportunities, request visits, and manage linked property services."
       userLabel={profile.full_name || profile.email}
+      avatarUrl={profile.avatar_path}
       userId={user.id}
     >
+      {successMessage ? (
+        <p role="status" className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{successMessage}</p>
+      ) : null}
+      {errorMessage ? (
+        <p role="alert" className="mb-6 rounded-lg border border-[#F5C5BF] bg-[#FEF2F2] px-4 py-3 text-sm text-[#A93226]">{errorMessage}</p>
+      ) : null}
       {content}
     </RoleDashboardShell>
   )

@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { updateVerificationStatus } from './actions'
+import { reviewCustomerPropertyRequest, updateVerificationStatus } from './actions'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { ADMIN_TASK_PRIORITIES } from '@/lib/admin/status'
 
@@ -89,6 +90,7 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
     { data: supportTickets },
     { data: notifications },
     { data: employees },
+    { data: propertyLinkRequests },
   ] = await Promise.all([
       supabase
         .from('properties')
@@ -143,6 +145,12 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
         .from('employees')
         .select('id,employee_role,active,profiles(full_name,email)')
         .eq('active', true)
+        .order('created_at', { ascending: false })
+        .limit(50),
+      supabase
+        .from('customer_property_requests')
+        .select('id,property_title,property_kind,address,city,state,relationship_type,status,review_notes,assigned_employee_id,created_at')
+        .neq('status', 'approved')
         .order('created_at', { ascending: false })
         .limit(50),
     ])
@@ -238,7 +246,7 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
   const highPriorityTickets = (supportTickets ?? []).filter((row) => ['high', 'urgent'].includes(row.priority ?? ''))
 
   return (
-    <div className="px-8 pb-12 pt-24">
+    <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#C9A962]">Verification center</p>
@@ -344,6 +352,39 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
       </section>
 
       <section className="mt-8 space-y-6">
+        <div className={cardClass}>
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="font-serif text-2xl font-semibold text-[#1F2937]">Customer property link requests</h2>
+            <span className="rounded-full bg-[#F9FAFB] px-3 py-1 font-mono text-xs text-[#6B7280]">{propertyLinkRequests?.length ?? 0} open</span>
+          </div>
+          <div className="mt-5 divide-y divide-[#E5E7EB]">
+            {(propertyLinkRequests ?? []).length === 0 ? <p className="py-6 text-sm text-[#6B7280]">No property link requests need review.</p> : null}
+            {(propertyLinkRequests ?? []).map((request: any) => (
+              <div key={request.id} className="grid gap-4 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.95fr)]">
+                <div>
+                  <div className="flex flex-wrap items-center gap-3"><p className="font-semibold text-[#1F2937]">{request.property_title}</p>{statusBadge(request.status)}</div>
+                  <p className="mt-2 text-sm text-[#6B7280]">{request.property_kind} · {request.address}, {request.city}, {request.state} · {request.relationship_type}</p>
+                  {request.review_notes ? <p className="mt-2 text-sm text-[#6B7280]">{request.review_notes}</p> : null}
+                </div>
+                <form action={reviewCustomerPropertyRequest} className="grid gap-3">
+                  <input type="hidden" name="requestId" value={request.id} />
+                  <input name="note" className={inputClass} placeholder="Review note or clarification needed" />
+                  <select name="assignedEmployeeId" defaultValue={request.assigned_employee_id ?? ''} className={inputClass}>
+                    <option value="">No reviewer</option>
+                    {employeeOptions.map((employee) => <option key={employee.id} value={employee.id}>{employee.label}</option>)}
+                  </select>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {['under_review', 'approved', 'rejected', 'needs_clarification'].map((status) => (
+                      <PendingActionButton key={status} pendingText="Saving..." name="status" value={status} className="rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-xs font-semibold text-[#374151] transition hover:border-[#C0392B] hover:text-[#C0392B]">
+                        {formatStatus(status)}
+                      </PendingActionButton>
+                    ))}
+                  </div>
+                </form>
+              </div>
+            ))}
+          </div>
+        </div>
         <VerificationSection
           title="Properties"
           empty="No properties need review."
@@ -479,38 +520,38 @@ function VerificationSection({
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <button
-                  type="submit"
+                <PendingActionButton
+                  pendingText="Updating..."
                   name="status"
                   value="under_review"
                   className="rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-xs font-semibold text-[#374151] transition hover:border-[#C0392B] hover:text-[#C0392B]"
                 >
                   Review
-                </button>
-                <button
-                  type="submit"
+                </PendingActionButton>
+                <PendingActionButton
+                  pendingText="Updating..."
                   name="status"
                   value="needs_clarification"
                   className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
                 >
                   Clarify
-                </button>
-                <button
-                  type="submit"
+                </PendingActionButton>
+                <PendingActionButton
+                  pendingText="Updating..."
                   name="status"
                   value="rejected"
                   className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
                 >
                   Reject
-                </button>
-                <button
-                  type="submit"
+                </PendingActionButton>
+                <PendingActionButton
+                  pendingText="Updating..."
                   name="status"
                   value="approved"
                   className="rounded-lg bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#A93226]"
                 >
                   Approve
-                </button>
+                </PendingActionButton>
               </div>
             </form>
           </div>

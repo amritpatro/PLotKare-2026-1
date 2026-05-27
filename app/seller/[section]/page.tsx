@@ -4,8 +4,10 @@ import { AmenityCatalogRequestGrid } from '@/components/amenities/amenity-catalo
 import { AmenityWorkflowTable } from '@/components/amenities/amenity-workflow-table'
 import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
 import { PropertyDocumentUploadPanel } from '@/components/documents/property-document-upload-panel'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
+import { SupportTicketThreadList } from '@/components/support/support-ticket-thread-list'
 import { readAmenityWorkflowRows } from '@/lib/amenity-operations'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
@@ -15,12 +17,40 @@ type Section = (typeof allowedSections)[number]
 
 type PageProps = {
   params: Promise<{ section: string }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass =
   'w-full rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
 const buttonClass = 'rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#A93226] disabled:cursor-not-allowed disabled:opacity-50'
+
+const actionMessages = {
+  success: {
+    plot_created: 'Plot submitted for verification.',
+    customer_linked: 'Customer linked to the selected property.',
+    service_requested: 'Service request sent to PlotKare operations.',
+    support_ticket_created: 'Support ticket opened for operations follow-up.',
+    amenity_requested: 'Amenity consultation request submitted.',
+  },
+  error: {
+    invalid_plot_form: 'Complete the required plot details and try again.',
+    invalid_customer_form: 'Complete the customer details and select a property.',
+    invalid_service_form: 'Select a property and describe the required service.',
+    invalid_support_form: 'Add a subject and description for support.',
+    invalid_amenity_form: 'Select a plot and amenity before submitting.',
+    plot_save_failed: 'The plot could not be saved. Please retry.',
+    customer_link_failed: 'The customer could not be linked. Please retry.',
+    service_request_failed: 'The service request could not be created.',
+    support_ticket_failed: 'The support ticket could not be created.',
+    amenity_request_failed: 'The amenity request could not be created.',
+  },
+} as const
+
+function searchParam(params: Record<string, string | string[] | undefined>, key: string) {
+  const value = params[key]
+  return Array.isArray(value) ? value[0] : value
+}
 
 function formatDate(value: string | null | undefined) {
   if (!value) return 'Pending'
@@ -49,9 +79,14 @@ function SectionTitle({ eyebrow, title, body }: { eyebrow: string; title: string
   )
 }
 
-export default async function SellerSectionPage({ params }: PageProps) {
+export default async function SellerSectionPage({ params, searchParams }: PageProps) {
   const { section } = await params
   if (!allowedSections.includes(section as Section)) notFound()
+  const query = (await searchParams) ?? {}
+  const successCode = searchParam(query, 'success') as keyof typeof actionMessages.success | undefined
+  const errorCode = searchParam(query, 'error') as keyof typeof actionMessages.error | undefined
+  const successMessage = successCode ? actionMessages.success[successCode] : null
+  const errorMessage = errorCode ? actionMessages.error[errorCode] : null
 
   const { user, profile } = await requirePageRole(['plot_seller', 'admin'])
   const supabase = await createSupabaseServerClient()
@@ -71,17 +106,17 @@ export default async function SellerSectionPage({ params }: PageProps) {
       sellerId ? supabase.from('customer_property_links').select('id,property_id,customer_id,status,relationship_type,registration_date').eq('seller_id', sellerId) : Promise.resolve({ data: [] }),
       sellerId ? supabase.from('listings').select('id,property_id,plot_id,plot_number,location,status,approval_status,is_published,verified_at,published_at,inquiries_count').eq('seller_id', sellerId).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
       supabase.from('maintenance_requests').select('id,property_id,title,priority,status,created_at').eq('requester_id', user.id).order('created_at', { ascending: false }).limit(100),
-      supabase.from('support_tickets').select('id,property_id,subject,priority,status,created_at').eq('requester_id', user.id).order('created_at', { ascending: false }).limit(100),
+      supabase.from('support_tickets').select('id,ticket_reference,property_id,subject,description,category,priority,status,created_at').eq('requester_id', user.id).order('created_at', { ascending: false }).limit(100),
       supabase.from('notifications').select('id,title,message,category,read_at,created_at').eq('recipient_id', user.id).order('created_at', { ascending: false }).limit(100),
       supabase.from('plans').select('id,name,price_monthly,active').eq('audience_role', 'plot_seller').eq('active', true).order('price_monthly', { ascending: true }),
-      supabase.from('amenities').select('id,name,category,kind,amount,active').eq('active', true).order('category', { ascending: true }).order('name', { ascending: true }),
+      supabase.from('amenities').select('id,name,category,kind,amount,image_path,active').eq('active', true).order('category', { ascending: true }).order('name', { ascending: true }),
     ])
 
   const propertyRows = properties ?? []
   const { data: documents } = sellerId && propertyRows.length
     ? await supabase
         .from('property_documents')
-        .select('id,title,document_type,verification_status,visibility,property_id,created_at')
+        .select('id,title,document_type,verification_status,visibility,property_id,created_at,category,requirement_level,description,review_reason,mime_type,size_bytes,reviewed_at,withdrawal_requested_at')
         .in('property_id', propertyRows.map((item: any) => item.id))
         .order('created_at', { ascending: false })
     : { data: [] }
@@ -95,6 +130,14 @@ export default async function SellerSectionPage({ params }: PageProps) {
     : []
   const serviceRows = services ?? []
   const ticketRows = tickets ?? []
+  const { data: supportReplies } = section === 'support' && ticketRows.length
+    ? await supabase
+        .from('ticket_replies')
+        .select('id,ticket_id,body,visibility,created_at')
+        .in('ticket_id', ticketRows.map((ticket: any) => ticket.id))
+        .eq('visibility', 'public')
+        .order('created_at', { ascending: true })
+    : { data: [] }
   const notificationRows = notifications ?? []
 
   const content = (() => {
@@ -110,7 +153,7 @@ export default async function SellerSectionPage({ params }: PageProps) {
               <input name="sqYards" required type="number" min="50" placeholder="Sq. yards" className={inputClass} />
               <select name="facing" className={inputClass} defaultValue="East"><option>East</option><option>West</option><option>North</option><option>South</option></select>
               <input name="priceLakhs" type="number" min="0" step="0.1" placeholder="Expected value in lakhs" className={inputClass} />
-              <button className={buttonClass}>Submit plot for verification</button>
+              <PendingActionButton className={buttonClass} pendingText="Submitting...">Submit plot for verification</PendingActionButton>
             </form>
             <div className={`${cardClass} overflow-x-auto`}>
               <table className="w-full min-w-[980px] text-left text-sm">
@@ -144,7 +187,7 @@ export default async function SellerSectionPage({ params }: PageProps) {
                 {propertyRows.filter((property: any) => property.lifecycle_status !== 'sold').map((property: any) => <option key={property.id} value={property.id}>{property.title || property.city || property.id}</option>)}
               </select>
               <input name="registrationDate" type="date" className={inputClass} />
-              <button className={buttonClass} disabled={propertyRows.length === 0}>Link customer to property</button>
+              <PendingActionButton className={buttonClass} pendingText="Linking..." disabled={propertyRows.length === 0}>Link customer to property</PendingActionButton>
             </form>
             <div className={`${cardClass} overflow-x-auto`}>
               <table className="w-full min-w-[1040px] text-left text-sm">
@@ -193,6 +236,7 @@ export default async function SellerSectionPage({ params }: PageProps) {
                 <PropertyDocumentUploadPanel
                   role="seller"
                   properties={propertyRows.map((property: any) => ({ id: property.id, label: property.title || property.city || property.id }))}
+                  documents={documentRows}
                 />
               </div>
               <PropertyDocumentRecordTable
@@ -219,7 +263,7 @@ export default async function SellerSectionPage({ params }: PageProps) {
               <input name="title" required placeholder="Service request title" className={inputClass} />
               <textarea name="description" rows={5} placeholder="Describe the work needed" className={inputClass} />
               <select name="priority" className={inputClass} defaultValue="normal"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select>
-              <button className={buttonClass} disabled={propertyRows.length === 0}>Create service request</button>
+              <PendingActionButton className={buttonClass} pendingText="Creating..." disabled={propertyRows.length === 0}>Create service request</PendingActionButton>
             </form>
             <div className={`${cardClass} overflow-x-auto`}>
               <table className="w-full min-w-[820px] text-left text-sm">
@@ -245,17 +289,9 @@ export default async function SellerSectionPage({ params }: PageProps) {
             <input name="subject" required placeholder="Subject" className={inputClass} />
             <textarea name="description" required rows={5} placeholder="Describe the support issue" className={inputClass} />
             <select name="priority" className={inputClass} defaultValue="normal"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select>
-            <button className={buttonClass}>Open support ticket</button>
+            <PendingActionButton className={buttonClass} pendingText="Opening...">Open support ticket</PendingActionButton>
           </form>
-          <div className={`${cardClass} overflow-x-auto`}>
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Ticket</th><th className="px-3 py-3">Priority</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Date</th></tr></thead>
-              <tbody className="divide-y divide-[#F3F4F6]">
-                {ticketRows.length === 0 ? <tr><td colSpan={4} className="px-3 py-10 text-center text-[#6B7280]">No support tickets yet.</td></tr> : null}
-                {ticketRows.map((ticket: any) => <tr key={ticket.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{ticket.subject}</td><td className="px-3 py-3 text-[#6B7280]">{ticket.priority}</td><td className="px-3 py-3">{badge(ticket.status)}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(ticket.created_at)}</td></tr>)}
-              </tbody>
-            </table>
-          </div>
+          <SupportTicketThreadList tickets={ticketRows} replies={supportReplies ?? []} />
         </div>
       </div>
     )
@@ -267,8 +303,19 @@ export default async function SellerSectionPage({ params }: PageProps) {
       title={seller?.company_name || 'Seller operations'}
       subtitle="Manage plots, sold customers, verification state, and service requests."
       userLabel={profile.full_name || profile.email}
+      avatarUrl={profile.avatar_path}
       userId={user.id}
     >
+      {successMessage ? (
+        <div role="status" className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {successMessage}
+        </div>
+      ) : null}
+      {errorMessage ? (
+        <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage}
+        </div>
+      ) : null}
       {content}
     </RoleDashboardShell>
   )

@@ -2,7 +2,7 @@
 export function getSiteUrl(): string {
   const env = process.env.NEXT_PUBLIC_SITE_URL?.trim()
   if (env) return env.replace(/\/$/, '')
-  return 'https://plotkare.in'
+  return 'https://webpage-rho-dusky.vercel.app'
 }
 
 export function withBasePath(path: string): string {

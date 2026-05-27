@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { updateEmployeeTask } from './actions'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { ADMIN_EMPLOYEE_ROLES, ADMIN_TASK_PRIORITIES, ADMIN_TASK_STATUSES } from '@/lib/admin/status'
 
@@ -226,7 +227,7 @@ export default async function AdminEmployeesPage({ searchParams }: PageProps) {
   }))
 
   return (
-    <div className="px-8 pb-12 pt-24">
+    <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#C9A962]">Workforce control</p>
@@ -419,12 +420,12 @@ export default async function AdminEmployeesPage({ searchParams }: PageProps) {
                             defaultValue={inputDateValue(task.due_at)}
                             className="rounded-md border border-[#D1D5DB] bg-white px-2 py-2 text-xs text-[#1F2937]"
                           />
-                          <button
-                            type="submit"
+                          <PendingActionButton
+                            pendingText="Updating..."
                             className="rounded-md bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white hover:bg-[#A93226]"
                           >
                             Update
-                          </button>
+                          </PendingActionButton>
                         </form>
                       </td>
                     </tr>

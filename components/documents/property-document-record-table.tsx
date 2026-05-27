@@ -3,11 +3,20 @@ type PropertyDocumentRecord = {
   title: string
   document_type: string | null
   verification_status: string | null
+  category?: string | null
+  requirement_level?: string | null
+  description?: string | null
+  review_reason?: string | null
+  mime_type?: string | null
+  size_bytes?: number | null
+  reviewed_at?: string | null
   property_id?: string | null
+  property_request_id?: string | null
   created_at: string | null
   priority?: string | null
   due_at?: string | null
   linked_label?: string | null
+  uploader_label?: string | null
 }
 
 function formatDate(value: string | null | undefined) {
@@ -17,6 +26,11 @@ function formatDate(value: string | null | undefined) {
 
 function statusLabel(value: string | null | undefined) {
   return String(value ?? 'submitted').replaceAll('_', ' ')
+}
+
+function formatSize(value: number | null | undefined) {
+  if (!value) return 'Pending'
+  return value < 1024 * 1024 ? `${Math.ceil(value / 1024)} KB` : `${(value / (1024 * 1024)).toFixed(2)} MB`
 }
 
 export function PropertyDocumentRecordTable({
@@ -53,8 +67,16 @@ export function PropertyDocumentRecordTable({
           ) : null}
           {rows.map((document) => (
             <tr key={document.id} className="align-top">
-              <td className="px-3 py-3 font-semibold text-[#1F2937]">{document.title}</td>
-              <td className="px-3 py-3 text-[#6B7280]">{document.document_type || 'document'}</td>
+              <td className="px-3 py-3">
+                <p className="font-semibold text-[#1F2937]">{document.title}</p>
+                <p className="mt-1 text-xs text-[#6B7280]">{document.category || 'Documents'} · {document.requirement_level || 'optional'}</p>
+                {document.uploader_label ? <p className="mt-1 text-xs text-[#6B7280]">Submitted by {document.uploader_label}</p> : null}
+                {document.review_reason ? <p className="mt-2 max-w-[280px] text-xs text-[#A93226]">{document.review_reason}</p> : null}
+              </td>
+              <td className="px-3 py-3 text-[#6B7280]">
+                <p>{document.document_type || 'document'}</p>
+                <p className="mt-1 text-xs">{document.mime_type || 'File'} · {formatSize(document.size_bytes)}</p>
+              </td>
               <td className="px-3 py-3">
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#6B7280]">
@@ -77,7 +99,10 @@ export function PropertyDocumentRecordTable({
                   ) : null}
                 </td>
               ) : null}
-              <td className="px-3 py-3 text-[#6B7280]">{formatDate(document.created_at)}</td>
+              <td className="px-3 py-3 text-[#6B7280]">
+                {formatDate(document.created_at)}
+                {document.reviewed_at ? <p className="mt-1 text-xs">Reviewed {formatDate(document.reviewed_at)}</p> : null}
+              </td>
               <td className="px-3 py-3">
                 <div className="flex flex-wrap gap-2">
                   <a

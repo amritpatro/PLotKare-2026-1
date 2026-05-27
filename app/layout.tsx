@@ -35,14 +35,14 @@ const shouldLoadVercelAnalytics = process.env.NODE_ENV === 'production' && proce
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: `${SITE_NAME} — Property Asset Management in India`,
+    default: `Plot Management and Property Monitoring Services | ${SITE_NAME}`,
     template: `%s | ${SITE_NAME}`,
   },
   description:
-    'Protect, track, grow, and trade property assets with PlotKare: inspections, documents, 3D visualization, value tracking, services, and verified listings.',
+    'Monthly plot inspections, document tracking, and verified marketplace visibility for landowners across India. Book a free consultation.',
   keywords: [
-    'property asset management India',
-    'plot protection services India',
+    'plot management services India',
+    'property monitoring services India',
     'vacant land monitoring',
     'apartment management service',
     '3D property visualization',
@@ -55,9 +55,9 @@ export const metadata: Metadata = {
     locale: 'en_IN',
     url: canonicalPageUrl('/'),
     siteName: SITE_NAME,
-    title: `${SITE_NAME} — Property Asset Management in India`,
+    title: `Plot Management and Property Monitoring Services | ${SITE_NAME}`,
     description:
-      'Inspection-first monitoring, legal document hygiene, 3D visualization, and resale-ready evidence for plots, apartments, flats, and land assets.',
+      'Monthly plot inspections, document tracking, and verified marketplace visibility for landowners across India.',
     images: [
       {
         url: defaultOgImage,
@@ -69,9 +69,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${SITE_NAME} — Property Asset Management in India`,
+    title: `Plot Management and Property Monitoring Services | ${SITE_NAME}`,
     description:
-      'Inspection-first monitoring, legal document hygiene, 3D visualization, and resale-ready evidence for plots, apartments, flats, and land assets.',
+      'Monthly plot inspections, document tracking, and verified marketplace visibility for landowners across India.',
     images: [defaultOgImage],
   },
   alternates: {

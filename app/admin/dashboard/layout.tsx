@@ -13,7 +13,7 @@ export default async function AdminDashboardLayout({
     <div className="min-h-screen bg-[#F9FAFB]">
       <AdminRealtimeBridge userId={user.id} />
       <AdminSidebar />
-      <div className="ml-64 min-h-screen">{children}</div>
+      <div className="min-h-screen pb-16 md:ml-64 md:pb-0">{children}</div>
     </div>
   )
 }

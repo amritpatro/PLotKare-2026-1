@@ -17,6 +17,10 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: SITE_NAME,
   },
+  robots: {
+    index: false,
+    follow: true,
+  },
 }
 
 export default function Plot3DDemoPage() {

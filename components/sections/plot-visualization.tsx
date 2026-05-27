@@ -17,7 +17,15 @@ const stats = [
 const mappedPlotNumbers = new Set<number>(getMappedPlotNumbers())
 const quickPlots = [18, 35, 54, 72, 90, 108, 118, 121, 122].filter((plot) => mappedPlotNumbers.has(plot))
 
-export function PlotVisualizationSection() {
+export function PlotVisualizationSection({
+  heading = 'Real Plot Layout:',
+  accentHeading = '3D Property File for Every Owner',
+  description = 'Source-mapped layout geometry, road linework, plot counts, and area data form an owner-facing digital snapshot with facing, access, size, and current review status.',
+}: {
+  heading?: string
+  accentHeading?: string
+  description?: string
+}) {
   const [selectedPlot, setSelectedPlot] = useState(54)
   const selectedProfile = useMemo(() => getPlotProfile(selectedPlot), [selectedPlot])
 
@@ -32,14 +40,12 @@ export function PlotVisualizationSection() {
             transition={{ duration: 0.55 }}
           >
             <h2 className="font-serif text-4xl font-bold leading-tight text-foreground md:text-5xl">
-              Real Plot Layout Intelligence
+              {heading}
               <br />
-              <span className="text-primary">A 3D Property File for Every Owner.</span>
+              <span className="text-primary">{accentHeading}</span>
             </h2>
             <p className="mt-6 max-w-md font-sans text-lg leading-relaxed text-muted-foreground">
-              The placeholder plot view has been replaced with source-mapped layout geometry, road linework, plot
-              counts, and area data. Each trusted plot marker becomes an owner-ready digital snapshot with facing,
-              access, size, and current status.
+              {description}
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <div className="flex items-center gap-2">

@@ -15,7 +15,21 @@ const pillars = [
   { title: 'Trade', label: 'Verified marketplace' },
 ]
 
-export function HeroSection() {
+export function HeroSection({
+  heading = 'Manage, Monitor, and Protect Your Plot From Anywhere in India',
+  description = 'PlotKare is a property operations platform for Indian landowners who cannot personally watch their plots. Field inspections, document tracking, issue reporting, and a verified marketplace come together in one platform, whether you own one plot or a portfolio. Starting from Visakhapatnam, expanding across India.',
+  primaryLabel = 'See Real Plot Layout',
+  secondaryLabel = 'Register My Plot',
+  supportingLink,
+  quickAnswer,
+}: {
+  heading?: string
+  description?: string
+  primaryLabel?: string
+  secondaryLabel?: string
+  supportingLink?: { href: string; label: string }
+  quickAnswer?: string
+}) {
   return (
     <section className="premium-hero relative isolate min-h-screen overflow-hidden bg-white pt-20">
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(110deg,#ffffff_0%,#ffffff_44%,#f8f6f3_100%)]" />
@@ -25,27 +39,38 @@ export function HeroSection() {
       <div className="mx-auto grid min-h-[calc(100svh-5rem)] max-w-[1500px] gap-10 px-6 py-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(460px,1.08fr)] lg:items-center lg:px-12 lg:py-16">
         <div className="min-w-0 text-[#1a1a1a]">
           <h1 className="max-w-4xl font-serif text-5xl font-bold leading-[1.02] tracking-tight md:text-6xl xl:text-7xl">
-            Protect, Track, Grow, and Trade Property Assets
+            {heading}
           </h1>
 
           <p className="mt-7 max-w-2xl font-sans text-lg leading-relaxed text-[#5f5f5f] md:text-xl">
-            PlotKare starts from Visakhapatnam and is built to scale across India for anyone who owns a vacant plot,
-            apartment, flat, or land asset. Field evidence, documents, value signals, optional services, and verified
-            listings come together in one digital property layer.
+            {description}
           </p>
+          {supportingLink ? (
+            <Link
+              href={supportingLink.href}
+              className="mt-4 inline-flex font-sans text-sm font-medium text-[#8B1538] underline-offset-4 hover:underline"
+            >
+              {supportingLink.label}
+            </Link>
+          ) : null}
+          {quickAnswer ? (
+            <p className="premium-surface mt-6 max-w-2xl rounded-lg border border-border bg-white/75 p-5 font-sans text-sm leading-relaxed text-[#5f5f5f]">
+              {quickAnswer}
+            </p>
+          ) : null}
 
           <div className="mt-9 flex flex-wrap gap-4">
             <Link
               href="/demo/plot-3d/"
               className="premium-button inline-flex min-h-12 items-center justify-center rounded-sm bg-[#8B1538] px-7 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-[#75112f] md:text-base"
             >
-              View Land Viewer
+              {primaryLabel}
             </Link>
             <Link
               href="/signup/?intent=add-property"
               className="premium-button-outline inline-flex min-h-12 items-center justify-center rounded-sm border border-[#1a1a1a] bg-white/70 px-7 py-3.5 font-sans text-sm font-semibold text-[#1a1a1a] transition-colors hover:bg-[#1a1a1a] hover:text-white md:text-base"
             >
-              Add My Property
+              {secondaryLabel}
             </Link>
           </div>
 

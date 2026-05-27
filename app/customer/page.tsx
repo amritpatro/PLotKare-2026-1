@@ -26,6 +26,7 @@ export default async function CustomerDashboardPage({ searchParams }: CustomerDa
       title="Buyer workspace"
       subtitle="Browse listings, save opportunities, request visits, and manage linked property services."
       userLabel={profileLabel}
+      avatarUrl={profile.avatar_path}
       userId={user.id}
     >
       <CustomerWorkspace

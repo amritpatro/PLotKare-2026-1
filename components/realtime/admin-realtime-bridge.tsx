@@ -14,6 +14,7 @@ const adminTables = [
   'employee_work_logs',
   'property_documents',
   'active_amenities',
+  'customer_property_requests',
 ] as const
 
 export function AdminRealtimeBridge({ userId }: { userId: string }) {

@@ -28,6 +28,19 @@ const workUpdateSchema = z.object({
   itemId: z.string().uuid(),
   status: z.string().trim().min(2),
   note: optionalNote,
+  returnSection: z.enum(['support', 'operations']).optional().default('operations'),
+})
+
+const supportReplySchema = z.object({
+  ticketId: z.string().uuid(),
+  visibility: z.enum(['public', 'internal']),
+  body: z.string().trim().min(2).max(2400),
+})
+
+const propertyLinkReviewSchema = z.object({
+  requestId: z.string().uuid(),
+  status: z.enum(['under_review', 'approved', 'rejected', 'needs_clarification']),
+  note: optionalNote,
 })
 
 const verificationUpdateSchema = z.object({
@@ -36,6 +49,7 @@ const verificationUpdateSchema = z.object({
   entityId: z.string().uuid(),
   status: z.enum(ADMIN_VERIFICATION_STATUSES),
   note: optionalNote,
+  returnSection: z.enum(['verification', 'documents']).optional().default('verification'),
 })
 
 const amenityReviewStatuses = ['requested', 'under_review', 'approved', 'rejected', 'scheduled', 'completed'] as const
@@ -250,13 +264,14 @@ export async function updateAssignedWorkItem(formData: FormData) {
     itemId: formData.get('itemId'),
     status: formData.get('status'),
     note: formData.get('note') ?? undefined,
+    returnSection: formData.get('returnSection') ?? undefined,
   })
 
   if (!parsed.success) employeeRedirect('error', 'invalid_work_update', 'operations')
 
   const allowedStatuses: readonly string[] = workStatusByKind[parsed.data.kind]
   if (!allowedStatuses.includes(parsed.data.status)) {
-    employeeRedirect('error', 'invalid_work_update', 'operations')
+    employeeRedirect('error', 'invalid_work_update', parsed.data.returnSection)
   }
 
   let itemId: string | null = null
@@ -333,12 +348,194 @@ export async function updateAssignedWorkItem(formData: FormData) {
     failure = 'work_update_failed'
   }
 
-  if (failure || !itemId) employeeRedirect('error', failure ?? 'work_update_failed', 'operations')
+  if (failure || !itemId) employeeRedirect('error', failure ?? 'work_update_failed', parsed.data.returnSection)
 
   revalidatePath('/employee')
   revalidatePath('/admin/dashboard/employees')
   revalidatePath('/admin/dashboard')
-  employeeRedirect('success', 'work_updated', 'operations')
+  employeeRedirect('success', 'work_updated', parsed.data.returnSection)
+}
+
+export async function replyToAssignedSupportTicket(formData: FormData) {
+  const parsed = supportReplySchema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) employeeRedirect('error', 'invalid_support_reply', 'support')
+
+  try {
+    const context = await getEmployeeContext()
+    const { supabase, user, employee } = context
+    if (employee.employee_role !== 'support_staff') throw new Error('Only support staff may reply to tickets.')
+
+    const { data: ticket, error } = await supabase
+      .from('support_tickets')
+      .select('id,requester_id,subject,assigned_employee_id')
+      .eq('id', parsed.data.ticketId)
+      .eq('assigned_employee_id', employee.id)
+      .maybeSingle()
+    if (error || !ticket) throw new Error('Assigned ticket not found.')
+
+    const { error: replyError } = await supabase.from('ticket_replies').insert({
+      ticket_id: ticket.id,
+      author_id: user.id,
+      body: parsed.data.body,
+      visibility: parsed.data.visibility,
+    })
+    if (replyError) throw replyError
+
+    if (parsed.data.visibility === 'public' && ticket.requester_id) {
+      await supabase.from('notifications').insert({
+        recipient_id: ticket.requester_id,
+        actor_id: user.id,
+        title: 'Support reply posted',
+        message: `${ticket.subject} has a new PlotKare response.`,
+        category: 'support',
+        metadata: { ticket_id: ticket.id },
+      })
+    }
+
+    await createEmployeeWorkLog(context, {
+      entityType: 'support_ticket',
+      entityId: ticket.id,
+      action: `ticket_reply_${parsed.data.visibility}`,
+      note: parsed.data.visibility === 'internal' ? parsed.data.body : null,
+    })
+    await recordAuditLog({
+      actorId: user.id,
+      action: `employee.support_ticket.reply_${parsed.data.visibility}`,
+      entityType: 'support_ticket',
+      entityId: ticket.id,
+    })
+  } catch (error) {
+    console.error('Employee support reply failed:', error)
+    employeeRedirect('error', 'support_reply_failed', 'support')
+  }
+
+  revalidatePath('/employee/support')
+  revalidatePath('/admin/dashboard/support')
+  revalidatePath('/seller/support')
+  revalidatePath('/owner/support')
+  revalidatePath('/customer/support')
+  employeeRedirect('success', 'support_replied', 'support')
+}
+
+export async function reviewAssignedPropertyLinkRequest(formData: FormData) {
+  const parsed = propertyLinkReviewSchema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) employeeRedirect('error', 'invalid_verification_update', 'verification')
+
+  try {
+    const context = await getEmployeeContext()
+    const { supabase, user, employee } = context
+    if (employee.employee_role !== 'verification_agent') {
+      throw new Error('Only verification agents may review property link requests.')
+    }
+
+    const { data: request, error } = await supabase
+      .from('customer_property_requests')
+      .select('id,customer_id,requester_id,property_kind,property_title,address,city,state,postal_code,relationship_type,status,linked_property_id,assigned_employee_id')
+      .eq('id', parsed.data.requestId)
+      .eq('assigned_employee_id', employee.id)
+      .maybeSingle()
+    if (error || !request) throw new Error('Assigned property link request not found.')
+
+    let linkedPropertyId = request.linked_property_id as string | null
+    if (parsed.data.status === 'approved' && !linkedPropertyId) {
+      const { data: property, error: propertyError } = await supabase
+        .from('properties')
+        .insert({
+          property_kind: request.property_kind === 'apartment' ? 'apartment' : 'plot',
+          title: request.property_title,
+          address: request.address,
+          city: request.city,
+          state: request.state,
+          postal_code: request.postal_code,
+          current_customer_id: request.customer_id,
+          lifecycle_status: 'managed',
+          verification_status: 'approved',
+          created_by: request.requester_id,
+        })
+        .select('id')
+        .single()
+      if (propertyError || !property) throw new Error('Verified property could not be created.')
+      linkedPropertyId = property.id
+
+      const { error: linkError } = await supabase.from('customer_property_links').upsert({
+        customer_id: request.customer_id,
+        property_id: property.id,
+        relationship_type: request.relationship_type,
+        status: 'active',
+        created_by: user.id,
+      }, { onConflict: 'customer_id,property_id,relationship_type' })
+      if (linkError) throw linkError
+    }
+
+    const { error: updateError } = await supabase
+      .from('customer_property_requests')
+      .update({
+        status: parsed.data.status,
+        linked_property_id: linkedPropertyId,
+        review_notes: parsed.data.note ?? null,
+        reviewed_by: user.id,
+        reviewed_at: nowIso(),
+      })
+      .eq('id', request.id)
+      .eq('assigned_employee_id', employee.id)
+    if (updateError) throw updateError
+
+    await upsertVerificationRequest(supabase, {
+      entityType: 'property_link_request',
+      entityId: request.id,
+      requesterId: request.requester_id,
+      assignedEmployeeId: employee.id,
+      status: parsed.data.status,
+      adminNotes: parsed.data.note ?? null,
+      metadata: { source: 'employee_property_link_review', linked_property_id: linkedPropertyId },
+    })
+
+    const { error: eventError } = await supabase.from('verification_events').insert({
+      entity_type: 'property_link_request',
+      entity_id: request.id,
+      previous_status: request.status,
+      new_status: parsed.data.status,
+      actor_id: user.id,
+      assigned_employee_id: employee.id,
+      note: parsed.data.note ?? null,
+      metadata: { source: 'employee_property_link_review', linked_property_id: linkedPropertyId },
+    })
+    if (eventError) throw eventError
+
+    await supabase.from('notifications').insert({
+      recipient_id: request.requester_id,
+      actor_id: user.id,
+      title: 'Property link request updated',
+      message: `${request.property_title} is now ${parsed.data.status.replaceAll('_', ' ')}.`,
+      category: 'verification',
+      metadata: { request_id: request.id, property_id: linkedPropertyId },
+    })
+
+    await createEmployeeWorkLog(context, {
+      entityType: 'customer_property_request',
+      entityId: request.id,
+      action: `property_link_request_${parsed.data.status}`,
+      previousStatus: request.status,
+      newStatus: parsed.data.status,
+      note: parsed.data.note,
+      metadata: { linked_property_id: linkedPropertyId },
+    })
+    await recordAuditLog({
+      actorId: user.id,
+      action: `employee.property_link_request.${parsed.data.status}`,
+      entityType: 'property_link_request',
+      entityId: request.id,
+      metadata: { assigned_employee_id: employee.id, linked_property_id: linkedPropertyId, note: parsed.data.note ?? null },
+    })
+  } catch (error) {
+    console.error('Employee property link review failed:', error)
+    employeeRedirect('error', 'verification_update_failed', 'verification')
+  }
+
+  revalidatePath('/employee/verification')
+  revalidatePath('/admin/dashboard/verification')
+  revalidatePath('/customer/properties')
+  employeeRedirect('success', 'verification_updated', 'verification')
 }
 
 export async function updateAssignedVerificationStatus(formData: FormData) {
@@ -348,6 +545,7 @@ export async function updateAssignedVerificationStatus(formData: FormData) {
     entityId: formData.get('entityId'),
     status: formData.get('status'),
     note: formData.get('note') ?? undefined,
+    returnSection: formData.get('returnSection') ?? undefined,
   })
 
   if (!parsed.success) employeeRedirect('error', 'invalid_verification_update', 'verification')
@@ -390,6 +588,11 @@ export async function updateAssignedVerificationStatus(formData: FormData) {
       assigned_employee_id: employee.id,
     }
     if (parsed.data.note) updatePayload.admin_notes = parsed.data.note
+    if (parsed.data.entityType === 'document') {
+      updatePayload.review_reason = parsed.data.note ?? null
+      updatePayload.reviewed_by = user.id
+      updatePayload.reviewed_at = nowIso()
+    }
 
     const { error: targetError } = await supabase.from(table).update(updatePayload).eq('id', parsed.data.entityId)
     if (targetError) throw targetError
@@ -473,20 +676,35 @@ export async function updateAssignedVerificationStatus(formData: FormData) {
       },
     })
 
+    if (parsed.data.entityType === 'document') {
+      const { data: document } = await supabase.from('property_documents').select('uploaded_by,title').eq('id', parsed.data.entityId).maybeSingle()
+      if (document?.uploaded_by) {
+        await supabase.from('notifications').insert({
+          recipient_id: document.uploaded_by,
+          actor_id: user.id,
+          title: 'Document review updated',
+          message: `${document.title || 'Document'} is now ${parsed.data.status.replaceAll('_', ' ')}.`,
+          category: 'verification',
+          metadata: { document_id: parsed.data.entityId, status: parsed.data.status },
+        })
+      }
+    }
+
     requestId = request.id
   } catch (error) {
     console.error('Employee verification update failed:', error)
     failure = 'verification_update_failed'
   }
 
-  if (failure || !requestId) employeeRedirect('error', failure ?? 'verification_update_failed', 'verification')
+  if (failure || !requestId) employeeRedirect('error', failure ?? 'verification_update_failed', parsed.data.returnSection)
 
   revalidatePath('/employee')
+  revalidatePath('/employee/documents')
   revalidatePath('/employee/verification')
   revalidatePath('/admin/dashboard')
   revalidatePath('/admin/dashboard/verification')
   revalidatePath('/admin/dashboard/listings')
-  employeeRedirect('success', 'verification_updated', 'verification')
+  employeeRedirect('success', 'verification_updated', parsed.data.returnSection)
 }
 
 function taskStatusFromAmenityReview(reviewStatus: (typeof amenityReviewStatuses)[number]) {

@@ -8,11 +8,11 @@ import { getCorridorSlugs } from '@/lib/corridor-pages'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date()
-  const core = ['/', '/listings/', '/blog/', '/demo/plot-3d/', '/privacy/', '/terms/', '/refund/', '/support/'].map((path) => ({
+  const core = ['/', '/visakhapatnam/', '/listings/', '/blog/', '/privacy/', '/terms/', '/refund/', '/support/'].map((path) => ({
     url: canonicalPageUrl(path),
     lastModified,
     changeFrequency: 'weekly' as const,
-    priority: path === '/' ? 1 : 0.8,
+    priority: path === '/' ? 1 : path === '/visakhapatnam/' ? 0.95 : 0.8,
   }))
 
   const posts = getAllSlugs().map((slug) => ({

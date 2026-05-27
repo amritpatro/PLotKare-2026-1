@@ -1,4 +1,5 @@
 import { assignUserRole, updateAccountStatus } from './actions'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { ADMIN_ACCOUNT_STATUSES, ADMIN_EMPLOYEE_ROLES, ADMIN_USER_ROLES } from '@/lib/admin/status'
 
@@ -108,7 +109,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   }))
 
   return (
-    <div className="px-8 pb-12 pt-24">
+    <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
       <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#C9A962]">User management</p>
       <h1 className="mt-3 font-serif text-3xl font-bold text-[#1F2937]">Profiles & Roles</h1>
       <p className="mt-2 max-w-3xl font-sans text-sm leading-6 text-[#6B7280]">
@@ -266,9 +267,9 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                             placeholder="Internal role note"
                             className="mt-2 w-full rounded-md border border-[#D1D5DB] bg-white px-2 py-2 text-xs text-[#1F2937]"
                           />
-                          <button className="mt-2 w-full rounded-md bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white" type="submit">
+                          <PendingActionButton pendingText="Updating..." className="mt-2 w-full rounded-md bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white">
                             Update role
-                          </button>
+                          </PendingActionButton>
                         </form>
 
                         <form action={updateAccountStatus} className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3">
@@ -290,9 +291,9 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                             placeholder="Internal status note"
                             className="mt-2 w-full rounded-md border border-[#D1D5DB] bg-white px-2 py-2 text-xs text-[#1F2937]"
                           />
-                          <button className="mt-2 w-full rounded-md border border-[#C0392B] bg-white px-3 py-2 text-xs font-semibold text-[#C0392B]" type="submit">
+                          <PendingActionButton pendingText="Updating..." className="mt-2 w-full rounded-md border border-[#C0392B] bg-white px-3 py-2 text-xs font-semibold text-[#C0392B]">
                             Update status
-                          </button>
+                          </PendingActionButton>
                         </form>
                       </div>
                     </td>

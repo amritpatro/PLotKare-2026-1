@@ -150,7 +150,7 @@ function PlotCard({
     >
       <Image
         src={withBasePath(plot.imageUrl)}
-        alt={`${plot.propertyKind === 'apartment' ? 'Apartment' : 'Plot'} listing ${plot.plotNumber} — ${plot.location}, Visakhapatnam area`}
+        alt={`Verified ${plot.propertyKind === 'apartment' ? 'apartment' : 'plot'} listing in ${plot.location} - PlotKare marketplace preview`}
         fill
         className="object-cover transition-[filter,transform] duration-300 group-hover:brightness-[1.08]"
         sizes="(max-width:768px) 100vw, 33vw"
@@ -225,8 +225,16 @@ function PlotCard({
 
 export function AvailablePlotsShowcaseSection({
   initialListings,
+  heading = 'Verified Plot Marketplace',
+  description = 'Browse approved plots and apartments with PlotKare verified status, detailed property notes, and inquiry tools.',
+  browseLabel = 'Browse Verified Listings',
+  accountLabel = 'Owner Login',
 }: {
   initialListings: PublicPlotListing[]
+  heading?: string
+  description?: string
+  browseLabel?: string
+  accountLabel?: string
 }) {
   const [listings] = useState<PublicPlotListing[]>(initialListings)
   const [detailPlot, setDetailPlot] = useState<PublicPlotListing | null>(null)
@@ -246,10 +254,10 @@ export function AvailablePlotsShowcaseSection({
           className="premium-reveal mb-12 text-center"
         >
           <h2 className="font-serif text-4xl font-bold text-white md:text-5xl">
-            Verified Property Marketplace Preview
+            {heading}
           </h2>
           <p className="mt-4 font-sans text-lg text-white/55">
-            Browse approved plots and apartments with PlotKare verified status, detailed property notes, and inquiry tools.
+            {description}
           </p>
         </motion.div>
 
@@ -308,14 +316,14 @@ export function AvailablePlotsShowcaseSection({
               href="/listings/"
               className="premium-button-outline inline-flex rounded-xl border border-white/30 bg-transparent px-8 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-white/10"
             >
-              Browse listings hub
+              {browseLabel}
             </Link>
             <Link
               href="/login"
               className="premium-button inline-flex rounded-xl px-10 py-3.5 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: CRIMSON }}
             >
-              Sign in for owner tools
+              {accountLabel}
             </Link>
           </div>
         </motion.div>
@@ -331,7 +339,7 @@ export function AvailablePlotsShowcaseSection({
               <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg border border-white/10">
                 <Image
                   src={withBasePath(detailPlot.imageUrl)}
-                  alt={`${detailPlot.propertyKind === 'apartment' ? 'Apartment' : 'Plot'} listing ${detailPlot.plotNumber} — ${detailPlot.location}`}
+                  alt={`Verified ${detailPlot.propertyKind === 'apartment' ? 'apartment' : 'plot'} listing in ${detailPlot.location} - PlotKare marketplace detail`}
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, 700px"

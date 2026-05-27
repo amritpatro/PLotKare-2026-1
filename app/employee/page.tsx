@@ -14,6 +14,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { submitInspectionReport, updateAssignedWorkItem, updateMyAdminTask } from './actions'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { ADMIN_TASK_STATUSES } from '@/lib/admin/status'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
 import { requirePageRole } from '@/lib/supabase/role-guard'
@@ -213,9 +214,9 @@ function WorkStatusForm({ kind, itemId, status }: { kind: keyof typeof workStatu
             </option>
           ))}
         </select>
-        <button type="submit" className="rounded-md bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white hover:bg-[#A93226]">
+        <PendingActionButton pendingText="Updating..." className="rounded-md bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white hover:bg-[#A93226]">
           Update
-        </button>
+        </PendingActionButton>
       </div>
       <textarea name="note" rows={2} className={inputClass} placeholder="Employee note for admin visibility" />
     </form>
@@ -281,9 +282,9 @@ function InspectionReportForm({ inspection }: { inspection: InspectionRow }) {
           Action required
         </label>
       </div>
-      <button type="submit" className="w-full rounded-md bg-[#C0392B] px-3 py-2.5 text-xs font-semibold text-white hover:bg-[#A93226]">
+      <PendingActionButton pendingText="Submitting..." className="w-full rounded-md bg-[#C0392B] px-3 py-2.5 text-xs font-semibold text-white hover:bg-[#A93226]">
         Submit inspection report
-      </button>
+      </PendingActionButton>
     </form>
   )
 }
@@ -403,6 +404,7 @@ export default async function EmployeeDashboardPage({ searchParams }: EmployeeDa
       title="Assigned workspace"
       subtitle="Admin tasks, verification events, inspections, maintenance, and support assigned to you."
       userLabel={userLabel}
+      avatarUrl={profile.avatar_path}
       userId={user.id}
     >
       <section className="space-y-8 text-[#1F2937]">
@@ -549,9 +551,9 @@ export default async function EmployeeDashboardPage({ searchParams }: EmployeeDa
                                       </option>
                                     ))}
                                   </select>
-                                  <button type="submit" className="rounded-md bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white hover:bg-[#A93226]">
+                                  <PendingActionButton pendingText="Updating..." className="rounded-md bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white hover:bg-[#A93226]">
                                     Update
-                                  </button>
+                                  </PendingActionButton>
                                 </div>
                                 <textarea name="note" rows={2} className={inputClass} placeholder="Progress note for admin" />
                               </form>

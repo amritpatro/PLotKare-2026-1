@@ -1,4 +1,5 @@
 import { addSoldCustomer, createSellerPlot, createSellerServiceRequest, createSellerSupportTicket } from './actions'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
@@ -176,6 +177,7 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
       title={seller?.company_name || sellerDetails?.company_name || 'Seller operations'}
       subtitle="Manage plots, sold customers, verification state, and service requests."
       userLabel={profile.full_name || profile.email}
+      avatarUrl={profile.avatar_path}
       userId={user.id}
     >
       <section className="space-y-8">
@@ -297,9 +299,9 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
                     <label className={labelClass}>Expected value in lakhs</label>
                     <input name="priceLakhs" type="number" min="0" step="0.1" placeholder="32" className={inputClass} />
                   </div>
-                  <button className="rounded-lg bg-[#C0392B] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A93225] md:col-span-2" type="submit">
+                  <PendingActionButton pendingText="Submitting..." className="rounded-lg bg-[#C0392B] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A93225] md:col-span-2">
                     Add plot
-                  </button>
+                  </PendingActionButton>
                 </form>
               </div>
 
@@ -326,13 +328,13 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
                       Add an available plot first, then return here to link the sold customer.
                     </p>
                   ) : null}
-                  <button
+                  <PendingActionButton
+                    pendingText="Linking..."
                     className="rounded-lg bg-[#C0392B] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A93225] disabled:cursor-not-allowed disabled:opacity-50"
-                    type="submit"
                     disabled={availableProperties.length === 0}
                   >
                     Link customer to property
-                  </button>
+                  </PendingActionButton>
                 </form>
               </div>
             </section>
@@ -452,13 +454,13 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
                       Add a plot before opening a service request.
                     </p>
                   ) : null}
-                  <button
+                  <PendingActionButton
+                    pendingText="Creating..."
                     className="rounded-lg bg-[#C0392B] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A93225] disabled:cursor-not-allowed disabled:opacity-50"
-                    type="submit"
                     disabled={propertyRows.length === 0}
                   >
                     Create service request
-                  </button>
+                  </PendingActionButton>
                 </form>
               </div>
             </section>
@@ -517,9 +519,9 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
                     <option value="high">High</option>
                     <option value="urgent">Urgent</option>
                   </select>
-                  <button type="submit" className="rounded-lg bg-[#C0392B] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A93225]">
+                  <PendingActionButton pendingText="Opening..." className="rounded-lg bg-[#C0392B] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#A93225]">
                     Open support ticket
-                  </button>
+                  </PendingActionButton>
                 </form>
                 <div className="mt-4 divide-y divide-[#E5E7EB]">
                   {ticketRows.length === 0 ? <p className="py-6 text-sm text-[#6B7280]">No seller support tickets raised yet.</p> : null}

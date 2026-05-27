@@ -18,7 +18,7 @@ export default async function AdminAuditPage() {
   const auditRows = rows ?? []
 
   return (
-    <div className="px-8 pb-12 pt-24">
+    <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
       <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#C9A962]">Audit logs</p>
       <h1 className="mt-3 font-serif text-3xl font-bold text-[#1F2937]">Operational History</h1>
       <p className="mt-2 max-w-3xl font-sans text-sm leading-6 text-[#6B7280]">

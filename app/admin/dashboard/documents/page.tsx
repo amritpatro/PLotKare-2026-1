@@ -1,8 +1,13 @@
 import { updateVerificationStatus } from '@/app/admin/dashboard/verification/actions'
 import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { ADMIN_VERIFICATION_STATUSES } from '@/lib/admin/status'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+
+type PageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
 
 function statusLabel(value: string | null | undefined) {
   return String(value ?? 'submitted').replaceAll('_', ' ')
@@ -13,17 +18,26 @@ function formatDate(value: string | null | undefined) {
   return new Date(value).toLocaleDateString('en-IN', { dateStyle: 'medium' })
 }
 
-export default async function AdminDocumentsPage() {
+export default async function AdminDocumentsPage({ searchParams }: PageProps) {
   await requirePageRole(['admin'])
+  const query = (await searchParams) ?? {}
+  const success = query.success === 'verification_updated'
+  const error = query.error === 'verification_update_failed' || query.error === 'invalid_verification_action'
   const supabase = await createSupabaseServerClient()
   const { data: documents } = await supabase
     .from('property_documents')
-    .select('id,title,document_type,verification_status,priority,due_at,uploaded_by,property_id,customer_id,created_at')
+    .select('id,title,document_type,verification_status,priority,due_at,uploaded_by,property_id,customer_id,created_at,category,requirement_level,description,review_reason,mime_type,size_bytes,reviewed_at')
     .order('created_at', { ascending: false })
     .limit(150)
 
   return (
-    <div className="px-8 pb-12 pt-24">
+    <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
+      {success ? (
+        <p role="status" className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Document verification updated.</p>
+      ) : null}
+      {error ? (
+        <p role="alert" className="mb-6 rounded-lg border border-[#F5C5BF] bg-[#FEF2F2] px-4 py-3 text-sm text-[#A93226]">Document verification could not be updated.</p>
+      ) : null}
       <h1 className="font-serif text-2xl font-bold text-[#1F2937]">Document review</h1>
       <p className="mt-1 font-sans text-sm text-[#9CA3AF]">
         Review customer, owner, and seller documents from the same property document source used by role dashboards.
@@ -73,13 +87,14 @@ export default async function AdminDocumentsPage() {
                   <form action={updateVerificationStatus} className="grid min-w-[260px] gap-2">
                     <input type="hidden" name="entityType" value="document" />
                     <input type="hidden" name="entityId" value={document.id} />
+                    <input type="hidden" name="returnSection" value="documents" />
                     <select name="status" defaultValue={document.verification_status} className="rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15">
                       {ADMIN_VERIFICATION_STATUSES.map((status) => (
                         <option key={status} value={status}>{statusLabel(status)}</option>
                       ))}
                     </select>
                     <textarea name="note" rows={2} className="rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15" placeholder="Internal review note" />
-                    <button className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#A93226]">Update document</button>
+                    <PendingActionButton pendingText="Updating..." className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#A93226]">Update document</PendingActionButton>
                   </form>
                 </td>
               </tr>

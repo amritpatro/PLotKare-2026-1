@@ -243,7 +243,7 @@ export default async function AdminOverviewPage() {
   const unassignedWork = openWorkRows.filter((row) => !row.assigned_employee_id).length
 
   return (
-    <div className="px-8 pb-12 pt-24">
+    <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#C9A962]">Admin control center</p>

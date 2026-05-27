@@ -7,7 +7,7 @@ const steps = [
   {
     number: '01',
     title: 'List Your Plot',
-    description: 'Share your plot number, location, and documents. Setup takes just 10 minutes online or via WhatsApp.',
+    description: 'Share your plot number, location, and documents through the registration workflow.',
   },
   {
     number: '02',
@@ -23,16 +23,22 @@ const steps = [
   {
     number: '04',
     title: 'Services Activated',
-    description: 'Boundary inspection, legal check, and document vault go live immediately. You get full visibility.',
+    description: 'Approved services, document review, and property tracking become visible in your workspace.',
   },
   {
     number: '05',
-    title: 'Reports Forever',
-    description: 'Every month your report arrives with photos, status, and value estimate on WhatsApp and email.',
+    title: 'Track History',
+    description: 'Your account preserves submitted records, statuses, and follow-up activity for future reference.',
   },
 ]
 
-export function HowItWorksSection() {
+export function HowItWorksSection({
+  heading = 'How Plot Monitoring Works:',
+  highlightedHeading = 'Five Steps',
+}: {
+  heading?: string
+  highlightedHeading?: string
+}) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const sectionRef = useRef<HTMLElement>(null)
   const [showHint, setShowHint] = useState(true)
@@ -85,7 +91,7 @@ export function HowItWorksSection() {
           className="premium-reveal mb-12 text-center"
         >
           <h2 className="font-serif text-4xl font-bold text-white md:text-5xl">
-            How Property Monitoring Works in <span className="text-primary">Five Steps</span>
+            {heading} <span className="text-primary">{highlightedHeading}</span>
           </h2>
         </motion.div>
 

@@ -14,27 +14,27 @@ const services = [
   {
     icon: Camera,
     title: 'Monthly Field Inspections',
-    description: 'Our verified agents visit your plot every 30 days and photograph all four boundaries, ensuring comprehensive documentation.',
+    description: 'Set an inspection cadence for boundary, access, and visible site-condition records after the service scope is confirmed.',
   },
   {
     icon: FileText,
     title: 'Digital Report Delivery',
-    description: 'Detailed reports arrive via PDF and WhatsApp with geotagged photos, timestamps, and actionable insights.',
+    description: 'Authorized owners can review submitted photographs, timestamps, and property updates associated with their file.',
   },
   {
     icon: Bell,
     title: 'Encroachment Alerts',
-    description: 'Any boundary violation or unauthorized activity triggers an instant notification so you can act immediately.',
+    description: 'Record a boundary or access concern so it can enter the appropriate support and operational review workflow.',
   },
   {
     icon: Scale,
     title: 'Legal Health Monitoring',
-    description: 'EC status, tax dues, and RERA compliance are tracked continuously to keep your property legally sound.',
+    description: 'Organize EC, tax, mutation, registration, and supporting records for review by authorized users.',
   },
   {
     icon: TrendingUp,
     title: 'Value Appreciation Tracker',
-    description: 'Monthly market data shows your estimated plot value relative to nearby registrations and transactions.',
+    description: 'Keep property status, inspection evidence, and marketplace readiness visible before a sale decision.',
   },
   {
     icon: FolderLock,
@@ -62,7 +62,13 @@ const itemVariants = {
   },
 }
 
-export function ServicesSection() {
+export function ServicesSection({
+  heading = 'Monthly Inspection, Legal Monitoring, and Document Tracking',
+  introduction = 'PlotKare organizes the field, document, and support records owners need to monitor property responsibly.',
+}: {
+  heading?: string
+  introduction?: string
+}) {
   return (
     <section id="services" className="premium-section bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
@@ -75,10 +81,10 @@ export function ServicesSection() {
           className="premium-reveal mb-16 text-center"
         >
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
-            Monthly Property Inspection, Legal Monitoring &amp; Document Vault
+            {heading}
           </h2>
           <p className="mx-auto mt-4 max-w-2xl font-sans text-lg text-muted-foreground">
-            We act as your eyes, ears, and property operations layer on the ground.
+            {introduction}
           </p>
         </motion.div>
 

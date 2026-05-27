@@ -26,7 +26,13 @@ const governance = [
   },
 ]
 
-export function AwardsSection() {
+export function AwardsSection({
+  heading = 'Our Monitoring Process: Evidence, Scope, and Escalation',
+  introduction = 'Reports and reviews are tied to recorded operational activity, not invented testimonials or unsourced claims.',
+}: {
+  heading?: string
+  introduction?: string
+}) {
   return (
     <section className="premium-section-dark bg-charcoal py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
@@ -38,10 +44,10 @@ export function AwardsSection() {
           className="premium-reveal mb-16 text-center"
         >
           <h2 className="font-serif text-4xl font-bold text-white md:text-5xl">
-            Visakhapatnam Plot Oversight: Evidence, Scope, and Escalation
+            {heading}
           </h2>
           <p className="mx-auto mt-4 max-w-2xl font-sans text-sm text-white/55">
-            Awards and paid “summit” badges belong here only when they are real and linkable.
+            {introduction}
           </p>
         </motion.div>
 

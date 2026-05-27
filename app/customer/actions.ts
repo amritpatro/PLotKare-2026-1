@@ -8,6 +8,7 @@ import { notifyOperationsOfTicket } from '@/lib/support-notifications'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { upsertVerificationRequest } from '@/lib/verification-requests'
 
 const listingIdSchema = z.object({
   listingId: z.string().uuid(),
@@ -34,6 +35,17 @@ const amenityRequestSchema = z.object({
   amenityId: z.string().trim().min(1),
 })
 
+const propertyLinkRequestSchema = z.object({
+  propertyKind: z.enum(['plot', 'apartment', 'rental', 'managed_property']),
+  propertyTitle: z.string().trim().min(3).max(160),
+  address: z.string().trim().min(5).max(300),
+  city: z.string().trim().min(2).max(100),
+  state: z.string().trim().min(2).max(100),
+  postalCode: z.string().trim().max(20).optional().or(z.literal('')),
+  relationshipType: z.enum(['buyer', 'owner', 'renter', 'tenant', 'nominee']),
+  notes: z.string().trim().max(800).optional().or(z.literal('')),
+})
+
 type ActionKind = 'success' | 'error'
 
 function actionUrl(kind: ActionKind, code: string, section: string) {
@@ -46,6 +58,7 @@ function actionUrl(kind: ActionKind, code: string, section: string) {
     amenities: '/customer/amenities',
     documents: '/customer/documents',
     support: '/customer/support',
+    properties: '/customer/properties',
   }
   return `${routeBySection[section] ?? '/customer'}?${params.toString()}`
 }
@@ -377,4 +390,54 @@ export async function requestCustomerAmenity(formData: FormData) {
 
   revalidatePath('/customer')
   redirect(actionUrl('success', 'amenity_requested', 'amenities'))
+}
+
+export async function requestAdditionalPropertyLink(formData: FormData) {
+  const parsed = propertyLinkRequestSchema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) redirect(actionUrl('error', 'invalid_property_request', 'properties'))
+
+  try {
+    const { user, customerId } = await getCustomerActionContext()
+    if (!customerId) throw new Error('Complete the customer profile before requesting a property link.')
+    const admin = createSupabaseAdminClient()
+    const { data: request, error } = await admin
+      .from('customer_property_requests')
+      .insert({
+        customer_id: customerId,
+        requester_id: user.id,
+        property_kind: parsed.data.propertyKind,
+        property_title: parsed.data.propertyTitle,
+        address: parsed.data.address,
+        city: parsed.data.city,
+        state: parsed.data.state,
+        postal_code: parsed.data.postalCode || null,
+        relationship_type: parsed.data.relationshipType,
+        notes: parsed.data.notes || null,
+        status: 'submitted',
+      })
+      .select('id')
+      .single()
+    if (error || !request) throw error ?? new Error('Request could not be saved.')
+
+    await upsertVerificationRequest(admin, {
+      entityType: 'property_link_request',
+      entityId: request.id,
+      requesterId: user.id,
+      status: 'submitted',
+      priority: 'normal',
+      metadata: { property_kind: parsed.data.propertyKind, relationship_type: parsed.data.relationshipType },
+    })
+    await recordAuditLog({
+      actorId: user.id,
+      action: 'customer.property_link_requested',
+      entityType: 'property_link_request',
+      entityId: request.id,
+    })
+  } catch (error) {
+    console.error('Customer property link request failed:', error)
+    redirect(actionUrl('error', 'property_request_failed', 'properties'))
+  }
+
+  revalidatePath('/customer/properties')
+  redirect(actionUrl('success', 'property_request_submitted', 'properties'))
 }

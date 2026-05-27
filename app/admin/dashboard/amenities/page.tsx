@@ -1,4 +1,5 @@
 import { toggleAmenityAvailability, updateAmenityRequest } from './actions'
+import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { AMENITY_CATALOG } from '@/lib/amenity-catalog'
 import { readAmenityWorkflowRows } from '@/lib/amenity-operations'
 import { requirePageRole } from '@/lib/supabase/role-guard'
@@ -78,7 +79,7 @@ export default async function AdminAmenitiesPage({ searchParams }: PageProps) {
   })
 
   return (
-    <div className="px-8 pb-12 pt-24">
+    <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#C9A962]">Amenities operations</p>
@@ -114,7 +115,7 @@ export default async function AdminAmenitiesPage({ searchParams }: PageProps) {
 
           <div className="mt-6 space-y-2">
             {AMENITY_CATALOG.map((amenity) => {
-              const active = activeById.get(amenity.id) ?? true
+              const active = activeById.get(amenity.id) ?? false
 
               return (
                 <div
@@ -131,14 +132,14 @@ export default async function AdminAmenitiesPage({ searchParams }: PageProps) {
                   <form action={toggleAmenityAvailability}>
                     <input type="hidden" name="amenityId" value={amenity.id} />
                     <input type="hidden" name="nextActive" value={active ? 'false' : 'true'} />
-                    <button
-                      type="submit"
+                    <PendingActionButton
+                      pendingText="Saving..."
                       className={`rounded-full px-4 py-2 font-sans text-xs font-semibold ${
                         active ? 'bg-[#16A34A]/15 text-[#16A34A]' : 'bg-[#F3F4F6] text-[#6B7280]'
                       }`}
                     >
                       {active ? 'Active' : 'Inactive'}
-                    </button>
+                    </PendingActionButton>
                   </form>
                 </div>
               )
@@ -260,9 +261,9 @@ export default async function AdminAmenitiesPage({ searchParams }: PageProps) {
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {(['requested', 'under_review', 'approved', 'rejected', 'scheduled', 'completed'] as const).map(
                       (status) => (
-                        <button
+                        <PendingActionButton
                           key={status}
-                          type="submit"
+                          pendingText="Saving..."
                           name="reviewStatus"
                           value={status}
                           className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
@@ -274,7 +275,7 @@ export default async function AdminAmenitiesPage({ searchParams }: PageProps) {
                           }`}
                         >
                           {statusLabel(status)}
-                        </button>
+                        </PendingActionButton>
                       ),
                     )}
                   </div>

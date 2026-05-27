@@ -134,7 +134,7 @@ export async function getCustomerWorkspaceData(
     customerId
       ? supabase
           .from('property_documents')
-          .select('id,title,document_type,verification_status,property_id,created_at')
+          .select('id,title,document_type,verification_status,property_id,property_request_id,created_at,category,requirement_level,description,review_reason,mime_type,size_bytes,reviewed_at,withdrawal_requested_at')
           .eq('customer_id', customerId)
           .order('created_at', { ascending: false })
       : Promise.resolve({ data: [] }),
@@ -156,7 +156,7 @@ export async function getCustomerWorkspaceData(
       : Promise.resolve({ data: [] }),
     supabase
       .from('support_tickets')
-      .select('id,subject,priority,status,created_at,property_id')
+      .select('id,ticket_reference,subject,description,category,priority,status,created_at,property_id')
       .eq('requester_id', userId)
       .order('created_at', { ascending: false })
       .limit(8),
@@ -168,7 +168,7 @@ export async function getCustomerWorkspaceData(
   const propertyDocumentRows = propertyIds.length
     ? await supabase
         .from('property_documents')
-        .select('id,title,document_type,verification_status,property_id,created_at')
+        .select('id,title,document_type,verification_status,property_id,property_request_id,created_at,category,requirement_level,description,review_reason,mime_type,size_bytes,reviewed_at,withdrawal_requested_at')
         .in('property_id', propertyIds)
         .order('created_at', { ascending: false })
     : { data: [] }

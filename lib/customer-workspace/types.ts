@@ -100,7 +100,16 @@ export type PropertyDocument = {
   document_type: string
   verification_status: string
   property_id: string | null
+  property_request_id?: string | null
   created_at: string
+  category?: string | null
+  requirement_level?: string | null
+  description?: string | null
+  review_reason?: string | null
+  mime_type?: string | null
+  size_bytes?: number | null
+  reviewed_at?: string | null
+  withdrawal_requested_at?: string | null
 }
 
 export type InspectionRow = {
@@ -124,7 +133,10 @@ export type MaintenanceRequest = {
 
 export type SupportTicket = {
   id: string
+  ticket_reference?: string | null
   subject: string
+  description?: string | null
+  category?: string | null
   priority: string
   status: string
   created_at: string

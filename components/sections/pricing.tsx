@@ -61,7 +61,17 @@ const plans: Plan[] = [
   },
 ]
 
-export function PricingSection() {
+export function PricingSection({
+  heading = 'Plot Management Plans and',
+  highlightedHeading = 'Pricing',
+  description = 'Every property is reviewed before a quote. Book a free consultation so the team can assess location, documents, inspection cadence, and service scope.',
+  buttonLabel = 'Book Free Consultation',
+}: {
+  heading?: string
+  highlightedHeading?: string
+  description?: string
+  buttonLabel?: string
+}) {
   return (
     <section id="pricing" className="premium-section bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
@@ -73,11 +83,10 @@ export function PricingSection() {
           className="premium-reveal mb-12 text-center"
         >
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
-            Property Monitoring <span className="text-primary">Consultation Plans</span>
+            {heading} <span className="text-primary">{highlightedHeading}</span>
           </h2>
           <p className="mx-auto mt-4 max-w-2xl font-sans text-base leading-relaxed text-muted-foreground">
-            Every property is reviewed before a quote. Book a demo so the team can assess location, documents,
-            inspection cadence, and service scope.
+            {description}
           </p>
         </motion.div>
 
@@ -168,7 +177,7 @@ export function PricingSection() {
                     : 'premium-button bg-primary text-white hover:bg-primary/90'
                 }`}
               >
-                Book Demo
+                {buttonLabel}
               </Link>
             </motion.div>
           ))}

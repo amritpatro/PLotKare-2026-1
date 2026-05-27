@@ -29,6 +29,7 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isSigningIn, setIsSigningIn] = useState(false)
+  const [isOpeningWorkspace, setIsOpeningWorkspace] = useState(false)
   const [returningLine, setReturningLine] = useState(returningUserLines[0])
 
   useEffect(() => {
@@ -112,6 +113,7 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
         return
       }
 
+      setIsOpeningWorkspace(true)
       router.replace(result.destination)
       router.refresh()
     } catch {
@@ -210,7 +212,7 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
               disabled={isSigningIn}
               className="mt-7 w-full rounded-md bg-[#C0392B] py-4 font-sans text-base font-semibold text-white shadow-lg shadow-black/20 transition-colors hover:bg-[#A93225] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isSigningIn ? 'Signing In...' : 'Sign In'}
+              {isOpeningWorkspace ? 'Opening workspace...' : isSigningIn ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
 

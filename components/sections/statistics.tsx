@@ -43,7 +43,11 @@ const pillars: Pillar[] = [
   },
 ]
 
-export function StatisticsSection() {
+export function StatisticsSection({
+  heading = 'Built for Owners Who Cannot Watch Their Plot in Person',
+}: {
+  heading?: string
+}) {
   return (
     <section id="investors" className="premium-section bg-secondary py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
@@ -54,7 +58,7 @@ export function StatisticsSection() {
           transition={{ duration: 0.55 }}
           className="premium-reveal mb-12 text-center font-serif text-3xl font-bold text-foreground md:text-4xl"
         >
-          Property Monitoring Built for Long-Distance Decisions
+          {heading}
         </motion.h2>
         <motion.div
           initial={{ opacity: 0, y: 30 }}

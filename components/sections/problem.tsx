@@ -42,11 +42,17 @@ const painPoints = [
     title: 'No Reliable Eyes on the Asset',
     description: 'NRIs, metro owners, and local families all face the same risk: stale information.',
     detail:
-      'The platform starts in Visakhapatnam and is designed to scale across India through verified local operations, not informal one-off updates.',
+      'The platform is designed around recorded property activity and reviewable status updates, not informal one-off messages.',
   },
 ]
 
-export function ProblemSection() {
+export function ProblemSection({
+  heading = 'Why Vacant Plots Need Active Monitoring',
+  introduction = 'Distance is only part of the risk. Owners need current records of what is happening on the ground, in documents, and through each property workflow.',
+}: {
+  heading?: string
+  introduction?: string
+}) {
   const [active, setActive] = useState<(typeof painPoints)[number] | null>(null)
 
   return (
@@ -60,11 +66,10 @@ export function ProblemSection() {
             transition={{ duration: 0.55 }}
           >
             <h2 className="font-serif text-4xl font-bold leading-tight text-white md:text-5xl">
-              Property Risk Becomes Manageable When Every Asset Has a Current Record.
+              {heading}
             </h2>
             <p className="mt-6 max-w-lg font-sans text-lg leading-relaxed text-white/60">
-              The problem is not only distance. It is the gap between what the owner thinks is true and what is
-              actually happening on the ground, in documents, and in the market.
+              {introduction}
             </p>
           </motion.div>
 

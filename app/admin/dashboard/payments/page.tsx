@@ -128,7 +128,7 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
   const paidTotal = rows.filter((row) => row.status === 'Paid').reduce((sum, row) => sum + Number(row.amount), 0)
 
   return (
-    <div className="px-8 pb-12 pt-24">
+    <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="font-serif text-2xl font-bold text-[#1F2937]">Billing records</h1>

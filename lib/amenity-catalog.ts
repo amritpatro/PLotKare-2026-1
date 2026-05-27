@@ -97,6 +97,11 @@ const amenityDetails: Record<string, Pick<AmenityCatalogItem, 'description' | 's
     suitableFor: 'Road-facing plots, construction sites, high-value properties',
     areaRange: 'Approx. 120+ sq. yards with mounting and power access',
   },
+  'cctv-camera': {
+    description: 'Camera placement, site power/network feasibility, and monitoring setup for higher-risk plots and assets.',
+    suitableFor: 'Road-facing plots, construction sites, high-value properties',
+    areaRange: 'Approx. 120+ sq. yards with mounting and power access',
+  },
   rainwater: {
     description: 'Rainwater harvesting pit consultation based on soil, slope, access, and property usage pattern.',
     suitableFor: 'Owners planning agriculture, gardens, or long-term land care',
@@ -112,6 +117,11 @@ const amenityDetails: Record<string, Pick<AmenityCatalogItem, 'description' | 's
     suitableFor: 'Residential plots, farm plots, owners wanting low-maintenance green use',
     areaRange: 'Approx. 100-400 sq. yards',
   },
+  'garden-care': {
+    description: 'Managed planting and garden care planning with periodic site-check coordination for usable open plot areas.',
+    suitableFor: 'Residential plots, farm plots, owners wanting maintained green use',
+    areaRange: 'Approx. 100-400 sq. yards',
+  },
   'legal-signboard': {
     description: 'Ownership and warning signboard placement to communicate verified ownership and discourage misuse.',
     suitableFor: 'Vacant land, newly purchased plots, properties under monitoring',
@@ -121,6 +131,16 @@ const amenityDetails: Record<string, Pick<AmenityCatalogItem, 'description' | 's
     description: 'Temporary storage feasibility for construction materials, maintenance tools, or site operations.',
     suitableFor: 'Construction-ready plots, service teams, owners preparing development',
     areaRange: 'Approx. 100+ sq. yards with vehicle access',
+  },
+  'solar-lighting': {
+    description: 'Solar lighting and power feasibility review for open plots needing safer visibility and low-maintenance site utilities.',
+    suitableFor: 'Open plots, approach roads, long-hold land assets',
+    areaRange: 'Approx. 120+ sq. yards depending on shadow and access',
+  },
+  'lease-support': {
+    description: 'PlotKare consultation for verified land-use or lease opportunities, documentation readiness, and operational suitability.',
+    suitableFor: 'Verified owners exploring approved income-use opportunities',
+    areaRange: 'Depends on plot condition, access, documents, and proposed use',
   },
 }
 
