@@ -69,7 +69,11 @@ async function assertVerificationAssignee(
     .maybeSingle()
 
   if (error || !data) {
-    console.error('Invalid verification assignment employee:', error)
+    if (error) {
+      console.error('Database error checking verification assignment employee:', error)
+    } else {
+      console.error('Verification assignment employee is not an active verification agent:', assignedEmployeeId)
+    }
     return verificationRedirect('error', 'invalid_employee_assignment', section)
   }
 }

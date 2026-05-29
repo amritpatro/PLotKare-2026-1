@@ -43,7 +43,11 @@ async function assertSupportAssignee(
     .maybeSingle()
 
   if (error || !data) {
-    console.error('Invalid support assignment employee:', error)
+    if (error) {
+      console.error('Database error checking support assignment employee:', error)
+    } else {
+      console.error('Support assignment employee is not active support staff:', assignedEmployeeId)
+    }
     return supportRedirect('error', 'invalid_employee_assignment')
   }
 }
