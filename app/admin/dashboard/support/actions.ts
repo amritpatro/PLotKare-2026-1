@@ -44,7 +44,7 @@ async function assertSupportAssignee(
 
   if (error || !data) {
     console.error('Invalid support assignment employee:', error)
-    supportRedirect('error', 'invalid_employee_assignment')
+    return supportRedirect('error', 'invalid_employee_assignment')
   }
 }
 

@@ -70,7 +70,7 @@ async function assertVerificationAssignee(
 
   if (error || !data) {
     console.error('Invalid verification assignment employee:', error)
-    verificationRedirect('error', 'invalid_employee_assignment', section)
+    return verificationRedirect('error', 'invalid_employee_assignment', section)
   }
 }
 
