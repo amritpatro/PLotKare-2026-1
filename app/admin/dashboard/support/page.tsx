@@ -15,6 +15,7 @@ const successMessages = {
 const errorMessages = {
   invalid_support_update: 'Invalid support update. Refresh and try again.',
   invalid_support_reply: 'Invalid support reply.',
+  invalid_employee_assignment: 'Only active support staff can be assigned to support tickets.',
   support_update_failed: 'Support ticket could not be updated.',
   support_reply_failed: 'Support reply could not be saved.',
 } as const
@@ -62,6 +63,7 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
       .from('employees')
       .select('id,employee_role,profiles(full_name,email)')
       .eq('active', true)
+      .eq('employee_role', 'support_staff')
       .order('created_at', { ascending: false })
       .limit(50),
     supabase

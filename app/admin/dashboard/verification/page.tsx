@@ -37,6 +37,7 @@ const messages = {
   },
   error: {
     invalid_verification_action: 'Invalid verification action. Refresh and try again.',
+    invalid_employee_assignment: 'Only active verification agents can be assigned from this screen.',
     verification_update_failed: 'Could not update verification status. Check permissions and try again.',
   },
 } as const
@@ -145,6 +146,7 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
         .from('employees')
         .select('id,employee_role,active,profiles(full_name,email)')
         .eq('active', true)
+        .eq('employee_role', 'verification_agent')
         .order('created_at', { ascending: false })
         .limit(50),
       supabase

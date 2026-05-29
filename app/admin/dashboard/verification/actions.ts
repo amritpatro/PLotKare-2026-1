@@ -53,6 +53,27 @@ function verificationRedirect(kind: 'success' | 'error', code: string, section: 
   redirect(`/admin/dashboard/${section}?${kind}=${code}`)
 }
 
+async function assertVerificationAssignee(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  assignedEmployeeId: string | null,
+  section: 'verification' | 'documents',
+) {
+  if (!assignedEmployeeId) return
+
+  const { data, error } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('id', assignedEmployeeId)
+    .eq('active', true)
+    .eq('employee_role', 'verification_agent')
+    .maybeSingle()
+
+  if (error || !data) {
+    console.error('Invalid verification assignment employee:', error)
+    verificationRedirect('error', 'invalid_employee_assignment', section)
+  }
+}
+
 export async function updateVerificationStatus(formData: FormData) {
   const parsed = verificationActionSchema.safeParse({
     entityType: formData.get('entityType'),
@@ -75,6 +96,7 @@ export async function updateVerificationStatus(formData: FormData) {
   const dueAt = parsed.data.dueAt || null
   const escalationLevel = parsed.data.escalationLevel ?? 0
   const supabase = createSupabaseAdminClient()
+  await assertVerificationAssignee(supabase, assignedEmployeeId, returnSection)
   const statusColumn = statusColumnByEntity[entityType]
 
   const { data: existing, error: existingError } = await supabase
@@ -307,6 +329,7 @@ export async function reviewCustomerPropertyRequest(formData: FormData) {
   }
 
   const assignedEmployeeId = parsed.data.assignedEmployeeId || null
+  await assertVerificationAssignee(supabase, assignedEmployeeId, 'verification')
   const { error: updateError } = await supabase.from('customer_property_requests').update({
     status: parsed.data.status,
     assigned_employee_id: assignedEmployeeId,

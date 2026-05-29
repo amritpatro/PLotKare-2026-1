@@ -28,6 +28,26 @@ function supportRedirect(kind: 'success' | 'error', code: string): never {
   redirect(`/admin/dashboard/support?${kind}=${code}`)
 }
 
+async function assertSupportAssignee(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  assignedEmployeeId: string | null,
+) {
+  if (!assignedEmployeeId) return
+
+  const { data, error } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('id', assignedEmployeeId)
+    .eq('active', true)
+    .eq('employee_role', 'support_staff')
+    .maybeSingle()
+
+  if (error || !data) {
+    console.error('Invalid support assignment employee:', error)
+    supportRedirect('error', 'invalid_employee_assignment')
+  }
+}
+
 export async function updateSupportTicket(formData: FormData) {
   const parsed = updateSupportSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) supportRedirect('error', 'invalid_support_update')
@@ -35,6 +55,7 @@ export async function updateSupportTicket(formData: FormData) {
   const { user } = await requirePageRole(['admin'])
   const supabase = createSupabaseAdminClient()
   const assignedEmployeeId = parsed.data.assignedEmployeeId || null
+  await assertSupportAssignee(supabase, assignedEmployeeId)
   const note = parsed.data.note || null
 
   const { data: existing, error: existingError } = await supabase
