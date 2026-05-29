@@ -31,8 +31,8 @@ function supportRedirect(kind: 'success' | 'error', code: string): never {
 async function assertSupportAssignee(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   assignedEmployeeId: string | null,
-): Promise<void> {
-  if (!assignedEmployeeId) return
+): Promise<boolean> {
+  if (!assignedEmployeeId) return true
 
   const { data, error } = await supabase
     .from('employees')
@@ -48,8 +48,10 @@ async function assertSupportAssignee(
     } else {
       console.error('Support assignment employee is not active support staff:', assignedEmployeeId)
     }
-    return supportRedirect('error', 'invalid_employee_assignment')
+    return false
   }
+
+  return true
 }
 
 export async function updateSupportTicket(formData: FormData) {
@@ -59,7 +61,8 @@ export async function updateSupportTicket(formData: FormData) {
   const { user } = await requirePageRole(['admin'])
   const supabase = createSupabaseAdminClient()
   const assignedEmployeeId = parsed.data.assignedEmployeeId || null
-  await assertSupportAssignee(supabase, assignedEmployeeId)
+  const isValidAssignee = await assertSupportAssignee(supabase, assignedEmployeeId)
+  if (!isValidAssignee) supportRedirect('error', 'invalid_employee_assignment')
   const note = parsed.data.note || null
 
   const { data: existing, error: existingError } = await supabase

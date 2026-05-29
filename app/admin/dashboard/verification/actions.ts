@@ -56,9 +56,8 @@ function verificationRedirect(kind: 'success' | 'error', code: string, section: 
 async function assertVerificationAssignee(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   assignedEmployeeId: string | null,
-  section: 'verification' | 'documents',
-): Promise<void> {
-  if (!assignedEmployeeId) return
+): Promise<boolean> {
+  if (!assignedEmployeeId) return true
 
   const { data, error } = await supabase
     .from('employees')
@@ -74,8 +73,10 @@ async function assertVerificationAssignee(
     } else {
       console.error('Verification assignment employee is not an active verification agent:', assignedEmployeeId)
     }
-    return verificationRedirect('error', 'invalid_employee_assignment', section)
+    return false
   }
+
+  return true
 }
 
 export async function updateVerificationStatus(formData: FormData) {
@@ -100,7 +101,8 @@ export async function updateVerificationStatus(formData: FormData) {
   const dueAt = parsed.data.dueAt || null
   const escalationLevel = parsed.data.escalationLevel ?? 0
   const supabase = createSupabaseAdminClient()
-  await assertVerificationAssignee(supabase, assignedEmployeeId, returnSection)
+  const isValidAssignee = await assertVerificationAssignee(supabase, assignedEmployeeId)
+  if (!isValidAssignee) verificationRedirect('error', 'invalid_employee_assignment', returnSection)
   const statusColumn = statusColumnByEntity[entityType]
 
   const { data: existing, error: existingError } = await supabase
@@ -333,7 +335,8 @@ export async function reviewCustomerPropertyRequest(formData: FormData) {
   }
 
   const assignedEmployeeId = parsed.data.assignedEmployeeId || null
-  await assertVerificationAssignee(supabase, assignedEmployeeId, 'verification')
+  const isValidAssignee = await assertVerificationAssignee(supabase, assignedEmployeeId)
+  if (!isValidAssignee) verificationRedirect('error', 'invalid_employee_assignment')
   const { error: updateError } = await supabase.from('customer_property_requests').update({
     status: parsed.data.status,
     assigned_employee_id: assignedEmployeeId,
