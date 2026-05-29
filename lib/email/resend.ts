@@ -6,11 +6,19 @@ type EmailInput = {
   replyTo?: string
 }
 
+let warnedAboutMissingResendConfig = false
+
 export async function sendTransactionalEmail(input: EmailInput) {
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.RESEND_FROM_EMAIL || 'PlotKare <support@plotkare.in>'
 
-  if (!apiKey) return { skipped: true as const, reason: 'RESEND_API_KEY is not configured' }
+  if (!apiKey) {
+    if (!warnedAboutMissingResendConfig) {
+      warnedAboutMissingResendConfig = true
+      console.warn('[PlotKare] RESEND_API_KEY is not configured. Transactional email will degrade to dashboard-only delivery.')
+    }
+    return { skipped: true as const, reason: 'RESEND_API_KEY is not configured' }
+  }
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',

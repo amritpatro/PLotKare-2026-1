@@ -22,6 +22,7 @@ import {
 } from '@/app/customer/actions'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
+import { SellerPartnerStamp } from '@/components/seller-partner-stamp'
 import { linkedPropertyFrom } from '@/lib/customer-workspace/data'
 import type {
   CustomerListing,
@@ -276,6 +277,7 @@ function BrowseListingsSection({ data }: { data: CustomerWorkspaceData }) {
               </div>
               <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
                 {listing.approval_status === 'approved' && listing.is_published ? <PlotKareVerifiedStamp compact /> : null}
+                {listing.seller_partner_priority ? <SellerPartnerStamp compact /> : null}
                 <StatusPill value={listing.premium ? 'premium' : listing.status} />
               </div>
             </div>
@@ -515,6 +517,14 @@ export function CustomerWorkspace({ data, profileLabel, successCode, errorCode }
                     </div>
                     <StatusPill value={link.status} />
                   </div>
+                  {link.bundled_plan ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <SellerPartnerStamp compact />
+                      <span className="rounded-full border border-[#E8D8A8] bg-[#FFF8E1] px-3 py-1 text-xs text-[#8A6D1D]">
+                        {link.bundled_plan} included · {link.bundle_months} months · {statusLabel(link.bundle_status)}
+                      </span>
+                    </div>
+                  ) : null}
                   <p className="mt-3 text-sm text-[#9CA3AF]">
                     Registration: {formatDate(link.registration_date)} · Verification: {statusLabel(property?.verification_status)}
                   </p>

@@ -15,6 +15,13 @@ const adminTables = [
   'property_documents',
   'active_amenities',
   'customer_property_requests',
+  'inspections',
+  'inspection_photos',
+  'inspection_reports',
+  'inspection_flags',
+  'inspection_checklist_answers',
+  'inspection_document_checks',
+  'inspection_amenity_checks',
 ] as const
 
 export function AdminRealtimeBridge({ userId }: { userId: string }) {

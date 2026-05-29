@@ -20,6 +20,8 @@ export type PublicPlotListing = {
   propertyKind: PropertyKind
   bhk?: number
   floorLabel?: string
+  sellerPartner?: boolean
+  sellerLabel?: string
 }
 
 export const STORAGE_PUBLIC_LISTINGS = 'plotkare_public_listings'
@@ -178,6 +180,8 @@ function normalizeListing(raw: Record<string, unknown>): PublicPlotListing | nul
     propertyKind,
     bhk: raw.bhk != null ? Number(raw.bhk) : base?.bhk,
     floorLabel: raw.floorLabel != null ? String(raw.floorLabel) : base?.floorLabel,
+    sellerPartner: Boolean(raw.sellerPartner ?? false),
+    sellerLabel: raw.sellerLabel != null ? String(raw.sellerLabel) : undefined,
   }
 }
 

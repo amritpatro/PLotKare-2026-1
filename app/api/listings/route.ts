@@ -15,10 +15,37 @@ export async function GET() {
     .order('created_at', { ascending: false })
 
   if (error) return apiError(error.message, 400, 'LISTINGS_FETCH_FAILED')
-  const listings = (data ?? []).map(({ price_lakhs, ...listing }) => ({
-    ...listing,
-    price_display: listing.price_display || 'Consult after verification',
-  }))
+  const rows = (data ?? []) as Array<Record<string, unknown> & { seller_id?: string | null; premium?: boolean; created_at?: string; inquiries_count?: number | null }>
+  const sellerIds = rows.map((row) => row.seller_id).filter(Boolean) as string[]
+  const { data: sellers } = sellerIds.length
+    ? await supabase
+        .from('sellers')
+        .select('id,company_name,verification_status')
+        .in('id', Array.from(new Set(sellerIds)))
+    : { data: [] }
+  const sellersById = new Map(
+    ((sellers ?? []) as Array<{ id: string; company_name: string | null; verification_status: string | null }>).map((seller) => [
+      seller.id,
+      seller,
+    ]),
+  )
+  const listings = rows
+    .map((listing) => {
+      const seller = listing.seller_id ? sellersById.get(listing.seller_id) : null
+      return {
+        ...listing,
+        price_display: listing.price_display || 'Consult after verification',
+        seller_partner_priority: seller?.verification_status === 'approved',
+        seller_company_name: seller?.company_name ?? null,
+      }
+    })
+    .sort((left, right) => {
+      const leftPriority = left.seller_partner_priority ? 1 : 0
+      const rightPriority = right.seller_partner_priority ? 1 : 0
+      if (leftPriority !== rightPriority) return rightPriority - leftPriority
+      if (left.premium !== right.premium) return Number(Boolean(right.premium)) - Number(Boolean(left.premium))
+      return Number(right.inquiries_count ?? 0) - Number(left.inquiries_count ?? 0)
+    })
 
   return apiOk({ listings })
 }

@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { ADMIN_TASK_PRIORITIES, ADMIN_TASK_STATUSES } from '@/lib/admin/status'
 import { recordAuditLog } from '@/lib/audit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { getSiteUrl } from '@/lib/supabase/env'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 
 const taskUpdateSchema = z.object({
@@ -13,6 +14,14 @@ const taskUpdateSchema = z.object({
   status: z.enum(ADMIN_TASK_STATUSES),
   priority: z.enum(ADMIN_TASK_PRIORITIES),
   dueAt: z.string().trim().optional().or(z.literal('')),
+})
+
+const fieldAgentInvitationSchema = z.object({
+  fullName: z.string().trim().min(2).max(100),
+  email: z.string().trim().email(),
+  workerType: z.enum(['internal', 'vendor']),
+  vendorId: z.string().uuid().optional().or(z.literal('')),
+  assignedCorridor: z.string().trim().min(2).max(120),
 })
 
 function employeesRedirect(kind: 'success' | 'error', code: string): never {
@@ -77,4 +86,92 @@ export async function updateEmployeeTask(formData: FormData) {
   revalidatePath('/admin/dashboard/employees')
   revalidatePath('/admin/dashboard/audit')
   employeesRedirect('success', 'task_updated')
+}
+
+export async function inviteFieldAgent(formData: FormData) {
+  const parsed = fieldAgentInvitationSchema.safeParse({
+    fullName: formData.get('fullName'),
+    email: formData.get('email'),
+    workerType: formData.get('workerType'),
+    vendorId: formData.get('vendorId') ?? '',
+    assignedCorridor: formData.get('assignedCorridor'),
+  })
+
+  if (!parsed.success) employeesRedirect('error', 'invalid_field_agent_invitation')
+
+  const { user } = await requirePageRole(['admin'])
+  const admin = createSupabaseAdminClient()
+  const { fullName, email, workerType, assignedCorridor } = parsed.data
+  const vendorId = parsed.data.vendorId || null
+
+  if (workerType === 'vendor') {
+    if (!vendorId) employeesRedirect('error', 'approved_vendor_required')
+    const { data: vendor } = await admin
+      .from('vendors')
+      .select('id')
+      .eq('id', vendorId)
+      .eq('active', true)
+      .eq('verification_status', 'approved')
+      .maybeSingle()
+    if (!vendor) employeesRedirect('error', 'approved_vendor_required')
+  }
+
+  const redirectTo = `${getSiteUrl()}/auth/callback?next=${encodeURIComponent('/update-password')}`
+  const { data, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
+    data: { full_name: fullName },
+    redirectTo,
+  })
+
+  if (inviteError || !data.user) {
+    console.error('Field agent invitation failed:', inviteError)
+    employeesRedirect('error', 'field_agent_invitation_failed')
+  }
+
+  const profileId = data.user.id
+  const { error: profileError } = await admin
+    .from('profiles')
+    .update({
+      full_name: fullName,
+      role: 'employee',
+      employee_role: 'field_inspection_agent',
+      onboarding_completed: true,
+      role_assigned_at: new Date().toISOString(),
+      role_assigned_by: user.id,
+    })
+    .eq('id', profileId)
+
+  if (profileError) {
+    console.error('Field agent profile activation failed:', profileError)
+    employeesRedirect('error', 'field_agent_invitation_failed')
+  }
+
+  const { error: employeeError } = await admin.from('employees').upsert(
+    {
+      profile_id: profileId,
+      employee_role: 'field_inspection_agent',
+      worker_type: workerType,
+      vendor_id: workerType === 'vendor' ? vendorId : null,
+      assigned_corridor: assignedCorridor,
+      active: true,
+    },
+    { onConflict: 'profile_id' },
+  )
+
+  if (employeeError) {
+    console.error('Field agent employee record failed:', employeeError)
+    employeesRedirect('error', 'field_agent_invitation_failed')
+  }
+
+  await recordAuditLog({
+    actorId: user.id,
+    action: 'admin.field_agent.invited',
+    entityType: 'employee',
+    entityId: profileId,
+    metadata: { email, worker_type: workerType, vendor_id: vendorId, assigned_corridor: assignedCorridor },
+  })
+
+  revalidatePath('/admin/dashboard')
+  revalidatePath('/admin/dashboard/employees')
+  revalidatePath('/admin/dashboard/audit')
+  employeesRedirect('success', 'field_agent_invited')
 }

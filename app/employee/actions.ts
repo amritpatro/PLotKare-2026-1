@@ -60,17 +60,6 @@ const amenityReviewSchema = z.object({
   note: optionalNote,
 })
 
-const inspectionReportSchema = z.object({
-  inspectionId: z.string().uuid(),
-  status: z.enum(['in_progress', 'completed', 'needs_followup']),
-  summary: z.string().trim().min(10, 'Write a short field summary.').max(1800),
-  fieldCondition: z.enum(['good', 'watch', 'issue_found', 'critical']),
-  issueSeverity: z.enum(['none', 'low', 'medium', 'high', 'urgent']),
-  actionRequired: z.preprocess((value) => value === 'on' || value === 'true', z.boolean()),
-  photoEvidence: z.string().trim().max(2400).optional().transform((value) => value || null),
-  nextVisitAt: z.string().trim().optional().transform((value) => value || null),
-})
-
 const workStatusByKind = {
   inspection: ['requested', 'scheduled', 'in_progress', 'completed', 'cancelled', 'needs_followup'],
   maintenance: ['open', 'assigned', 'in_progress', 'waiting_on_vendor', 'resolved', 'closed', 'cancelled'],
@@ -116,22 +105,6 @@ function employeeRedirect(kind: 'success' | 'error', code: string, section = 'ta
 
 function nowIso() {
   return new Date().toISOString()
-}
-
-function compactEvidence(value: string | null) {
-  if (!value) return []
-
-  return value
-    .split(/\r?\n/)
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .slice(0, 10)
-    .map((value, index) => ({
-      kind: value.startsWith('http') ? 'url' : 'storage_path',
-      value,
-      caption: `Evidence ${index + 1}`,
-      captured_at: nowIso(),
-    }))
 }
 
 async function getEmployeeContext() {
@@ -844,125 +817,6 @@ export async function updateAssignedAmenityReview(formData: FormData) {
 }
 
 export async function submitInspectionReport(formData: FormData) {
-  const parsed = inspectionReportSchema.safeParse({
-    inspectionId: formData.get('inspectionId'),
-    status: formData.get('status'),
-    summary: formData.get('summary'),
-    fieldCondition: formData.get('fieldCondition'),
-    issueSeverity: formData.get('issueSeverity'),
-    actionRequired: formData.get('actionRequired'),
-    photoEvidence: formData.get('photoEvidence') ?? undefined,
-    nextVisitAt: formData.get('nextVisitAt') ?? undefined,
-  })
-
-  if (!parsed.success) employeeRedirect('error', 'invalid_inspection_report', 'inspections')
-
-  let inspectionId: string | null = null
-  let failure: string | null = null
-
-  try {
-    const context = await getEmployeeContext()
-    const { supabase, user, employee } = context
-    const { data: existing, error: existingError } = await supabase
-      .from('inspections')
-      .select('id,status,assigned_employee_id,property_id,plot_id,photos,properties(owner_profile_id,title)')
-      .eq('id', parsed.data.inspectionId)
-      .eq('assigned_employee_id', employee.id)
-      .maybeSingle()
-
-    if (existingError) throw existingError
-    if (!existing) throw new Error('Assigned inspection not found.')
-
-    const currentPhotos = Array.isArray(existing.photos) ? existing.photos : []
-    const submittedEvidence = compactEvidence(parsed.data.photoEvidence).map((item) => ({
-      ...item,
-      submitted_by: user.id,
-      inspection_id: existing.id,
-    }))
-    const timestamp = nowIso()
-    const updates: Record<string, unknown> = {
-      status: parsed.data.status,
-      summary: parsed.data.summary,
-      field_condition: parsed.data.fieldCondition,
-      issue_severity: parsed.data.issueSeverity,
-      action_required: parsed.data.actionRequired,
-      employee_notes: parsed.data.summary,
-      next_visit_at: parsed.data.nextVisitAt ? new Date(parsed.data.nextVisitAt).toISOString() : null,
-      photos: [...currentPhotos, ...submittedEvidence],
-    }
-
-    if (parsed.data.status === 'completed') {
-      updates.completed_at = timestamp
-    }
-
-    const { error } = await supabase
-      .from('inspections')
-      .update(updates)
-      .eq('id', existing.id)
-      .eq('assigned_employee_id', employee.id)
-
-    if (error) throw error
-    inspectionId = existing.id
-
-    const property = Array.isArray(existing.properties) ? existing.properties[0] : existing.properties
-    const ownerId = property?.owner_profile_id
-
-    if (ownerId && ['completed', 'needs_followup'].includes(parsed.data.status)) {
-      const month = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(new Date())
-      const { error: reportError } = await supabase.from('inspection_reports').insert({
-        owner_id: ownerId,
-        plot_id: existing.plot_id ?? null,
-        month,
-        agent_name: user.email ?? 'PlotKare field agent',
-        finding: parsed.data.summary,
-        status: parsed.data.status === 'completed' ? 'Completed' : 'Action Needed',
-      })
-
-      if (reportError) throw reportError
-    }
-
-    await createEmployeeWorkLog(context, {
-      entityType: 'inspections',
-      entityId: existing.id,
-      action: 'inspection_report_submitted',
-      previousStatus: existing.status,
-      newStatus: parsed.data.status,
-      note: parsed.data.summary,
-      metadata: {
-        property_id: existing.property_id,
-        plot_id: existing.plot_id,
-        field_condition: parsed.data.fieldCondition,
-        issue_severity: parsed.data.issueSeverity,
-        action_required: parsed.data.actionRequired,
-        evidence_count: submittedEvidence.length,
-      },
-    })
-
-    await recordAuditLog({
-      actorId: user.id,
-      action: 'employee.inspection.report_submitted',
-      entityType: 'inspections',
-      entityId: existing.id,
-      metadata: {
-        previous_status: existing.status,
-        status: parsed.data.status,
-        assigned_employee_id: employee.id,
-        property_id: existing.property_id,
-        field_condition: parsed.data.fieldCondition,
-        issue_severity: parsed.data.issueSeverity,
-        action_required: parsed.data.actionRequired,
-      },
-    })
-  } catch (error) {
-    console.error('Employee inspection report failed:', error)
-    failure = 'inspection_report_failed'
-  }
-
-  if (failure || !inspectionId) employeeRedirect('error', failure ?? 'inspection_report_failed', 'inspections')
-
-  revalidatePath('/employee')
-  revalidatePath('/admin/dashboard/employees')
-  revalidatePath('/admin/dashboard/properties')
-  revalidatePath('/owner')
-  employeeRedirect('success', 'inspection_reported', 'inspections')
+  void formData
+  employeeRedirect('error', 'inspection_report_failed', 'inspections')
 }

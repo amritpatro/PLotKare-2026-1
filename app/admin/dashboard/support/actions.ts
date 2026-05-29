@@ -37,6 +37,19 @@ export async function updateSupportTicket(formData: FormData) {
   const assignedEmployeeId = parsed.data.assignedEmployeeId || null
   const note = parsed.data.note || null
 
+  if (assignedEmployeeId) {
+    const { data: assignee, error: assigneeError } = await supabase
+      .from('employees')
+      .select('id,active,employee_role')
+      .eq('id', assignedEmployeeId)
+      .maybeSingle()
+
+    if (assigneeError || !assignee || !assignee.active || assignee.employee_role !== 'support_staff') {
+      console.error('Support assignee validation failed:', assigneeError)
+      supportRedirect('error', 'invalid_support_update')
+    }
+  }
+
   const { data: existing, error: existingError } = await supabase
     .from('support_tickets')
     .select('id,requester_id,status,priority,assigned_employee_id,property_id,subject')

@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { PlotTopdownSvg } from '@/components/plot-topdown-svg'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
+import { SellerPartnerStamp } from '@/components/seller-partner-stamp'
 import {
   getLandingShowcaseListings,
   type PublicPlotListing,
@@ -163,6 +164,7 @@ function PlotCard({
       <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-5 md:p-6">
         <div className="flex flex-wrap items-center gap-2">
           {plot.verified !== false ? <PlotKareVerifiedStamp tone="dark" /> : null}
+          {plot.sellerPartner ? <SellerPartnerStamp compact tone="dark" /> : null}
           {plot.propertyKind === 'apartment' && (
             <span className="rounded-full border border-white/25 bg-black/40 px-2.5 py-1 font-sans text-[10px] font-semibold uppercase tracking-wide text-white/80">
               Apartment

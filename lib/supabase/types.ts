@@ -30,6 +30,14 @@ export function dashboardPathForRole(role: string | null | undefined) {
   return isUserRole(role) ? ROLE_DASHBOARD_PATHS[role] : ROLE_DASHBOARD_PATHS.user
 }
 
+export function dashboardPathForProfile(profile: {
+  role?: string | null
+  employee_role?: string | null
+} | null | undefined) {
+  if (profile?.role === 'employee' && profile.employee_role === 'field_inspection_agent') return '/agent'
+  return dashboardPathForRole(profile?.role)
+}
+
 export function roleFromCustomerType(customerType: string | null | undefined): UserRole | null {
   if (customerType === 'land_owner') return 'land_owner'
   if (customerType === 'plot_seller') return 'plot_seller'

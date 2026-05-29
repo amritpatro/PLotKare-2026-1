@@ -59,7 +59,7 @@ export default function ChooseRolePage() {
         } = await supabase.auth.getUser()
 
         if (!user) {
-          router.push('/auth/login')
+          router.push('/login')
           return
         }
 
@@ -102,7 +102,7 @@ export default function ChooseRolePage() {
       } = await supabase.auth.getUser()
 
       if (!user) {
-        router.push('/auth/login')
+        router.push('/login')
         return
       }
 

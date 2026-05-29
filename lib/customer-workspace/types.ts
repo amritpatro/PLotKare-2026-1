@@ -28,6 +28,8 @@ export type CustomerListing = {
   id: string
   property_id: string | null
   seller_id: string | null
+  seller_company_name?: string | null
+  seller_partner_priority?: boolean
   plot_id: string | null
   plot_number: string
   location: string
@@ -90,6 +92,12 @@ export type PropertyLink = {
   relationship_type: string
   status: string
   registration_date: string | null
+  bundled_plan?: string | null
+  bundle_months?: number | null
+  bundle_status?: string | null
+  bundle_started_at?: string | null
+  bundle_expires_at?: string | null
+  activation_source?: string | null
   created_at: string
   properties: LinkedProperty | LinkedProperty[] | null
 }

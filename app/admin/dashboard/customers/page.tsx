@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { SellerPartnerStamp } from '@/components/seller-partner-stamp'
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass = 'rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
@@ -21,6 +22,8 @@ type CustomerRow = {
 type CustomerPropertyLink = {
   customer_id: string
   status: string
+  bundled_plan?: string | null
+  bundle_status?: string | null
 }
 
 type SubscriptionRow = {
@@ -65,7 +68,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
 
   const [{ data: customers }, { data: links }, { data: subscriptions }] = await Promise.all([
     customerQuery,
-    supabase.from('customer_property_links').select('customer_id,status'),
+    supabase.from('customer_property_links').select('customer_id,status,bundled_plan,bundle_status'),
     supabase.from('subscriptions').select('customer_id,plan,status').not('customer_id', 'is', null),
   ])
 
@@ -75,11 +78,15 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
   const plotCounts = new Map<string, number>()
   const activeLinkCounts = new Map<string, number>()
   const plans = new Map<string, string>()
+  const bundles = new Map<string, string>()
 
   linkRows.forEach((link) => {
     plotCounts.set(link.customer_id, (plotCounts.get(link.customer_id) ?? 0) + 1)
     if (link.status === 'active' || link.status === 'completed') {
       activeLinkCounts.set(link.customer_id, (activeLinkCounts.get(link.customer_id) ?? 0) + 1)
+    }
+    if (link.bundled_plan && !bundles.has(link.customer_id)) {
+      bundles.set(link.customer_id, `${link.bundled_plan} · ${link.bundle_status ?? 'pending_activation'}`)
     }
   })
 
@@ -134,6 +141,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
               <th className="px-4 py-3">Address</th>
               <th className="px-4 py-3">Properties</th>
               <th className="px-4 py-3">Subscription</th>
+              <th className="px-4 py-3">Bundle</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Joined</th>
             </tr>
@@ -141,7 +149,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
           <tbody className="divide-y divide-[#F3F4F6] font-sans text-[#1F2937]">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-[#6B7280]">
+                <td colSpan={9} className="px-4 py-10 text-center text-[#6B7280]">
                   No customers found.
                 </td>
               </tr>
@@ -154,6 +162,16 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
                 <td className="max-w-xs truncate px-4 py-3 text-[#6B7280]">{row.address || 'Pending'}</td>
                 <td className="px-4 py-3">{plotCounts.get(row.id) ?? 0}</td>
                 <td className="px-4 py-3 text-[#6B7280]">{plans.get(row.id) ?? 'No subscription'}</td>
+                <td className="px-4 py-3">
+                  {bundles.get(row.id) ? (
+                    <div className="space-y-2">
+                      <SellerPartnerStamp compact />
+                      <p className="text-xs text-[#6B7280]">{bundles.get(row.id)}</p>
+                    </div>
+                  ) : (
+                    <span className="text-[#9CA3AF]">No seller bundle</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
                     {statusBadge(row.account_status)}

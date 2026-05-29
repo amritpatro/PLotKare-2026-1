@@ -145,6 +145,7 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
         .from('employees')
         .select('id,employee_role,active,profiles(full_name,email)')
         .eq('active', true)
+        .eq('employee_role', 'verification_agent')
         .order('created_at', { ascending: false })
         .limit(50),
       supabase

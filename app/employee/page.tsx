@@ -13,7 +13,7 @@ import {
   TimerReset,
   Wrench,
 } from 'lucide-react'
-import { submitInspectionReport, updateAssignedWorkItem, updateMyAdminTask } from './actions'
+import { updateAssignedWorkItem, updateMyAdminTask } from './actions'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { ADMIN_TASK_STATUSES } from '@/lib/admin/status'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
@@ -219,72 +219,6 @@ function WorkStatusForm({ kind, itemId, status }: { kind: keyof typeof workStatu
         </PendingActionButton>
       </div>
       <textarea name="note" rows={2} className={inputClass} placeholder="Employee note for admin visibility" />
-    </form>
-  )
-}
-
-function InspectionReportForm({ inspection }: { inspection: InspectionRow }) {
-  const defaultStatus = ['in_progress', 'completed', 'needs_followup'].includes(inspection.status) ? inspection.status : 'completed'
-
-  return (
-    <form action={submitInspectionReport} className="space-y-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3">
-      <input type="hidden" name="inspectionId" value={inspection.id} />
-      <div className="grid gap-2 sm:grid-cols-3">
-        <label className="space-y-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#6B7280]">Report status</span>
-          <select name="status" defaultValue={defaultStatus} className={selectClass}>
-            <option value="in_progress">In progress</option>
-            <option value="completed">Completed</option>
-            <option value="needs_followup">Needs followup</option>
-          </select>
-        </label>
-        <label className="space-y-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#6B7280]">Condition</span>
-          <select name="fieldCondition" defaultValue={inspection.field_condition || 'good'} className={selectClass}>
-            <option value="good">Good</option>
-            <option value="watch">Watch</option>
-            <option value="issue_found">Issue found</option>
-            <option value="critical">Critical</option>
-          </select>
-        </label>
-        <label className="space-y-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#6B7280]">Severity</span>
-          <select name="issueSeverity" defaultValue={inspection.issue_severity || 'none'} className={selectClass}>
-            <option value="none">None</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="urgent">Urgent</option>
-          </select>
-        </label>
-      </div>
-      <textarea
-        name="summary"
-        required
-        rows={4}
-        className={inputClass}
-        defaultValue={inspection.summary || ''}
-        placeholder="Field finding, visible condition, access issue, boundary condition, and action recommendation"
-      />
-      <textarea
-        name="photoEvidence"
-        rows={3}
-        className={inputClass}
-        placeholder="Optional: one signed photo URL or storage path per line. Full upload system comes in Day 5."
-      />
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-        <label className="space-y-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#6B7280]">Next visit</span>
-          <input type="datetime-local" name="nextVisitAt" className={inputClass} />
-        </label>
-        <label className="flex items-center gap-2 rounded-md border border-[#E5E7EB] bg-white px-3 py-2 text-xs text-[#1F2937]">
-          <input type="checkbox" name="actionRequired" defaultChecked={Boolean(inspection.action_required)} />
-          Action required
-        </label>
-      </div>
-      <PendingActionButton pendingText="Submitting..." className="w-full rounded-md bg-[#C0392B] px-3 py-2.5 text-xs font-semibold text-white hover:bg-[#A93226]">
-        Submit inspection report
-      </PendingActionButton>
     </form>
   )
 }
@@ -572,7 +506,7 @@ export default async function EmployeeDashboardPage({ searchParams }: EmployeeDa
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h2 className="font-serif text-2xl font-semibold text-[#1F2937]">Inspection queue</h2>
-                    <p className="mt-1 text-sm text-[#6B7280]">Submit visit findings, condition, severity, next visit, and evidence paths.</p>
+                    <p className="mt-1 text-sm text-[#6B7280]">Field visits are executed through the GPS-verified mobile field portal.</p>
                   </div>
                   <FileCheck2 className="h-5 w-5 text-[#C9A962]" />
                 </div>
@@ -593,7 +527,9 @@ export default async function EmployeeDashboardPage({ searchParams }: EmployeeDa
                           </div>
                         </div>
                         <p className="text-xs text-[#6B7280]">{inspection.summary || `Scheduled ${formatDate(inspection.scheduled_for)}`}</p>
-                        <InspectionReportForm inspection={inspection} />
+                        <p className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3 text-xs text-[#6B7280]">
+                          Assigned field agents capture evidence and submit review-ready reports from the Field Inspections portal.
+                        </p>
                       </div>
                     )
                   })}

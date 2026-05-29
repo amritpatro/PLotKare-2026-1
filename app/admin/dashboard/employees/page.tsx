@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { updateEmployeeTask } from './actions'
+import { inviteFieldAgent, updateEmployeeTask } from './actions'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { ADMIN_EMPLOYEE_ROLES, ADMIN_TASK_PRIORITIES, ADMIN_TASK_STATUSES } from '@/lib/admin/status'
@@ -68,6 +68,12 @@ type WorkLogRow = {
   created_at: string
 }
 
+type VendorOption = {
+  id: string
+  name: string
+  vendor_type: string
+}
+
 type PageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
 }
@@ -75,10 +81,14 @@ type PageProps = {
 const messages = {
   success: {
     task_updated: 'Employee task updated and audit log recorded.',
+    field_agent_invited: 'Field agent invited. Their password-setup email has been sent.',
   },
   error: {
     invalid_task_update: 'Task update is invalid. Check status, priority, and due date.',
     task_update_failed: 'Task update failed.',
+    invalid_field_agent_invitation: 'Enter a valid name, email, corridor, and worker type.',
+    approved_vendor_required: 'Vendor field agents must be linked to an active approved vendor.',
+    field_agent_invitation_failed: 'Field agent invitation could not be sent. Check Auth email configuration and retry.',
   },
 } as const
 
@@ -154,6 +164,7 @@ export default async function AdminEmployeesPage({ searchParams }: PageProps) {
     documentsQueue,
     eventsQuery,
     workLogsQuery,
+    vendorsQuery,
   ] = await Promise.all([
     supabase
       .from('employees')
@@ -184,6 +195,12 @@ export default async function AdminEmployeesPage({ searchParams }: PageProps) {
       .select('id,employee_id,entity_type,entity_id,action,previous_status,new_status,note,created_at')
       .order('created_at', { ascending: false })
       .limit(20),
+    supabase
+      .from('vendors')
+      .select('id,name,vendor_type')
+      .eq('active', true)
+      .eq('verification_status', 'approved')
+      .order('name'),
   ])
 
   const employees = (employeesQuery.data ?? []) as EmployeeRow[]
@@ -200,6 +217,7 @@ export default async function AdminEmployeesPage({ searchParams }: PageProps) {
   ]
   const eventRows = eventsQuery.data ?? []
   const workLogRows = (workLogsQuery.data ?? []) as WorkLogRow[]
+  const vendorOptions = (vendorsQuery.data ?? []) as VendorOption[]
   const operationalRows = [...inspectionRows, ...maintenanceRows, ...supportRows]
   const openTasks = tasks.filter((task) => openTaskStatuses.includes(task.status))
   const overdueTasks = tasks.filter(isOverdue)
@@ -282,6 +300,36 @@ export default async function AdminEmployeesPage({ searchParams }: PageProps) {
             </p>
           </div>
         ))}
+      </section>
+
+      <section className={`${cardClass} mt-8`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-[#C9A962]">Field inspection access</p>
+            <h2 className="mt-2 font-serif text-2xl font-semibold text-[#1F2937]">Invite field agent</h2>
+            <p className="mt-1 text-sm text-[#6B7280]">Create an assigned mobile field worker account and send a password-setup invitation.</p>
+          </div>
+          {badge('agent portal', 'gold')}
+        </div>
+        <form action={inviteFieldAgent} className="mt-5 grid gap-3 lg:grid-cols-[1.1fr_1.25fr_0.9fr_1fr_1fr_auto]">
+          <input required name="fullName" placeholder="Full name" className="min-h-12 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#1F2937]" />
+          <input required type="email" name="email" placeholder="Work email" className="min-h-12 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#1F2937]" />
+          <select name="workerType" defaultValue="internal" className="min-h-12 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#1F2937]">
+            <option value="internal">Internal agent</option>
+            <option value="vendor">Vendor agent</option>
+          </select>
+          <select name="vendorId" defaultValue="" className="min-h-12 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#1F2937]">
+            <option value="">No vendor link</option>
+            {vendorOptions.map((vendor) => (
+              <option key={vendor.id} value={vendor.id}>{vendor.name} - {vendor.vendor_type}</option>
+            ))}
+          </select>
+          <input required name="assignedCorridor" placeholder="Assigned corridor" className="min-h-12 rounded-lg border border-[#D1D5DB] bg-white px-3 text-sm text-[#1F2937]" />
+          <PendingActionButton pendingText="Sending..." className="min-h-12 rounded-lg bg-[#C0392B] px-5 text-sm font-semibold text-white hover:bg-[#A93226]">
+            Send invite
+          </PendingActionButton>
+        </form>
+        <p className="mt-3 text-xs text-[#6B7280]">Vendor agents require an approved active vendor selection before their invitation is accepted.</p>
       </section>
 
       <section className={`${cardClass} mt-8`}>

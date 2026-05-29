@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get('next') ?? '/auth/choose-role'
 
   if (!code) {
-    return redirectTo(origin, '/auth/login?error=no_code')
+    return redirectTo(origin, '/login?error=no_code')
   }
 
   const supabase = await createSupabaseServerClient()
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
     console.error('Auth callback error:', error)
-    return redirectTo(origin, '/auth/login?error=auth_failed')
+    return redirectTo(origin, '/login?error=auth_failed')
   }
 
   const {
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return redirectTo(origin, '/auth/login')
+    return redirectTo(origin, '/login')
   }
 
   const destination = await resolvePostLoginRedirect(

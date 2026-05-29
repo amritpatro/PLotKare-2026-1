@@ -15,6 +15,7 @@ import { PropertyDocumentUploadPanel } from '@/components/documents/property-doc
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
+import { SellerPartnerStamp } from '@/components/seller-partner-stamp'
 import { SupportTicketThreadList } from '@/components/support/support-ticket-thread-list'
 import { readAmenityWorkflowRows } from '@/lib/amenity-operations'
 import { linkedPropertyFrom, getCustomerWorkspaceData } from '@/lib/customer-workspace/data'
@@ -140,7 +141,10 @@ function ListingsPage({ listings, savedIds }: { listings: CustomerListing[]; sav
                 <td className="px-3 py-4 text-[#6B7280]">{listingSubtitle(listing)}</td>
                 <td className="px-3 py-4 font-semibold text-[#1F2937]">{listing.price_display}</td>
                 <td className="px-3 py-4">
-                  {listing.approval_status === 'approved' && listing.is_published ? <PlotKareVerifiedStamp compact /> : statusPill(listing.approval_status)}
+                  <div className="flex flex-wrap gap-2">
+                    {listing.approval_status === 'approved' && listing.is_published ? <PlotKareVerifiedStamp compact /> : statusPill(listing.approval_status)}
+                    {listing.seller_partner_priority ? <SellerPartnerStamp compact /> : null}
+                  </div>
                 </td>
                 <td className="px-3 py-4">
                   <div className="grid gap-2">
@@ -298,13 +302,13 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
         <div className="space-y-6">
           <SectionTitle eyebrow="My property" title="Linked property records" body="Purchased, rented, or nominated properties linked by sellers or admins." />
           <div className={`${cardClass} overflow-x-auto`}>
-            <table className="w-full min-w-[920px] text-left text-sm">
-              <thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Property</th><th className="px-3 py-3">Location</th><th className="px-3 py-3">Relationship</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Registration</th></tr></thead>
+            <table className="w-full min-w-[1080px] text-left text-sm">
+              <thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Property</th><th className="px-3 py-3">Location</th><th className="px-3 py-3">Relationship</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Included bundle</th><th className="px-3 py-3">Registration</th></tr></thead>
               <tbody className="divide-y divide-[#F3F4F6]">
-                {data.propertyLinks.length === 0 ? <tr><td colSpan={5} className="px-3 py-8 text-center text-[#6B7280]">No linked properties yet.</td></tr> : null}
+                {data.propertyLinks.length === 0 ? <tr><td colSpan={6} className="px-3 py-8 text-center text-[#6B7280]">No linked properties yet.</td></tr> : null}
                 {data.propertyLinks.map((link) => {
                   const property = linkedPropertyFrom(link)
-                  return <tr key={link.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{property?.title ?? 'Property pending'}</td><td className="px-3 py-3 text-[#6B7280]">{property?.city || property?.address || 'Location pending'}</td><td className="px-3 py-3 text-[#6B7280]">{link.relationship_type}</td><td className="px-3 py-3">{statusPill(link.status)}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(link.registration_date)}</td></tr>
+                  return <tr key={link.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{property?.title ?? 'Property pending'}</td><td className="px-3 py-3 text-[#6B7280]">{property?.city || property?.address || 'Location pending'}</td><td className="px-3 py-3 text-[#6B7280]">{link.relationship_type}</td><td className="px-3 py-3">{statusPill(link.status)}</td><td className="px-3 py-3">{link.bundled_plan ? <div className="space-y-2"><SellerPartnerStamp compact /><p className="text-xs text-[#6B7280]">{link.bundled_plan} · {link.bundle_months} months · {statusLabel(link.bundle_status)}</p></div> : <span className="text-[#9CA3AF]">No included bundle</span>}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(link.registration_date)}</td></tr>
                 })}
               </tbody>
             </table>

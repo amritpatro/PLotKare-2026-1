@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from './server'
-import { dashboardPathForRole, effectiveRoleForProfile, isUserRole, type UserRole } from './types'
+import { dashboardPathForProfile, effectiveRoleForProfile, isUserRole, type UserRole } from './types'
 
 export async function requirePageRole(allowedRoles: UserRole[]) {
   const supabase = await createSupabaseServerClient()
@@ -9,7 +9,7 @@ export async function requirePageRole(allowedRoles: UserRole[]) {
     error: userError,
   } = await supabase.auth.getUser()
 
-  if (userError || !user) redirect('/auth/login')
+  if (userError || !user) redirect('/login')
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -23,8 +23,24 @@ export async function requirePageRole(allowedRoles: UserRole[]) {
   if (!role || !isUserRole(role)) redirect('/auth/choose-role')
 
   if (!allowedRoles.includes(role)) {
-    redirect(dashboardPathForRole(role))
+    redirect(dashboardPathForProfile({ role, employee_role: profile.employee_role }))
   }
 
   return { user, profile: { ...profile, role } }
+}
+
+export async function requireFieldAgentPage() {
+  const context = await requirePageRole(['employee'])
+  const supabase = await createSupabaseServerClient()
+  const { data: employee } = await supabase
+    .from('employees')
+    .select('id,profile_id,employee_role,active,worker_type,vendor_id,assigned_corridor')
+    .eq('profile_id', context.user.id)
+    .eq('employee_role', 'field_inspection_agent')
+    .eq('active', true)
+    .maybeSingle()
+
+  if (!employee) redirect('/employee')
+
+  return { ...context, employee }
 }

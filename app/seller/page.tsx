@@ -1,6 +1,8 @@
 import { addSoldCustomer, createSellerPlot, createSellerServiceRequest, createSellerSupportTicket } from './actions'
+import { DashboardInsightRibbon } from '@/components/dashboard/dashboard-insights'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
+import { SellerPartnerStamp } from '@/components/seller-partner-stamp'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
@@ -102,7 +104,7 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
     sellerId
       ? supabase
           .from('customer_property_links')
-          .select('id,property_id,customer_id,status,registration_date,relationship_type')
+          .select('id,property_id,customer_id,status,registration_date,relationship_type,bundled_plan,bundle_months,bundle_status,bundle_started_at,bundle_expires_at')
           .eq('seller_id', sellerId)
       : Promise.resolve({ data: [] }),
     supabase
@@ -170,6 +172,10 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
   const soldPlots = plotRows.filter((plot) => plot.lifecycle_status === 'sold' || plot.status === 'sold').length
   const availableProperties = propertyRows.filter((property) => property.lifecycle_status !== 'sold')
   const pendingVerification = propertyRows.filter((property) => property.verification_status !== 'approved').length
+  const bundledLinks = linkRows.filter((link: any) => link.bundled_plan && link.bundle_status !== 'not_included')
+  const activeBundles = bundledLinks.filter((link: any) => link.bundle_status === 'active')
+  const pendingBundles = bundledLinks.filter((link: any) => link.bundle_status === 'pending_activation')
+  const priorityReadyListings = plotRows.filter((plot) => plot.verification_status === 'approved' && (seller?.verification_status === 'approved')).length
 
   return (
     <RoleDashboardShell
@@ -208,6 +214,11 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
               <p className="mt-2 font-sans text-lg font-semibold text-[#C0392B]">
                 {seller?.verification_status || sellerDetails?.verification_status || 'Pending'}
               </p>
+              {(seller?.verification_status || sellerDetails?.verification_status) === 'approved' ? (
+                <div className="mt-3">
+                  <SellerPartnerStamp compact />
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -219,6 +230,29 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
           </div>
         ) : (
           <>
+            <DashboardInsightRibbon
+              eyebrow="Seller partner operations"
+              title="Bundle handovers, listing readiness, and customer activation"
+              body="This seller workspace now tracks where PlotKare is being bundled into the sale itself, which buyers still need activation, and which approved plots are strongest for partner-led visibility."
+              metrics={[
+                { label: 'Sold customers', value: customerRows.length, hint: 'Buyer records created from this seller desk.' },
+                { label: 'Bundled handovers', value: bundledLinks.length, hint: 'Links carrying an included PlotKare bundle.' },
+                { label: 'Pending activation', value: pendingBundles.length, hint: 'Customers who still need account activation or ops follow-through.', tone: pendingBundles.length ? 'gold' : 'emerald' },
+                { label: 'Priority-ready plots', value: priorityReadyListings, hint: 'Approved seller plots ready for partner-first presentation.', tone: priorityReadyListings ? 'emerald' : 'slate' },
+              ]}
+              distributionTitle="Bundle status"
+              distribution={[
+                { label: 'Active bundles', value: activeBundles.length, tone: 'emerald' },
+                { label: 'Pending bundles', value: pendingBundles.length, tone: 'gold' },
+                { label: 'Unbundled sales', value: Math.max(linkRows.length - bundledLinks.length, 0), tone: 'slate' },
+              ]}
+              highlights={[
+                { label: 'Seller status', value: seller?.verification_status === 'approved' ? 'Verified partner eligible' : 'Verification pending' },
+                { label: 'Customer promise', value: bundledLinks.length ? 'Bundled membership tracked per buyer handover' : 'No bundled handovers yet' },
+                { label: 'Listings edge', value: priorityReadyListings ? 'Approved plots can surface with partner priority' : 'Approve more plots to unlock priority' },
+              ]}
+            />
+
             <section className="grid gap-4 md:grid-cols-4" id="overview">
               {[
                 ['Total plots', plotRows.length],
@@ -322,7 +356,19 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
                       </option>
                     ))}
                   </select>
-                  <input name="registrationDate" type="date" className={inputClass} />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <input name="registrationDate" type="date" className={inputClass} />
+                    <select name="bundlePlan" className={inputClass} defaultValue="standard">
+                      <option value="standard">Standard bundle included</option>
+                      <option value="basic">Basic bundle included</option>
+                      <option value="premium">Premium bundle included</option>
+                      <option value="none">No bundled membership</option>
+                    </select>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-[0.4fr_1fr]">
+                    <input name="bundleMonths" type="number" min="1" max="36" defaultValue="12" className={inputClass} />
+                    <input name="bundleNotes" placeholder="Bundle note, corridor promise, or seller handover context" className={inputClass} />
+                  </div>
                   {availableProperties.length === 0 ? (
                     <p className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-xs leading-5 text-[#6B7280]">
                       Add an available plot first, then return here to link the sold customer.
@@ -378,6 +424,14 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
                           {statusLabel(customer.kyc_status)}
                         </span>
                       </div>
+                      {linkRows.find((row: any) => row.customer_id === customer.id)?.bundled_plan ? (
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <SellerPartnerStamp compact />
+                          <span className="rounded-full border border-[#E8D8A8] bg-[#FFF8E1] px-3 py-1 text-xs text-[#8A6D1D]">
+                            {linkRows.find((row: any) => row.customer_id === customer.id)?.bundled_plan} · {linkRows.find((row: any) => row.customer_id === customer.id)?.bundle_months} months
+                          </span>
+                        </div>
+                      ) : null}
                       <p className="mt-2 text-xs text-[#9CA3AF]">
                         Account {statusLabel(customer.account_status)} · Added {formatDate(customer.created_at)}
                       </p>

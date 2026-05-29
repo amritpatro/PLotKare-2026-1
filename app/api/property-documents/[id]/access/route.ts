@@ -73,19 +73,22 @@ export async function GET(
   if (!allowed && context.profile.role === 'employee') {
     const { data: employee } = await admin
       .from('employees')
-      .select('id')
+      .select('id,active,employee_role')
       .eq('profile_id', context.user.id)
       .maybeSingle()
 
-    if (employee?.id && document.assigned_employee_id === employee.id) {
+    const activeVerificationEmployee =
+      employee?.id && employee.active && employee.employee_role === 'verification_agent' ? employee : null
+
+    if (activeVerificationEmployee?.id && document.assigned_employee_id === activeVerificationEmployee.id) {
       allowed = true
-    } else if (employee?.id) {
+    } else if (activeVerificationEmployee?.id) {
       const { data: verificationRequest } = await admin
         .from('verification_requests')
         .select('id')
         .eq('entity_type', 'document')
         .eq('entity_id', document.id)
-        .eq('assigned_employee_id', employee.id)
+        .eq('assigned_employee_id', activeVerificationEmployee.id)
         .maybeSingle()
 
       allowed = Boolean(verificationRequest)

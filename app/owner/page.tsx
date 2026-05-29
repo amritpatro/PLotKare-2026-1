@@ -1,4 +1,5 @@
 import { createOwnerServiceRequest, createOwnerSupportTicket, registerOwnerProperty } from './actions'
+import { DashboardInsightRibbon } from '@/components/dashboard/dashboard-insights'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
 import { requirePageRole } from '@/lib/supabase/role-guard'
@@ -124,6 +125,7 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
   const approvedCount = propertyRows.filter((property) => property.verification_status === 'approved').length
   const pendingCount = propertyRows.filter((property) => property.verification_status !== 'approved').length
   const registeredPropertyCount = Math.max(propertyRows.length, onboardingDetails ? 1 : 0)
+  const completedInspections = inspectionRows.filter((inspection) => inspection.status === 'completed').length
 
   return (
     <RoleDashboardShell
@@ -170,6 +172,29 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
             </p>
           </div>
         ) : null}
+
+        <DashboardInsightRibbon
+          eyebrow="Property health snapshot"
+          title="See what is verified, what is waiting, and what needs action"
+          body="This owner workspace should read like a control room: document readiness, inspection activity, and service movement are visible at a glance before you drill into records."
+          metrics={[
+            { label: 'Registered properties', value: registeredPropertyCount },
+            { label: 'Approved properties', value: approvedCount, tone: approvedCount ? 'emerald' : 'slate' },
+            { label: 'Pending review', value: Math.max(pendingCount, onboardingDetails && approvedCount === 0 ? 1 : 0), tone: pendingCount ? 'gold' : 'emerald' },
+            { label: 'Completed inspections', value: completedInspections, tone: completedInspections ? 'crimson' : 'slate' },
+          ]}
+          distributionTitle="Operations mix"
+          distribution={[
+            { label: 'Documents', value: documentRows.length, tone: 'crimson' },
+            { label: 'Services', value: requestRows.length, tone: 'gold' },
+            { label: 'Support tickets', value: ticketRows.length, tone: 'slate' },
+          ]}
+          highlights={[
+            { label: 'Owner status', value: owner?.verification_status || onboardingDetails?.verification_status || 'Pending' },
+            { label: 'Active plan records', value: `${subscriptionRows.length} tracked` },
+            { label: 'Latest inspection state', value: inspectionRows[0]?.status ? statusLabel(inspectionRows[0]?.status) : 'No inspections yet' },
+          ]}
+        />
 
         <section className="grid gap-4 md:grid-cols-4">
           {[

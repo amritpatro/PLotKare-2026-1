@@ -1,11 +1,12 @@
 /** @type {import('next').NextConfig} */
-// Dynamic Next.js runtime for Supabase Auth, middleware, route handlers, and Hostinger Node hosting.
+// Dynamic Next.js runtime for Supabase Auth, proxy, route handlers, and Hostinger Node hosting.
 import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH?.trim() || ''
 const isProduction = process.env.NODE_ENV === 'production'
+const posthogEnabled = Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY || process.env.POSTHOG_PROJECT_API_KEY)
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -13,7 +14,7 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline' https:",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://checkout.razorpay.com https://app.posthog.com https://*.posthog.com",
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://checkout.razorpay.com${posthogEnabled ? ' https://app.posthog.com https://*.posthog.com' : ''}`,
   "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
   "object-src 'none'",
   "base-uri 'self'",
@@ -29,7 +30,7 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   {
     key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(), geolocation=(self), payment=(self "https://checkout.razorpay.com")',
+    value: 'camera=(self), microphone=(), geolocation=(self), payment=(self "https://checkout.razorpay.com")',
   },
   ...(isProduction
     ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]

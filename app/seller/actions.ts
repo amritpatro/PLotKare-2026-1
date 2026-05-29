@@ -25,6 +25,9 @@ const customerSchema = z.object({
   address: z.string().trim().optional().or(z.literal('')),
   propertyId: z.string().uuid(),
   registrationDate: z.string().optional().or(z.literal('')),
+  bundlePlan: z.enum(['none', 'basic', 'standard', 'premium']).default('standard'),
+  bundleMonths: z.coerce.number().int().min(1).max(36).default(12),
+  bundleNotes: z.string().trim().max(300).optional().or(z.literal('')),
 })
 
 const serviceRequestSchema = z.object({
@@ -74,6 +77,13 @@ async function getSellerRecord() {
   if (!seller) throw new Error('Seller profile is not ready yet.')
 
   return { supabase, user, seller }
+}
+
+function bundleDates(registrationDate: string, bundleMonths: number) {
+  const start = registrationDate ? new Date(`${registrationDate}T00:00:00.000Z`) : new Date()
+  const end = new Date(start)
+  end.setMonth(end.getMonth() + bundleMonths)
+  return { startAt: start.toISOString(), endAt: end.toISOString() }
 }
 
 export async function createSellerPlot(formData: FormData) {
@@ -265,6 +275,22 @@ export async function addSoldCustomer(formData: FormData) {
       relationship_type: 'buyer',
       status: 'pending',
       registration_date: parsed.data.registrationDate || null,
+      bundled_plan: parsed.data.bundlePlan === 'none' ? null : parsed.data.bundlePlan,
+      bundle_months: parsed.data.bundlePlan === 'none' ? null : parsed.data.bundleMonths,
+      bundle_status: parsed.data.bundlePlan === 'none' ? 'not_included' : 'pending_activation',
+      activation_source: parsed.data.bundlePlan === 'none' ? 'direct' : 'seller_partner',
+      bundle_started_at:
+        parsed.data.bundlePlan === 'none'
+          ? null
+          : bundleDates(parsed.data.registrationDate || '', parsed.data.bundleMonths).startAt,
+      bundle_expires_at:
+        parsed.data.bundlePlan === 'none'
+          ? null
+          : bundleDates(parsed.data.registrationDate || '', parsed.data.bundleMonths).endAt,
+      bundle_notes:
+        parsed.data.bundlePlan === 'none'
+          ? cleanBundleNote(parsed.data.bundleNotes)
+          : cleanBundleNote(parsed.data.bundleNotes) || 'Included in seller handover package.',
       created_by: user.id,
     })
 
@@ -300,10 +326,20 @@ export async function addSoldCustomer(formData: FormData) {
     action: 'seller.customer_linked',
     entityType: 'customer',
     entityId: customerId,
-    metadata: { propertyId: parsed.data.propertyId, sellerId },
+    metadata: {
+      propertyId: parsed.data.propertyId,
+      sellerId,
+      bundled_plan: parsed.data.bundlePlan,
+      bundle_months: parsed.data.bundlePlan === 'none' ? null : parsed.data.bundleMonths,
+    },
   })
 
   redirect(sellerActionUrl('success', 'customer_linked', 'customers'))
+}
+
+function cleanBundleNote(value: string | undefined) {
+  const note = value?.trim()
+  return note ? note : null
 }
 
 export async function createSellerServiceRequest(formData: FormData) {

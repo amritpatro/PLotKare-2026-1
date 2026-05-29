@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { requireSupabaseBrowserEnv } from './env'
-import { dashboardPathForRole, effectiveRoleForProfile, isUserRole, type UserRole } from './types'
+import { dashboardPathForProfile, effectiveRoleForProfile, isUserRole, type UserRole } from './types'
 
 function isPrefix(pathname: string, prefixes: string[]) {
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
@@ -68,6 +68,7 @@ export async function updateSession(request: NextRequest) {
     '/update-password',
     '/admin/login',
     '/api/contact',
+    '/api/health',
     '/api/support/contact',
     '/api/webhook',
     '/api/webhooks',
@@ -75,7 +76,8 @@ export async function updateSession(request: NextRequest) {
 
   // Role-specific routes
   const adminRoutes = ['/admin', '/godmode']
-  const employeeRoutes = ['/employee', '/agent']
+  const employeeRoutes = ['/employee']
+  const agentRoutes = ['/agent']
   const sellerRoutes = ['/seller']
   const ownerRoutes = ['/owner']
   const customerRoutes = ['/customer']
@@ -93,12 +95,12 @@ export async function updateSession(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (!user) {
-      return NextResponse.redirect(new URL('/auth/login', request.url))
+      return NextResponse.redirect(new URL('/login', request.url))
     }
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, customer_type, onboarding_completed, onboarding_status')
+      .select('role, employee_role, customer_type, onboarding_completed, onboarding_status')
       .eq('id', user.id)
       .single()
 
@@ -112,6 +114,7 @@ export async function updateSession(request: NextRequest) {
     }
     const isAdminRoute = isPrefix(pathname, adminRoutes)
     const isEmployeeRoute = isPrefix(pathname, employeeRoutes)
+    const isAgentRoute = isPrefix(pathname, agentRoutes)
     const isSellerRoute = isPrefix(pathname, sellerRoutes)
     const isOwnerRoute = isPrefix(pathname, ownerRoutes)
     const isCustomerRoute = isPrefix(pathname, customerRoutes)
@@ -122,7 +125,7 @@ export async function updateSession(request: NextRequest) {
 
     if (isOnboardingRoute) {
       if (onboardingComplete) {
-        return NextResponse.redirect(new URL(dashboardPathForRole(role), request.url))
+        return NextResponse.redirect(new URL(dashboardPathForProfile({ role, employee_role: profile.employee_role }), request.url))
       }
 
       if (!onboardingPath) {
@@ -137,7 +140,7 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (isLegacyDashboardRoute) {
-      return NextResponse.redirect(new URL(dashboardPathForRole(role), request.url))
+      return NextResponse.redirect(new URL(dashboardPathForProfile({ role, employee_role: profile.employee_role }), request.url))
     }
 
     if (!onboardingComplete && (role === 'plot_seller' || role === 'land_owner' || role === 'customer')) {
@@ -146,14 +149,15 @@ export async function updateSession(request: NextRequest) {
 
     const allowed =
       (isAdminRoute && role === 'admin') ||
-      (isEmployeeRoute && (role === 'employee' || role === 'admin')) ||
+      (isEmployeeRoute && ((role === 'employee' && profile.employee_role !== 'field_inspection_agent') || role === 'admin')) ||
+      (isAgentRoute && role === 'employee' && profile.employee_role === 'field_inspection_agent') ||
       (isSellerRoute && (role === 'plot_seller' || role === 'admin')) ||
       (isOwnerRoute && (role === 'land_owner' || role === 'admin')) ||
       (isCustomerRoute && (role === 'customer' || role === 'admin')) ||
-      (!isAdminRoute && !isEmployeeRoute && !isSellerRoute && !isOwnerRoute && !isCustomerRoute)
+      (!isAdminRoute && !isEmployeeRoute && !isAgentRoute && !isSellerRoute && !isOwnerRoute && !isCustomerRoute)
 
     if (!allowed) {
-      return NextResponse.redirect(new URL(dashboardPathForRole(role), request.url))
+      return NextResponse.redirect(new URL(dashboardPathForProfile({ role, employee_role: profile.employee_role }), request.url))
     }
   }
 

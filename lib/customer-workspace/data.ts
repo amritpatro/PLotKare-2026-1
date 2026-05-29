@@ -1,5 +1,6 @@
 import type {
   CustomerWorkspaceData,
+  CustomerListing,
   LinkedAmenity,
   ListingInquiry,
   PropertyDocument,
@@ -45,7 +46,7 @@ export async function getCustomerWorkspaceData(
   supabase: SupabaseClientLike,
   userId: string,
 ): Promise<CustomerWorkspaceData> {
-  const [{ data: customer }, { data: buyerDetails }, { data: listings }] = await Promise.all([
+  const [{ data: customer }, { data: buyerDetails }, { data: listingRows }] = await Promise.all([
     supabase
       .from('customers')
       .select('id,full_name,email,phone,address,account_status,kyc_status,created_at')
@@ -71,6 +72,37 @@ export async function getCustomerWorkspaceData(
   ])
 
   const customerId = customer?.id ?? null
+
+  const listingIds = (listingRows ?? []).map((listing: { seller_id?: string | null }) => listing.seller_id).filter(Boolean) as string[]
+  const { data: sellers } = listingIds.length
+    ? await supabase
+        .from('sellers')
+        .select('id,company_name,verification_status')
+        .in('id', Array.from(new Set(listingIds)))
+    : { data: [] }
+
+  const sellersById = new Map(
+    ((sellers ?? []) as Array<{ id: string; company_name: string | null; verification_status: string | null }>).map((seller) => [
+      seller.id,
+      seller,
+    ]),
+  )
+  const listings = ((listingRows ?? []) as CustomerListing[])
+    .map((listing) => {
+      const seller = listing.seller_id ? sellersById.get(listing.seller_id) : null
+      return {
+        ...listing,
+        seller_company_name: seller?.company_name ?? null,
+        seller_partner_priority: seller?.verification_status === 'approved',
+      }
+    })
+    .sort((left, right) => {
+      const leftPriority = left.seller_partner_priority ? 1 : 0
+      const rightPriority = right.seller_partner_priority ? 1 : 0
+      if (leftPriority !== rightPriority) return rightPriority - leftPriority
+      if (left.premium !== right.premium) return Number(right.premium) - Number(left.premium)
+      return new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+    })
 
   const [
     savedResult,
@@ -115,6 +147,12 @@ export async function getCustomerWorkspaceData(
               relationship_type,
               status,
               registration_date,
+              bundled_plan,
+              bundle_months,
+              bundle_status,
+              bundle_started_at,
+              bundle_expires_at,
+              activation_source,
               created_at,
               properties (
                 id,
@@ -233,7 +271,7 @@ export async function getCustomerWorkspaceData(
   return {
     customer: customer ?? null,
     buyerDetails: buyerDetails ?? null,
-    listings: listings ?? [],
+    listings,
     savedListings: savedResult.rows,
     inquiries: inquiryResult.rows,
     siteVisits: siteVisitResult.rows,

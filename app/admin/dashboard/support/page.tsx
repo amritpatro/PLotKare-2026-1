@@ -62,6 +62,7 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
       .from('employees')
       .select('id,employee_role,profiles(full_name,email)')
       .eq('active', true)
+      .eq('employee_role', 'support_staff')
       .order('created_at', { ascending: false })
       .limit(50),
     supabase

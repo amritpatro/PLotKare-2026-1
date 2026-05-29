@@ -1,6 +1,6 @@
 import type { User } from '@supabase/supabase-js'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { isUserRole, type EmployeeRole, type UserRole } from '@/lib/supabase/types'
+import { effectiveRoleForProfile, isUserRole, type EmployeeRole, type UserRole } from '@/lib/supabase/types'
 import { apiError } from './response'
 
 type ServerSupabaseClient = Awaited<ReturnType<typeof createSupabaseServerClient>>
@@ -53,9 +53,15 @@ export async function requireUserContext(): Promise<ApiUserContext | { response:
     }
   }
 
+  const typedProfileRecord = profile as Record<string, unknown>
+  const effectiveRole = effectiveRoleForProfile({
+    role: typeof typedProfileRecord.role === 'string' ? typedProfileRecord.role : null,
+    customer_type: typeof typedProfileRecord.customer_type === 'string' ? typedProfileRecord.customer_type : null,
+  })
+
   const typedProfile = {
     ...(profile as Record<string, unknown>),
-    role: normalizeRole((profile as Record<string, unknown>).role),
+    role: normalizeRole(effectiveRole ?? typedProfileRecord.role),
   } as ApiProfile
 
   return {

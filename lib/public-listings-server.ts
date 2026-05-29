@@ -4,6 +4,7 @@ import type { Facing } from '@/lib/plotkare-storage'
 
 type ListingRow = {
   id: string
+  seller_id: string | null
   plot_number: string | null
   location: string | null
   size_sq_yards: number | null
@@ -26,7 +27,10 @@ function toFacing(value: string | null): Facing {
   return 'East'
 }
 
-function toPublicListing(row: ListingRow): PublicPlotListing {
+function toPublicListing(
+  row: ListingRow,
+  seller: { company_name: string | null; verification_status: string | null } | undefined,
+): PublicPlotListing {
   const propertyKind = row.property_kind === 'apartment' ? 'apartment' : 'plot'
   const premium = Boolean(row.premium)
   const sizeSqYards = Number(row.size_sq_yards ?? 0)
@@ -55,6 +59,8 @@ function toPublicListing(row: ListingRow): PublicPlotListing {
     propertyKind,
     bhk: row.bhk ?? undefined,
     floorLabel: row.floor_label ?? undefined,
+    sellerPartner: seller?.verification_status === 'approved',
+    sellerLabel: seller?.company_name ?? undefined,
   }
 }
 
@@ -62,13 +68,11 @@ export async function getVerifiedPublicListings(limit?: number): Promise<PublicP
   const supabase = await createSupabaseServerClient()
   let query = supabase
     .from('listings')
-    .select('id,plot_number,location,size_sq_yards,size_label,facing,corner_plot,premium,price_lakhs,price_display,image_path,status,inquiries_count,property_kind,bhk,floor_label')
+    .select('id,seller_id,plot_number,location,size_sq_yards,size_label,facing,corner_plot,premium,price_lakhs,price_display,image_path,status,inquiries_count,property_kind,bhk,floor_label')
     .eq('status', 'Active')
     .eq('approval_status', 'approved')
     .eq('is_published', true)
     .order('created_at', { ascending: false })
-
-  if (limit) query = query.limit(limit)
 
   const { data, error } = await query
   if (error) {
@@ -76,5 +80,34 @@ export async function getVerifiedPublicListings(limit?: number): Promise<PublicP
     return []
   }
 
-  return ((data ?? []) as ListingRow[]).map(toPublicListing)
+  const rows = (data ?? []) as ListingRow[]
+  const sellerIds = rows.map((row) => row.seller_id).filter(Boolean) as string[]
+  const { data: sellers } = sellerIds.length
+    ? await supabase
+        .from('sellers')
+        .select('id,company_name,verification_status')
+        .in('id', Array.from(new Set(sellerIds)))
+    : { data: [] }
+  const sellersById = new Map(
+    ((sellers ?? []) as Array<{ id: string; company_name: string | null; verification_status: string | null }>).map((seller) => [
+      seller.id,
+      seller,
+    ]),
+  )
+
+  const prioritized = rows
+    .map((row) => ({
+      row,
+      seller: row.seller_id ? sellersById.get(row.seller_id) : undefined,
+    }))
+    .sort((left, right) => {
+      const leftPriority = left.seller?.verification_status === 'approved' ? 1 : 0
+      const rightPriority = right.seller?.verification_status === 'approved' ? 1 : 0
+      if (leftPriority !== rightPriority) return rightPriority - leftPriority
+      if (left.row.premium !== right.row.premium) return Number(right.row.premium) - Number(left.row.premium)
+      return Number(right.row.inquiries_count ?? 0) - Number(left.row.inquiries_count ?? 0)
+    })
+    .map(({ row, seller }) => toPublicListing(row, seller))
+
+  return typeof limit === 'number' ? prioritized.slice(0, limit) : prioritized
 }

@@ -6,7 +6,7 @@ import {
   slugFromCustomerType,
   type CustomerType,
 } from '@/lib/onboarding/types'
-import { dashboardPathForRole, effectiveRoleForProfile } from '@/lib/supabase/types'
+import { dashboardPathForProfile, dashboardPathForRole, effectiveRoleForProfile } from '@/lib/supabase/types'
 
 export { onboardingPathFromCategory } from '@/lib/onboarding/types'
 
@@ -147,7 +147,7 @@ export async function resolvePostLoginRedirect(
   const effectiveRole = effectiveRoleForProfile(profile)
 
   if (effectiveRole === 'admin') return dashboardPathForRole('admin')
-  if (effectiveRole === 'employee') return dashboardPathForRole('employee')
+  if (effectiveRole === 'employee') return dashboardPathForProfile({ role: effectiveRole, employee_role: profile?.employee_role })
 
   if (!profile) {
     clearPendingOnboardingPath()

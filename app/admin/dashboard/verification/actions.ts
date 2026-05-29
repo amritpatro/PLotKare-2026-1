@@ -77,6 +77,24 @@ export async function updateVerificationStatus(formData: FormData) {
   const supabase = createSupabaseAdminClient()
   const statusColumn = statusColumnByEntity[entityType]
 
+  if (assignedEmployeeId) {
+    const { data: assignee, error: assigneeError } = await supabase
+      .from('employees')
+      .select('id,active,employee_role')
+      .eq('id', assignedEmployeeId)
+      .maybeSingle()
+
+    if (
+      assigneeError ||
+      !assignee ||
+      !assignee.active ||
+      assignee.employee_role !== 'verification_agent'
+    ) {
+      console.error('Verification assignee validation failed:', assigneeError)
+      verificationRedirect('error', 'invalid_verification_action', returnSection)
+    }
+  }
+
   const { data: existing, error: existingError } = await supabase
     .from(tableByEntity[entityType])
     .select(`id,${statusColumn}`)
@@ -307,6 +325,24 @@ export async function reviewCustomerPropertyRequest(formData: FormData) {
   }
 
   const assignedEmployeeId = parsed.data.assignedEmployeeId || null
+  if (assignedEmployeeId) {
+    const { data: assignee, error: assigneeError } = await supabase
+      .from('employees')
+      .select('id,active,employee_role')
+      .eq('id', assignedEmployeeId)
+      .maybeSingle()
+
+    if (
+      assigneeError ||
+      !assignee ||
+      !assignee.active ||
+      assignee.employee_role !== 'verification_agent'
+    ) {
+      console.error('Property link reviewer validation failed:', assigneeError)
+      verificationRedirect('error', 'invalid_verification_action')
+    }
+  }
+
   const { error: updateError } = await supabase.from('customer_property_requests').update({
     status: parsed.data.status,
     assigned_employee_id: assignedEmployeeId,

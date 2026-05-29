@@ -11,9 +11,9 @@ type RoleRealtimeBridgeProps = {
 
 const roleTables = {
   seller: ['notifications', 'support_tickets', 'ticket_replies', 'maintenance_requests', 'properties', 'plots', 'active_amenities', 'property_documents'],
-  owner: ['notifications', 'support_tickets', 'ticket_replies', 'maintenance_requests', 'properties', 'inspections', 'active_amenities', 'property_documents', 'verification_requests'],
+  owner: ['notifications', 'support_tickets', 'ticket_replies', 'maintenance_requests', 'properties', 'inspections', 'inspection_reports', 'inspection_photos', 'active_amenities', 'property_documents', 'verification_requests'],
   customer: ['notifications', 'support_tickets', 'ticket_replies', 'maintenance_requests', 'customer_property_links', 'customer_property_requests', 'inspections', 'active_amenities', 'property_documents'],
-  employee: ['notifications', 'admin_task_assignments', 'verification_events', 'verification_requests', 'employee_work_logs', 'support_tickets', 'ticket_replies', 'inspections', 'maintenance_requests', 'active_amenities', 'property_documents', 'customer_property_requests'],
+  employee: ['notifications', 'admin_task_assignments', 'verification_events', 'verification_requests', 'employee_work_logs', 'support_tickets', 'ticket_replies', 'inspections', 'inspection_photos', 'inspection_reports', 'inspection_flags', 'inspection_checklist_answers', 'inspection_document_checks', 'inspection_amenity_checks', 'maintenance_requests', 'active_amenities', 'property_documents', 'customer_property_requests'],
 } as const
 
 export function RoleRealtimeBridge({ role, userId }: RoleRealtimeBridgeProps) {

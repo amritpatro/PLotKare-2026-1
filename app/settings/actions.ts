@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { recordAuditLog } from '@/lib/audit'
 import { computeProfileCompletion } from '@/lib/profile-completion'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { dashboardPathForRole, isUserRole, type UserRole } from '@/lib/supabase/types'
+import { dashboardPathForProfile, isUserRole, type UserRole } from '@/lib/supabase/types'
 
 const PROFILE_ASSETS_BUCKET = 'profile-assets'
 
@@ -192,18 +192,18 @@ export async function loadSettingsData() {
     roleDetails: roleDetails ?? null,
     operationalRecord: operationalRecord ?? null,
     completion,
-    dashboardPath: dashboardPathForRole(role),
+    dashboardPath: dashboardPathForProfile({ role, employee_role: String((profile as Record<string, unknown>).employee_role ?? '') }),
     storageBucket: PROFILE_ASSETS_BUCKET,
     subscription: subscription ?? null,
     consultation: consultation ?? null,
   }
 }
 
-function refreshSettingsPaths(role: UserRole) {
+function refreshSettingsPaths(role: UserRole, employeeRole?: string | null) {
   revalidatePath('/settings')
   revalidatePath('/dashboard/settings')
   revalidatePath('/admin/dashboard/settings')
-  revalidatePath(dashboardPathForRole(role))
+  revalidatePath(dashboardPathForProfile({ role, employee_role: employeeRole }))
 }
 
 export async function updateCommonSettings(input: unknown) {
@@ -230,7 +230,7 @@ export async function updateCommonSettings(input: unknown) {
     entityId: user.id,
   })
 
-  refreshSettingsPaths(profile.role as UserRole)
+  refreshSettingsPaths(profile.role as UserRole, String((profile as Record<string, unknown>).employee_role ?? ''))
   return { ok: true, message: 'Profile settings saved.' }
 }
 
@@ -253,7 +253,7 @@ export async function updateNotificationSettings(input: unknown) {
     entityId: user.id,
   })
 
-  refreshSettingsPaths(profile.role as UserRole)
+  refreshSettingsPaths(profile.role as UserRole, String((profile as Record<string, unknown>).employee_role ?? ''))
   return { ok: true, message: 'Notification settings saved.' }
 }
 

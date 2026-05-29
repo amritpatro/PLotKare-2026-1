@@ -2,11 +2,13 @@ import { notFound } from 'next/navigation'
 import { addSoldCustomer, createSellerPlot, createSellerServiceRequest, createSellerSupportTicket, requestSellerAmenity } from '@/app/seller/actions'
 import { AmenityCatalogRequestGrid } from '@/components/amenities/amenity-catalog-request-grid'
 import { AmenityWorkflowTable } from '@/components/amenities/amenity-workflow-table'
+import { DashboardInsightRibbon } from '@/components/dashboard/dashboard-insights'
 import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
 import { PropertyDocumentUploadPanel } from '@/components/documents/property-document-upload-panel'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
+import { SellerPartnerStamp } from '@/components/seller-partner-stamp'
 import { SupportTicketThreadList } from '@/components/support/support-ticket-thread-list'
 import { readAmenityWorkflowRows } from '@/lib/amenity-operations'
 import { requirePageRole } from '@/lib/supabase/role-guard'
@@ -103,7 +105,7 @@ export default async function SellerSectionPage({ params, searchParams }: PagePr
       sellerId ? supabase.from('properties').select('id,title,city,address,lifecycle_status,verification_status,created_at').eq('seller_id', sellerId).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
       sellerId ? supabase.from('plots').select('id,property_id,plot_number,location,sq_yards,status,lifecycle_status,verification_status,current_value_lakhs,created_at').eq('seller_id', sellerId).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
       sellerId ? supabase.from('customers').select('id,full_name,email,phone,address,account_status,kyc_status,created_at').eq('created_by_seller_id', sellerId).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
-      sellerId ? supabase.from('customer_property_links').select('id,property_id,customer_id,status,relationship_type,registration_date').eq('seller_id', sellerId) : Promise.resolve({ data: [] }),
+      sellerId ? supabase.from('customer_property_links').select('id,property_id,customer_id,status,relationship_type,registration_date,bundled_plan,bundle_months,bundle_status,bundle_started_at,bundle_expires_at').eq('seller_id', sellerId) : Promise.resolve({ data: [] }),
       sellerId ? supabase.from('listings').select('id,property_id,plot_id,plot_number,location,status,approval_status,is_published,verified_at,published_at,inquiries_count').eq('seller_id', sellerId).order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
       supabase.from('maintenance_requests').select('id,property_id,title,priority,status,created_at').eq('requester_id', user.id).order('created_at', { ascending: false }).limit(100),
       supabase.from('support_tickets').select('id,ticket_reference,property_id,subject,description,category,priority,status,created_at').eq('requester_id', user.id).order('created_at', { ascending: false }).limit(100),
@@ -139,6 +141,10 @@ export default async function SellerSectionPage({ params, searchParams }: PagePr
         .order('created_at', { ascending: true })
     : { data: [] }
   const notificationRows = notifications ?? []
+  const bundledLinks = linkRows.filter((link: any) => link.bundled_plan && link.bundle_status !== 'not_included')
+  const activeBundles = bundledLinks.filter((link: any) => link.bundle_status === 'active')
+  const pendingBundles = bundledLinks.filter((link: any) => link.bundle_status === 'pending_activation')
+  const partnerReadyListings = listingRows.filter((row: any) => row.is_published && row.approval_status === 'approved').length
 
   const content = (() => {
     if (section === 'plots') {
@@ -176,6 +182,23 @@ export default async function SellerSectionPage({ params, searchParams }: PagePr
       return (
         <div className="space-y-6">
           <SectionTitle eyebrow="Seller CRM" title="Sold customers" body="Customer contact and property-link data remains scoped to this seller, employees assigned to the work, and admins." />
+          <DashboardInsightRibbon
+            eyebrow="Partner handover view"
+            title="Track included PlotKare bundles after each sale"
+            body="Use this table as the operational handover layer between the seller relationship and PlotKare’s long-term customer care. Bundled memberships stay visible here even before the buyer activates their account."
+            metrics={[
+              { label: 'Linked buyers', value: customerRows.length },
+              { label: 'Bundled buyers', value: bundledLinks.length, tone: bundledLinks.length ? 'emerald' : 'slate' },
+              { label: 'Pending bundle activation', value: pendingBundles.length, tone: pendingBundles.length ? 'gold' : 'emerald' },
+              { label: 'Partner-ready listings', value: partnerReadyListings, tone: partnerReadyListings ? 'crimson' : 'slate' },
+            ]}
+            distributionTitle="Bundle flow"
+            distribution={[
+              { label: 'Active bundles', value: activeBundles.length, tone: 'emerald' },
+              { label: 'Pending bundles', value: pendingBundles.length, tone: 'gold' },
+              { label: 'No bundle', value: Math.max(linkRows.length - bundledLinks.length, 0), tone: 'slate' },
+            ]}
+          />
           <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
             <form action={addSoldCustomer} className={`${cardClass} grid gap-3`}>
               <input name="fullName" required placeholder="Customer full name" className={inputClass} />
@@ -186,18 +209,30 @@ export default async function SellerSectionPage({ params, searchParams }: PagePr
                 <option value="" disabled>Select property</option>
                 {propertyRows.filter((property: any) => property.lifecycle_status !== 'sold').map((property: any) => <option key={property.id} value={property.id}>{property.title || property.city || property.id}</option>)}
               </select>
-              <input name="registrationDate" type="date" className={inputClass} />
+              <div className="grid gap-3 md:grid-cols-2">
+                <input name="registrationDate" type="date" className={inputClass} />
+                <select name="bundlePlan" className={inputClass} defaultValue="standard">
+                  <option value="standard">Standard bundle included</option>
+                  <option value="basic">Basic bundle included</option>
+                  <option value="premium">Premium bundle included</option>
+                  <option value="none">No bundled membership</option>
+                </select>
+              </div>
+              <div className="grid gap-3 md:grid-cols-[0.45fr_1fr]">
+                <input name="bundleMonths" type="number" min="1" max="36" defaultValue="12" className={inputClass} />
+                <input name="bundleNotes" placeholder="Seller handover notes or promised service window" className={inputClass} />
+              </div>
               <PendingActionButton className={buttonClass} pendingText="Linking..." disabled={propertyRows.length === 0}>Link customer to property</PendingActionButton>
             </form>
             <div className={`${cardClass} overflow-x-auto`}>
-              <table className="w-full min-w-[1040px] text-left text-sm">
-                <thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Customer</th><th className="px-3 py-3">Email</th><th className="px-3 py-3">Phone</th><th className="px-3 py-3">KYC</th><th className="px-3 py-3">Linked property</th><th className="px-3 py-3">Registration</th></tr></thead>
+              <table className="w-full min-w-[1220px] text-left text-sm">
+                <thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Customer</th><th className="px-3 py-3">Email</th><th className="px-3 py-3">Phone</th><th className="px-3 py-3">KYC</th><th className="px-3 py-3">Linked property</th><th className="px-3 py-3">Bundle</th><th className="px-3 py-3">Registration</th></tr></thead>
                 <tbody className="divide-y divide-[#F3F4F6]">
-                  {customerRows.length === 0 ? <tr><td colSpan={6} className="px-3 py-10 text-center text-[#6B7280]">No sold customers linked yet.</td></tr> : null}
+                  {customerRows.length === 0 ? <tr><td colSpan={7} className="px-3 py-10 text-center text-[#6B7280]">No sold customers linked yet.</td></tr> : null}
                   {customerRows.map((customer: any) => {
                     const link = linkRows.find((row: any) => row.customer_id === customer.id)
                     const property = propertyRows.find((row: any) => row.id === link?.property_id)
-                    return <tr key={customer.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{customer.full_name}</td><td className="px-3 py-3 text-[#6B7280]">{customer.email || 'Pending'}</td><td className="px-3 py-3 text-[#6B7280]">{customer.phone || 'Pending'}</td><td className="px-3 py-3">{badge(customer.kyc_status)}</td><td className="px-3 py-3 text-[#6B7280]">{property?.title || property?.city || 'Not linked'}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(link?.registration_date)}</td></tr>
+                    return <tr key={customer.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{customer.full_name}</td><td className="px-3 py-3 text-[#6B7280]">{customer.email || 'Pending'}</td><td className="px-3 py-3 text-[#6B7280]">{customer.phone || 'Pending'}</td><td className="px-3 py-3">{badge(customer.kyc_status)}</td><td className="px-3 py-3 text-[#6B7280]">{property?.title || property?.city || 'Not linked'}</td><td className="px-3 py-3">{link?.bundled_plan ? <div className="space-y-2"><SellerPartnerStamp compact /><p className="text-xs text-[#6B7280]">{link.bundled_plan} · {link.bundle_months} months · {statusLabel(link.bundle_status)}</p></div> : <span className="text-[#9CA3AF]">No bundle</span>}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(link?.registration_date)}</td></tr>
                   })}
                 </tbody>
               </table>
