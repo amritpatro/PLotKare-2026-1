@@ -57,7 +57,7 @@ async function assertVerificationAssignee(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   assignedEmployeeId: string | null,
   section: 'verification' | 'documents',
-) {
+): Promise<void> {
   if (!assignedEmployeeId) return
 
   const { data, error } = await supabase

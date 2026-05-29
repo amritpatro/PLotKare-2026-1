@@ -31,7 +31,7 @@ function supportRedirect(kind: 'success' | 'error', code: string): never {
 async function assertSupportAssignee(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   assignedEmployeeId: string | null,
-) {
+): Promise<void> {
   if (!assignedEmployeeId) return
 
   const { data, error } = await supabase
