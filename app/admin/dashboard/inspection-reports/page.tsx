@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import escapeSearchTerm from '@/lib/search'
 import StatusBadge from '@/components/ui/status-badge'
+import { assignInspectionReport } from './actions'
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass = 'rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
@@ -33,6 +34,22 @@ type ProfileRow = {
   email: string | null
 }
 
+type EmployeeRow = {
+  id: string
+  profile_id: string
+  active: boolean
+  employee_role: string
+  profiles?: ProfileRow | ProfileRow[] | null
+}
+
+type InspectionRow = {
+  id: string
+  plot_id: string | null
+  assigned_employee_id: string | null
+  status: string
+  scheduled_for: string | null
+}
+
 function getParam(params: Record<string, string | string[] | undefined>, key: string) {
   const value = params[key]
   return Array.isArray(value) ? value[0] : value
@@ -42,6 +59,15 @@ function unique(values: Array<string | null>) {
   return Array.from(new Set(values.filter(Boolean))) as string[]
 }
 
+function first<T>(value: T | T[] | null | undefined) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+function employeeLabel(employee: EmployeeRow) {
+  const profile = first(employee.profiles)
+  return profile?.full_name || profile?.email || `Field agent ${employee.id.slice(0, 8)}`
+}
+
 // use shared StatusBadge component
 
 export default async function AdminInspectionReportsPage({ searchParams }: AdminInspectionReportsPageProps) {
@@ -49,6 +75,8 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
   const params = (await searchParams) ?? {}
   const q = getParam(params, 'q')?.trim() ?? ''
   const status = getParam(params, 'status')?.trim() ?? ''
+  const success = getParam(params, 'success')
+  const error = getParam(params, 'error')
 
   let reportQuery = supabase
     .from('inspection_reports')
@@ -70,17 +98,49 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
   const ownerIds = unique(rows.map((row) => row.owner_id))
   const plotIds = unique(rows.map((row) => row.plot_id))
 
-  const [{ data: profiles }, { data: plots }] = await Promise.all([
+  const [{ data: profiles }, { data: plots }, { data: fieldAgents }, { data: inspections }] = await Promise.all([
     ownerIds.length
       ? supabase.from('profiles').select('id,full_name,email').in('id', ownerIds)
       : Promise.resolve({ data: [] }),
     plotIds.length
       ? supabase.from('plots').select('id,plot_number,location').in('id', plotIds)
       : Promise.resolve({ data: [] }),
+    supabase
+      .from('employees')
+      .select('id,profile_id,employee_role,active,profiles(id,full_name,email)')
+      .eq('employee_role', 'field_inspection_agent')
+      .eq('active', true)
+      .order('created_at', { ascending: false }),
+    plotIds.length
+      ? supabase
+          .from('inspections')
+          .select('id,plot_id,assigned_employee_id,status,scheduled_for')
+          .in('plot_id', plotIds)
+          .in('status', ['requested', 'scheduled', 'in_progress', 'needs_followup'])
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
   ])
 
   const profileById = new Map(((profiles ?? []) as ProfileRow[]).map((row) => [row.id, row]))
   const plotById = new Map(((plots ?? []) as PlotRow[]).map((row) => [row.id, row]))
+  const agents = (fieldAgents ?? []) as EmployeeRow[]
+  const agentById = new Map(agents.map((employee) => [employee.id, employee]))
+  const inspectionByPlotId = new Map<string, InspectionRow>()
+  for (const inspection of (inspections ?? []) as InspectionRow[]) {
+    if (inspection.plot_id && !inspectionByPlotId.has(inspection.plot_id)) {
+      inspectionByPlotId.set(inspection.plot_id, inspection)
+    }
+  }
+
+  const successMessage = success === 'inspection_assigned' ? 'Inspection assigned. It will appear in the field agent portal.' : null
+  const errorMessages: Record<string, string> = {
+    invalid_assignment: 'Choose a valid field agent and inspection report.',
+    invalid_field_agent: 'Choose an active field inspection agent.',
+    plot_required: 'This report is not linked to a plot, so it cannot become a field assignment yet.',
+    property_required: 'The linked plot does not have a property record. Register/verify the plot first.',
+    assignment_failed: 'Inspection assignment failed. Please try again.',
+  }
+  const errorMessage = error ? errorMessages[error] ?? 'Inspection assignment failed.' : null
 
   return (
     <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
@@ -104,12 +164,23 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
         </form>
       </div>
 
+      {successMessage ? (
+        <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {successMessage}
+        </div>
+      ) : null}
+      {errorMessage ? (
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {errorMessage}
+        </div>
+      ) : null}
+
       <section className="mt-8 grid gap-4 sm:grid-cols-4">
         {[
           ['Reports shown', rows.length],
           ['Completed', rows.filter((row) => row.status === 'Completed').length],
           ['Scheduled', rows.filter((row) => row.status === 'Scheduled').length],
-          ['With files', rows.filter((row) => row.report_file_path).length],
+          ['Agent pool', agents.length],
         ].map(([label, value]) => (
           <div key={label} className={`${cardClass} p-5`}>
             <p className="font-mono text-xs uppercase tracking-[0.16em] text-[#6B7280]">{label}</p>
@@ -119,7 +190,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
       </section>
 
       <div className={`${cardClass} mt-8 overflow-x-auto`}>
-        <table className="w-full min-w-[960px] text-left text-sm">
+        <table className="w-full min-w-[1180px] text-left text-sm">
           <thead>
             <tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]">
               <th className="px-3 py-3">Month</th>
@@ -128,13 +199,15 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
               <th className="px-3 py-3">Agent</th>
               <th className="px-3 py-3">Finding</th>
               <th className="px-3 py-3">Status</th>
+              <th className="px-3 py-3">Field assignment</th>
               <th className="px-3 py-3">Created</th>
+              <th className="px-3 py-3">Assign</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#F3F4F6] text-[#1F2937]">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-10 text-center text-[#6B7280]">
+                <td colSpan={9} className="px-3 py-10 text-center text-[#6B7280]">
                   No inspection reports found.
                 </td>
               </tr>
@@ -142,6 +215,8 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
             {rows.map((row) => {
               const plot = row.plot_id ? plotById.get(row.plot_id) : null
               const owner = profileById.get(row.owner_id)
+              const assignedInspection = row.plot_id ? inspectionByPlotId.get(row.plot_id) : null
+              const assignedAgent = assignedInspection?.assigned_employee_id ? agentById.get(assignedInspection.assigned_employee_id) : null
 
               return (
                 <tr key={row.id}>
@@ -154,7 +229,37 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                   <td className="px-3 py-3 text-[#6B7280]">{row.agent_name || 'Unassigned'}</td>
                   <td className="max-w-sm truncate px-3 py-3 text-[#6B7280]">{row.finding || 'No finding recorded'}</td>
                   <td className="px-3 py-3"><StatusBadge status={row.status} /></td>
+                  <td className="px-3 py-3">
+                    {assignedInspection ? (
+                      <div>
+                        <p className="font-semibold text-[#1F2937]">{assignedAgent ? employeeLabel(assignedAgent) : 'Assigned agent'}</p>
+                        <p className="text-xs text-[#9CA3AF]">
+                          {assignedInspection.status.replaceAll('_', ' ')}
+                          {assignedInspection.scheduled_for ? ` · ${new Date(assignedInspection.scheduled_for).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` : ''}
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-[#9CA3AF]">Not assigned to field portal</span>
+                    )}
+                  </td>
                   <td className="px-3 py-3 text-[#6B7280]">{new Date(row.created_at).toLocaleDateString('en-IN')}</td>
+                  <td className="px-3 py-3">
+                    <form action={assignInspectionReport} className="flex min-w-72 flex-col gap-2">
+                      <input type="hidden" name="reportId" value={row.id} />
+                      <select name="assignedEmployeeId" defaultValue={assignedInspection?.assigned_employee_id ?? ''} className={inputClass}>
+                        <option value="">Select field agent</option>
+                        {agents.map((agent) => (
+                          <option key={agent.id} value={agent.id}>
+                            {employeeLabel(agent)}
+                          </option>
+                        ))}
+                      </select>
+                      <input name="scheduledFor" type="datetime-local" defaultValue={assignedInspection?.scheduled_for ? new Date(assignedInspection.scheduled_for).toISOString().slice(0, 16) : ''} className={inputClass} />
+                      <button type="submit" className="rounded-lg bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white disabled:bg-[#9CA3AF]" disabled={!row.plot_id || agents.length === 0}>
+                        Assign to field portal
+                      </button>
+                    </form>
+                  </td>
                 </tr>
               )
             })}

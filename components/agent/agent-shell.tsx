@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { ClipboardCheck, History, LogOut, UserCircle } from 'lucide-react'
+import { ClipboardCheck, History, LogOut, Settings, UserCircle } from 'lucide-react'
 import { AgentPwaControls } from './agent-pwa'
 
 type AgentShellProps = {
@@ -34,7 +34,7 @@ export function AgentShell({ title, subtitle, children }: AgentShellProps) {
       </section>
 
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-[#E5E7EB] bg-white/95 px-4 py-2 backdrop-blur">
-        <div className="mx-auto grid max-w-3xl grid-cols-4 gap-2 text-xs font-semibold text-[#6B7280]">
+        <div className="mx-auto grid max-w-3xl grid-cols-5 gap-1 text-xs font-semibold text-[#6B7280]">
           <Link className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg hover:bg-[#F9FAFB]" href="/agent">
             <ClipboardCheck className="h-5 w-5" />
             Today
@@ -46,6 +46,10 @@ export function AgentShell({ title, subtitle, children }: AgentShellProps) {
           <Link className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg hover:bg-[#F9FAFB]" href="/agent/profile">
             <UserCircle className="h-5 w-5" />
             Profile
+          </Link>
+          <Link className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg hover:bg-[#F9FAFB]" href="/agent/settings">
+            <Settings className="h-5 w-5" />
+            Settings
           </Link>
           <Link className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[#C0392B] hover:bg-red-50" href="/auth/login">
             <LogOut className="h-5 w-5" />
