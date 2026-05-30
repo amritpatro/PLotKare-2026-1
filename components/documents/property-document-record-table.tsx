@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 type PropertyDocumentRecord = {
   id: string
   title: string
@@ -17,6 +19,8 @@ type PropertyDocumentRecord = {
   due_at?: string | null
   linked_label?: string | null
   uploader_label?: string | null
+  uploader_context?: string | null
+  uploader_href?: string | null
 }
 
 function formatDate(value: string | null | undefined) {
@@ -70,7 +74,19 @@ export function PropertyDocumentRecordTable({
               <td className="px-3 py-3">
                 <p className="font-semibold text-[#1F2937]">{document.title}</p>
                 <p className="mt-1 text-xs text-[#6B7280]">{document.category || 'Documents'} · {document.requirement_level || 'optional'}</p>
-                {document.uploader_label ? <p className="mt-1 text-xs text-[#6B7280]">Submitted by {document.uploader_label}</p> : null}
+                {document.uploader_label ? (
+                  <p className="mt-1 text-xs text-[#6B7280]">
+                    Submitted by{' '}
+                    {document.uploader_href ? (
+                      <Link href={document.uploader_href} className="font-medium text-[#1F2937] underline-offset-2 hover:underline">
+                        {document.uploader_label}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-[#1F2937]">{document.uploader_label}</span>
+                    )}
+                  </p>
+                ) : null}
+                {document.uploader_context ? <p className="mt-1 text-xs text-[#6B7280]">{document.uploader_context}</p> : null}
                 {document.review_reason ? <p className="mt-2 max-w-[280px] text-xs text-[#A93226]">{document.review_reason}</p> : null}
               </td>
               <td className="px-3 py-3 text-[#6B7280]">

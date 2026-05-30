@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import escapeSearchTerm from '@/lib/search'
 import StatusBadge from '@/components/ui/status-badge'
@@ -11,6 +12,7 @@ type AdminCustomersPageProps = {
 
 type CustomerRow = {
   id: string
+  profile_id: string | null
   full_name: string
   email: string | null
   phone: string | null
@@ -18,6 +20,11 @@ type CustomerRow = {
   account_status: string
   kyc_status: string
   created_at: string
+}
+
+type CustomerProfileRow = {
+  id: string
+  customer_type: string | null
 }
 
 type CustomerPropertyLink = {
@@ -46,7 +53,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
 
   let customerQuery = supabase
     .from('customers')
-    .select('id,full_name,email,phone,address,account_status,kyc_status,created_at')
+    .select('id,profile_id,full_name,email,phone,address,account_status,kyc_status,created_at')
     .order('created_at', { ascending: false })
     .limit(100)
 
@@ -68,6 +75,12 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
   const rows = (customers ?? []) as CustomerRow[]
   const linkRows = (links ?? []) as CustomerPropertyLink[]
   const subscriptionRows = (subscriptions ?? []) as SubscriptionRow[]
+  const profileIds = Array.from(new Set(rows.map((row) => row.profile_id).filter(Boolean))) as string[]
+  const { data: profiles } = profileIds.length
+    ? await supabase.from('profiles').select('id,customer_type').in('id', profileIds)
+    : { data: [] as CustomerProfileRow[] }
+
+  const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]))
   const plotCounts = new Map<string, number>()
   const activeLinkCounts = new Map<string, number>()
   const plans = new Map<string, string>()
@@ -84,6 +97,18 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
       plans.set(subscription.customer_id, `${subscription.plan} · ${subscription.status}`)
     }
   })
+
+  function planLabel(row: CustomerRow) {
+    return plans.get(row.id) ?? 'No subscription'
+  }
+
+  function customerTypeLabel(row: CustomerRow) {
+    const customerType = row.profile_id ? profileById.get(row.profile_id)?.customer_type : null
+    if (customerType === 'land_owner') return 'Land Owner'
+    if (customerType === 'plot_seller') return 'Plot Seller'
+    if (customerType === 'plot_buyer') return 'Plot Buyer'
+    return 'Customer'
+  }
 
   return (
     <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
@@ -126,6 +151,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
             <tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]">
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Phone</th>
               <th className="px-4 py-3">Address</th>
               <th className="px-4 py-3">Properties</th>
@@ -144,19 +170,42 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
             ) : null}
             {rows.map((row) => (
               <tr key={row.id}>
-                <td className="px-4 py-3 font-medium">{row.full_name || 'Unnamed customer'}</td>
+                <td className="px-4 py-3 font-medium">
+                  <div className="space-y-2">
+                    <Link href={`/admin/dashboard/customers/${row.id}`} className="font-semibold text-[#1F2937] hover:text-[#C0392B]">
+                      {row.full_name || 'Unnamed customer'}
+                    </Link>
+                    <p className="text-xs text-[#6B7280] md:block">{row.email || 'Pending'}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="rounded-full border border-[#E8D8A8] bg-[#FFF8E1] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#8A6D1D]">
+                        {customerTypeLabel(row)}
+                      </span>
+                      <span className="rounded-full border border-[#DDE7F7] bg-[#EFF6FF] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#2563EB]">
+                        {planLabel(row)}
+                      </span>
+                    </div>
+                  </div>
+                </td>
                 <td className="px-4 py-3 text-[#6B7280]">{row.email || 'Pending'}</td>
+                <td className="px-4 py-3">
+                  <span className="rounded-full border border-[#E8D8A8] bg-[#FFF8E1] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#8A6D1D]">
+                    {customerTypeLabel(row)}
+                  </span>
+                </td>
                 <td className="px-4 py-3 text-[#6B7280]">{row.phone || 'Pending'}</td>
                 <td className="max-w-xs truncate px-4 py-3 text-[#6B7280]">{row.address || 'Pending'}</td>
                 <td className="px-4 py-3">{plotCounts.get(row.id) ?? 0}</td>
-                <td className="px-4 py-3 text-[#6B7280]">{plans.get(row.id) ?? 'No subscription'}</td>
+                <td className="px-4 py-3 text-[#6B7280]">{planLabel(row)}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
                     <StatusBadge status={row.account_status} />
                     <StatusBadge status={row.kyc_status} />
                   </div>
                 </td>
-                <td className="px-4 py-3 text-[#6B7280]">{new Date(row.created_at).toLocaleDateString('en-IN')}</td>
+                <td className="px-4 py-3 text-[#6B7280]">
+                  <p>{new Date(row.created_at).toLocaleDateString('en-IN')}</p>
+                  <p className="mt-1 text-xs text-[#9CA3AF]">{Math.max(1, Math.floor((Date.now() - new Date(row.created_at).getTime()) / 86400000))} day(s) ago</p>
+                </td>
               </tr>
             ))}
           </tbody>

@@ -1,4 +1,6 @@
+import { Suspense } from 'react'
 import { replyToSupportTicket, updateSupportTicket } from './actions'
+import { CustomerContextPanel, CustomerContextPanelSkeleton } from '@/components/admin/customer-context-panel'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
@@ -214,6 +216,11 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
                 </div>
 
                 <div className="grid gap-4">
+                  {ticket.requester_id ? (
+                    <Suspense fallback={<CustomerContextPanelSkeleton />}>
+                      <CustomerContextPanel userId={ticket.requester_id} />
+                    </Suspense>
+                  ) : null}
                   <form action={updateSupportTicket} className="grid gap-3 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
                     <input type="hidden" name="ticketId" value={ticket.id} />
                     <textarea

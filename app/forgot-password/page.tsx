@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
       return
     }
 
-    setMessage('Password reset email sent. Check your inbox.')
+    setMessage('If an account exists for that email, a reset link has been sent.')
   }
 
   return (

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { LogoMark } from '@/components/logo'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { resolvePostLoginRedirect } from '@/lib/onboarding/redirect'
 import { updatePasswordSchema } from '@/lib/validation/auth'
 
 export default function UpdatePasswordPage() {
@@ -29,11 +30,31 @@ export default function UpdatePasswordPage() {
     setLoading(false)
 
     if (updateError) {
-      setError(updateError.message)
+      const message = updateError.message.toLowerCase()
+      setError(
+        message.includes('session') || message.includes('expired') || message.includes('invalid')
+          ? 'This reset link is no longer valid. Request a new password reset email and try again.'
+          : updateError.message,
+      )
       return
     }
 
-    router.replace('/settings')
+    const { data } = await supabase.auth.getUser()
+    const user = data.user
+
+    if (!user) {
+      setError('Your password was updated, but we could not confirm your session. Please sign in again.')
+      return
+    }
+
+    const destination = await resolvePostLoginRedirect(
+      supabase,
+      user.id,
+      '/settings',
+      user.user_metadata as Record<string, unknown> | undefined,
+    )
+
+    router.replace(destination)
     router.refresh()
   }
 

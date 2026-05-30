@@ -1,5 +1,7 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { reviewCustomerPropertyRequest, updateVerificationStatus } from './actions'
+import { CustomerContextPanel, CustomerContextPanelSkeleton } from '@/components/admin/customer-context-panel'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { ADMIN_TASK_PRIORITIES } from '@/lib/admin/status'
@@ -24,6 +26,8 @@ type QueueItem = {
   priority: string | null
   dueAt: string | null
   escalationLevel: number | null
+  customerProfileId?: string | null
+  verificationSummary?: string | null
 }
 
 type EmployeeOption = {
@@ -56,6 +60,15 @@ function statusCount(rows: QueueItem[], status: string) {
   return rows.filter((row) => row.status === status).length
 }
 
+function formatAge(value: string | null | undefined) {
+  if (!value) return 'Just now'
+  const diffMs = Date.now() - new Date(value).getTime()
+  const diffHours = Math.max(0, Math.round(diffMs / 36e5))
+  if (diffHours < 24) return `${diffHours || 1} hour${diffHours === 1 ? '' : 's'}`
+  const diffDays = Math.round(diffHours / 24)
+  return `${diffDays} day${diffDays === 1 ? '' : 's'}`
+}
+
 export default async function AdminVerificationPage({ searchParams }: VerificationPageProps) {
   const supabase = await createSupabaseServerClient()
   const params = (await searchParams) ?? {}
@@ -76,36 +89,36 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
     { data: employees },
     { data: propertyLinkRequests },
   ] = await Promise.all([
-      supabase
-        .from('properties')
-        .select('id,title,property_kind,city,state,verification_status,assigned_employee_id,priority,due_at,escalation_level,created_at')
-        .neq('verification_status', 'approved')
-        .order('created_at', { ascending: false })
-        .limit(25),
-      supabase
-        .from('sellers')
-        .select('id,company_name,verification_status,admin_notes,assigned_employee_id,priority,due_at,escalation_level,created_at')
-        .neq('verification_status', 'approved')
-        .order('created_at', { ascending: false })
-        .limit(25),
-      supabase
-        .from('owners')
-        .select('id,profile_id,verification_status,admin_notes,assigned_employee_id,priority,due_at,escalation_level,created_at')
-        .neq('verification_status', 'approved')
-        .order('created_at', { ascending: false })
-        .limit(25),
-      supabase
-        .from('customers')
-        .select('id,full_name,email,phone,kyc_status,account_status,assigned_employee_id,priority,due_at,escalation_level,created_at')
-        .neq('kyc_status', 'approved')
-        .order('created_at', { ascending: false })
-        .limit(25),
-      supabase
-        .from('property_documents')
-        .select('id,title,document_type,verification_status,assigned_employee_id,priority,due_at,escalation_level,created_at')
-        .neq('verification_status', 'approved')
-        .order('created_at', { ascending: false })
-        .limit(25),
+    supabase
+      .from('properties')
+      .select('id,title,property_kind,city,state,owner_profile_id,verification_status,assigned_employee_id,priority,due_at,escalation_level,created_at')
+      .neq('verification_status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(25),
+    supabase
+      .from('sellers')
+      .select('id,profile_id,company_name,gst_number,pan_number,verification_status,admin_notes,assigned_employee_id,priority,due_at,escalation_level,created_at')
+      .neq('verification_status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(25),
+    supabase
+      .from('owners')
+      .select('id,profile_id,verification_status,admin_notes,assigned_employee_id,priority,due_at,escalation_level,created_at')
+      .neq('verification_status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(25),
+    supabase
+      .from('customers')
+      .select('id,profile_id,full_name,email,phone,aadhaar_last4,pan_number,kyc_status,account_status,assigned_employee_id,priority,due_at,escalation_level,created_at')
+      .neq('kyc_status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(25),
+    supabase
+      .from('property_documents')
+      .select('id,title,document_type,category,uploaded_by,customer_id,property_id,verification_status,assigned_employee_id,priority,due_at,escalation_level,created_at')
+      .neq('verification_status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(25),
       supabase
         .from('inspections')
         .select('id,status,scheduled_for,summary,created_at')
@@ -159,6 +172,7 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
     priority: row.priority,
     dueAt: row.due_at,
     escalationLevel: row.escalation_level,
+    customerProfileId: row.owner_profile_id,
   }))
 
   const sellerRows: QueueItem[] = (sellers ?? []).map((row) => ({
@@ -172,6 +186,7 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
     priority: row.priority,
     dueAt: row.due_at,
     escalationLevel: row.escalation_level,
+    customerProfileId: row.profile_id,
   }))
 
   const ownerRows: QueueItem[] = (owners ?? []).map((row) => ({
@@ -185,6 +200,7 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
     priority: row.priority,
     dueAt: row.due_at,
     escalationLevel: row.escalation_level,
+    customerProfileId: row.profile_id,
   }))
 
   const customerRows: QueueItem[] = (customers ?? []).map((row) => ({
@@ -198,6 +214,7 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
     priority: row.priority,
     dueAt: row.due_at,
     escalationLevel: row.escalation_level,
+    customerProfileId: row.profile_id,
   }))
 
   const documentRows: QueueItem[] = (documents ?? []).map((row) => ({
@@ -211,7 +228,85 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
     priority: row.priority,
     dueAt: row.due_at,
     escalationLevel: row.escalation_level,
+    customerProfileId: row.uploaded_by,
   }))
+
+  const documentLabelsByProfile = new Map<string, string[]>()
+  ;(documents ?? []).forEach((row: any) => {
+    const label = row.document_type || row.title || 'Document'
+    const profileId = row.uploaded_by as string | null | undefined
+    if (!profileId) return
+    const existing = documentLabelsByProfile.get(profileId) ?? []
+    if (existing.length < 4) {
+      existing.push(label)
+      documentLabelsByProfile.set(profileId, existing)
+    }
+  })
+
+  const propertyDocumentLabelsByProperty = new Map<string, string[]>()
+  ;(documents ?? []).forEach((row: any) => {
+    const label = row.document_type || row.title || 'Document'
+    const propertyId = row.property_id as string | null | undefined
+    if (!propertyId) return
+    const existing = propertyDocumentLabelsByProperty.get(propertyId) ?? []
+    if (existing.length < 4) {
+      existing.push(label)
+      propertyDocumentLabelsByProperty.set(propertyId, existing)
+    }
+  })
+
+  const verificationSummaryForRow = (row: QueueItem) => {
+    if (row.entityType === 'seller') {
+      const labels = row.customerProfileId ? documentLabelsByProfile.get(row.customerProfileId) ?? [] : []
+      const seller = (sellers ?? []).find((item: any) => item.id === row.id)
+      return [
+        `GST ${seller?.gst_number || 'pending'}`,
+        `PAN ${seller?.pan_number || 'pending'}`,
+        labels.length ? `Docs: ${labels.join(', ')}` : 'No attached documents yet',
+      ].join(' · ')
+    }
+
+    if (row.entityType === 'owner') {
+      const labels = row.customerProfileId ? documentLabelsByProfile.get(row.customerProfileId) ?? [] : []
+      return labels.length ? `Docs: ${labels.join(', ')}` : 'No attached documents yet'
+    }
+
+    if (row.entityType === 'customer') {
+      const customer = (customers ?? []).find((item: any) => item.id === row.id)
+      return [
+        `PAN ${customer?.pan_number || 'pending'}`,
+        `Aadhaar ${customer?.aadhaar_last4 ? `•••• ${customer.aadhaar_last4}` : 'pending'}`,
+      ].join(' · ')
+    }
+
+    if (row.entityType === 'property') {
+      const labels = row.id ? propertyDocumentLabelsByProperty.get(row.id) ?? [] : []
+      return labels.length ? `Submitted docs: ${labels.join(', ')}` : 'Property verification in queue'
+    }
+
+    if (row.entityType === 'document') {
+      const document = (documents ?? []).find((item: any) => item.id === row.id)
+      return [document?.document_type || document?.title || 'Document review', document?.category || 'Document'].filter(Boolean).join(' · ')
+    }
+
+    return null
+  }
+
+  propertyRows.forEach((row) => {
+    row.verificationSummary = verificationSummaryForRow(row)
+  })
+  sellerRows.forEach((row) => {
+    row.verificationSummary = verificationSummaryForRow(row)
+  })
+  ownerRows.forEach((row) => {
+    row.verificationSummary = verificationSummaryForRow(row)
+  })
+  customerRows.forEach((row) => {
+    row.verificationSummary = verificationSummaryForRow(row)
+  })
+  documentRows.forEach((row) => {
+    row.verificationSummary = verificationSummaryForRow(row)
+  })
 
   const kycRows = [...customerRows, ...ownerRows].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   const propertyDocumentRows = [...propertyRows, ...documentRows].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -474,76 +569,89 @@ function VerificationSection({
               </div>
             </div>
 
-            <form action={updateVerificationStatus} className="grid gap-3">
-              <input type="hidden" name="entityType" value={row.entityType} />
-              <input type="hidden" name="entityId" value={row.id} />
-              <input name="note" className={inputClass} placeholder="Optional admin note for audit trail" />
-              <div className="grid gap-2 sm:grid-cols-4">
-                <select name="assignedEmployeeId" defaultValue={row.assignedEmployeeId ?? ''} className={inputClass}>
-                  <option value="">No reviewer</option>
-                  {employeeOptions.map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.label}
-                    </option>
-                  ))}
-                </select>
-                <select name="priority" defaultValue={row.priority ?? 'normal'} className={inputClass}>
-                  {ADMIN_TASK_PRIORITIES.map((priority) => (
-                    <option key={priority} value={priority}>
-                      {priority}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="datetime-local"
-                  name="dueAt"
-                  defaultValue={row.dueAt ? row.dueAt.slice(0, 16) : ''}
-                  className={inputClass}
-                  aria-label="Due date"
-                />
-                <select name="escalationLevel" defaultValue={row.escalationLevel ?? 0} className={inputClass}>
-                  {[0, 1, 2, 3].map((level) => (
-                    <option key={level} value={level}>
-                      Escalation {level}
-                    </option>
-                  ))}
-                </select>
+            <div className="grid gap-3">
+              {row.customerProfileId ? (
+                <Suspense fallback={<CustomerContextPanelSkeleton />}>
+                  <CustomerContextPanel userId={row.customerProfileId} />
+                </Suspense>
+              ) : null}
+              <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+                <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">Verification context</p>
+                <p className="mt-1 text-sm font-semibold text-[#1F2937]">{formatStatus(row.entityType)} verification</p>
+                <p className="mt-1 text-xs text-[#6B7280]">Waiting {formatAge(row.createdAt)} for review.</p>
+                {row.verificationSummary ? <p className="mt-2 text-xs leading-5 text-[#4B5563]">{row.verificationSummary}</p> : null}
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                <PendingActionButton
-                  pendingText="Updating..."
-                  name="status"
-                  value="under_review"
-                  className="rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-xs font-semibold text-[#374151] transition hover:border-[#C0392B] hover:text-[#C0392B]"
-                >
-                  Review
-                </PendingActionButton>
-                <PendingActionButton
-                  pendingText="Updating..."
-                  name="status"
-                  value="needs_clarification"
-                  className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
-                >
-                  Clarify
-                </PendingActionButton>
-                <PendingActionButton
-                  pendingText="Updating..."
-                  name="status"
-                  value="rejected"
-                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
-                >
-                  Reject
-                </PendingActionButton>
-                <PendingActionButton
-                  pendingText="Updating..."
-                  name="status"
-                  value="approved"
-                  className="rounded-lg bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#A93226]"
-                >
-                  Approve
-                </PendingActionButton>
-              </div>
-            </form>
+              <form action={updateVerificationStatus} className="grid gap-3">
+                <input type="hidden" name="entityType" value={row.entityType} />
+                <input type="hidden" name="entityId" value={row.id} />
+                <input name="note" className={inputClass} placeholder="Optional admin note for audit trail" />
+                <div className="grid gap-2 sm:grid-cols-4">
+                  <select name="assignedEmployeeId" defaultValue={row.assignedEmployeeId ?? ''} className={inputClass}>
+                    <option value="">No reviewer</option>
+                    {employeeOptions.map((employee) => (
+                      <option key={employee.id} value={employee.id}>
+                        {employee.label}
+                      </option>
+                    ))}
+                  </select>
+                  <select name="priority" defaultValue={row.priority ?? 'normal'} className={inputClass}>
+                    {ADMIN_TASK_PRIORITIES.map((priority) => (
+                      <option key={priority} value={priority}>
+                        {priority}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="datetime-local"
+                    name="dueAt"
+                    defaultValue={row.dueAt ? row.dueAt.slice(0, 16) : ''}
+                    className={inputClass}
+                    aria-label="Due date"
+                  />
+                  <select name="escalationLevel" defaultValue={row.escalationLevel ?? 0} className={inputClass}>
+                    {[0, 1, 2, 3].map((level) => (
+                      <option key={level} value={level}>
+                        Escalation {level}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <PendingActionButton
+                    pendingText="Updating..."
+                    name="status"
+                    value="under_review"
+                    className="rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-xs font-semibold text-[#374151] transition hover:border-[#C0392B] hover:text-[#C0392B]"
+                  >
+                    Review
+                  </PendingActionButton>
+                  <PendingActionButton
+                    pendingText="Updating..."
+                    name="status"
+                    value="needs_clarification"
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
+                  >
+                    Clarify
+                  </PendingActionButton>
+                  <PendingActionButton
+                    pendingText="Updating..."
+                    name="status"
+                    value="rejected"
+                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
+                  >
+                    Reject
+                  </PendingActionButton>
+                  <PendingActionButton
+                    pendingText="Updating..."
+                    name="status"
+                    value="approved"
+                    className="rounded-lg bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#A93226]"
+                  >
+                    Approve
+                  </PendingActionButton>
+                </div>
+              </form>
+            </div>
           </div>
         ))}
       </div>

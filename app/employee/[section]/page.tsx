@@ -1,5 +1,7 @@
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import { replyToAssignedSupportTicket, reviewAssignedPropertyLinkRequest, updateAssignedAmenityReview, updateAssignedVerificationStatus, updateAssignedWorkItem, updateMyAdminTask } from '@/app/employee/actions'
+import { CustomerContextPanel, CustomerContextPanelSkeleton } from '@/components/admin/customer-context-panel'
 import { ADMIN_TASK_STATUSES, ADMIN_VERIFICATION_STATUSES } from '@/lib/admin/status'
 import { readAmenityWorkflowRows } from '@/lib/amenity-operations'
 import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
@@ -225,9 +227,13 @@ export default async function EmployeeSectionPage({ params, searchParams }: Page
                     <p className="mt-2 text-sm text-[#6B7280]">{request.property_kind} · {request.address}, {request.city}, {request.state}</p>
                     <p className="mt-1 text-xs text-[#6B7280]">Relationship: {statusLabel(request.relationship_type)} · Requested {formatDate(request.created_at)}</p>
                     <p className="mt-1 text-xs text-[#6B7280]">Requester: {profileLabel(request.requester_id)}</p>
-                    {request.review_notes ? <p className="mt-2 text-sm text-[#6B7280]">{request.review_notes}</p> : null}
+                      {request.review_notes ? <p className="mt-2 text-sm text-[#6B7280]">{request.review_notes}</p> : null}
                   </div>
-                  <form action={reviewAssignedPropertyLinkRequest} className="grid gap-2">
+                  <div className="grid gap-3">
+                    <Suspense fallback={<CustomerContextPanelSkeleton />}>
+                      <CustomerContextPanel userId={request.requester_id} />
+                    </Suspense>
+                    <form action={reviewAssignedPropertyLinkRequest} className="grid gap-2">
                     <input type="hidden" name="requestId" value={request.id} />
                     <textarea name="note" rows={2} className={inputClass} placeholder="Review note or clarification needed" />
                     <div className="grid grid-cols-2 gap-2">
@@ -237,7 +243,8 @@ export default async function EmployeeSectionPage({ params, searchParams }: Page
                         </PendingActionButton>
                       ))}
                     </div>
-                  </form>
+                    </form>
+                  </div>
                 </div>
               ))}
             </div>
@@ -329,7 +336,40 @@ export default async function EmployeeSectionPage({ params, searchParams }: Page
                     <td className="px-3 py-3">{badge(row.priority || 'normal')}</td>
                     <td className="px-3 py-3 text-[#6B7280]">{formatDate(row.dueAt || row.due_at || row.scheduled_for || row.created_at || row.createdAt)}</td>
                     <td className="px-3 py-3">
-                      {section === 'tasks' ? (
+                      {section === 'support' ? (
+                        <div className="grid min-w-[260px] gap-3">
+                          <Suspense fallback={<CustomerContextPanelSkeleton />}>
+                            <CustomerContextPanel userId={row.requester_id} />
+                          </Suspense>
+                          <form action={updateAssignedWorkItem} className="grid gap-2">
+                            <input type="hidden" name="kind" value={row.subject ? 'support' : 'maintenance'} />
+                            <input type="hidden" name="itemId" value={row.id} />
+                            <input type="hidden" name="returnSection" value={section === 'support' ? 'support' : 'operations'} />
+                            <select name="status" defaultValue={row.status} className={inputClass}>
+                              {row.subject ? (
+                                <>
+                                  <option value="open">Open</option><option value="assigned">Assigned</option><option value="in_progress">In progress</option><option value="waiting_on_customer">Waiting on customer</option><option value="resolved">Resolved</option><option value="closed">Closed</option>
+                                </>
+                              ) : (
+                                <>
+                                  <option value="open">Open</option><option value="assigned">Assigned</option><option value="in_progress">In progress</option><option value="waiting_on_vendor">Waiting on vendor</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option>
+                                </>
+                              )}
+                            </select>
+                            <textarea name="note" rows={2} className={inputClass} placeholder="Operational note" />
+                            <PendingActionButton pendingText="Updating..." className={buttonClass}>Update work</PendingActionButton>
+                          </form>
+                          <form action={replyToAssignedSupportTicket} className="grid gap-2 rounded-lg border border-[#E5E7EB] p-3">
+                            <input type="hidden" name="ticketId" value={row.id} />
+                            <select name="visibility" defaultValue="public" className={inputClass}>
+                              <option value="public">Public reply</option>
+                              <option value="internal">Internal note</option>
+                            </select>
+                            <textarea name="body" required rows={2} className={inputClass} placeholder="Reply or internal note" />
+                            <PendingActionButton pendingText="Saving..." className={buttonClass}>Save response</PendingActionButton>
+                          </form>
+                        </div>
+                      ) : section === 'tasks' ? (
                         <form action={updateMyAdminTask} className="grid min-w-[260px] gap-2">
                           <input type="hidden" name="taskId" value={row.id} />
                           <select name="status" defaultValue={row.status} className={inputClass}>{ADMIN_TASK_STATUSES.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}</select>
@@ -346,38 +386,17 @@ export default async function EmployeeSectionPage({ params, searchParams }: Page
                           <textarea name="note" rows={2} className={inputClass} placeholder="Verification note" />
                           <PendingActionButton pendingText="Updating..." className={buttonClass}>Update verification</PendingActionButton>
                         </form>
-                      ) : section === 'support' || section === 'operations' ? (
-                        <div className="grid min-w-[260px] gap-3">
-                        <form action={updateAssignedWorkItem} className="grid gap-2">
-                          <input type="hidden" name="kind" value={row.subject ? 'support' : 'maintenance'} />
+                      ) : section === 'operations' ? (
+                        <form action={updateAssignedWorkItem} className="grid min-w-[260px] gap-2">
+                          <input type="hidden" name="kind" value="maintenance" />
                           <input type="hidden" name="itemId" value={row.id} />
-                          <input type="hidden" name="returnSection" value={section === 'support' ? 'support' : 'operations'} />
+                          <input type="hidden" name="returnSection" value="operations" />
                           <select name="status" defaultValue={row.status} className={inputClass}>
-                            {row.subject ? (
-                              <>
-                                <option value="open">Open</option><option value="assigned">Assigned</option><option value="in_progress">In progress</option><option value="waiting_on_customer">Waiting on customer</option><option value="resolved">Resolved</option><option value="closed">Closed</option>
-                              </>
-                            ) : (
-                              <>
-                                <option value="open">Open</option><option value="assigned">Assigned</option><option value="in_progress">In progress</option><option value="waiting_on_vendor">Waiting on vendor</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option>
-                              </>
-                            )}
+                            <option value="open">Open</option><option value="assigned">Assigned</option><option value="in_progress">In progress</option><option value="waiting_on_vendor">Waiting on vendor</option><option value="resolved">Resolved</option><option value="closed">Closed</option><option value="cancelled">Cancelled</option>
                           </select>
                           <textarea name="note" rows={2} className={inputClass} placeholder="Operational note" />
                           <PendingActionButton pendingText="Updating..." className={buttonClass}>Update work</PendingActionButton>
                         </form>
-                        {section === 'support' ? (
-                          <form action={replyToAssignedSupportTicket} className="grid gap-2 rounded-lg border border-[#E5E7EB] p-3">
-                            <input type="hidden" name="ticketId" value={row.id} />
-                            <select name="visibility" defaultValue="public" className={inputClass}>
-                              <option value="public">Public reply</option>
-                              <option value="internal">Internal note</option>
-                            </select>
-                            <textarea name="body" required rows={2} className={inputClass} placeholder="Reply or internal note" />
-                            <PendingActionButton pendingText="Saving..." className={buttonClass}>Save response</PendingActionButton>
-                          </form>
-                        ) : null}
-                        </div>
                       ) : section === 'amenities' ? (
                         <form action={updateAssignedAmenityReview} className="grid min-w-[260px] gap-2">
                           <input type="hidden" name="amenityRequestId" value={row.id} />

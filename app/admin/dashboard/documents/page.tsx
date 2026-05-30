@@ -1,4 +1,5 @@
 import { updateVerificationStatus } from '@/app/admin/dashboard/verification/actions'
+import { CustomerContextPanel } from '@/components/admin/customer-context-panel'
 import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { ADMIN_VERIFICATION_STATUSES } from '@/lib/admin/status'
@@ -30,6 +31,45 @@ export default async function AdminDocumentsPage({ searchParams }: PageProps) {
     .order('created_at', { ascending: false })
     .limit(150)
 
+  const uploaderProfileIds = Array.from(new Set((documents ?? []).map((document: any) => document.uploaded_by).filter(Boolean)))
+  const { data: uploaderProfiles } = uploaderProfileIds.length
+    ? await supabase
+        .from('profiles')
+        .select('id,full_name,email,created_at,customer_type')
+        .in('id', uploaderProfileIds)
+    : { data: [] }
+  const uploaderProfilesById = new Map((uploaderProfiles ?? []).map((profile: any) => [profile.id, profile]))
+
+  const uploaderCustomerProfileIds = Array.from(new Set((documents ?? []).map((document: any) => document.uploaded_by).filter(Boolean)))
+  const { data: uploaderCustomerRows } = uploaderCustomerProfileIds.length
+    ? await supabase
+        .from('customers')
+        .select('id,profile_id')
+        .in('profile_id', uploaderCustomerProfileIds)
+    : { data: [] }
+  const customerIdsByProfileId = new Map((uploaderCustomerRows ?? []).map((row: any) => [row.profile_id, row.id]))
+
+  const customerIds = Array.from(new Set((uploaderCustomerRows ?? []).map((row: any) => row.id).filter(Boolean)))
+  const { data: uploaderSubscriptions } = customerIds.length
+    ? await supabase
+        .from('subscriptions')
+        .select('customer_id,plan,status')
+        .in('customer_id', customerIds)
+    : { data: [] }
+  const planByCustomerId = new Map((uploaderSubscriptions ?? []).map((subscription: any) => [subscription.customer_id, `${String(subscription.plan).replaceAll('_', ' ')} · ${subscription.status}`]))
+
+  function uploaderContext(profileId: string | null | undefined) {
+    if (!profileId) return null
+    const profile = uploaderProfilesById.get(profileId)
+    if (!profile) return null
+    const customerId = customerIdsByProfileId.get(profile.id)
+    const plan = customerId ? planByCustomerId.get(customerId) : null
+    const joined = profile.created_at ? new Date(profile.created_at).toLocaleDateString('en-IN', { dateStyle: 'medium' }) : null
+    return [profile.email, profile.customer_type ? String(profile.customer_type).replaceAll('_', ' ') : null, plan ? `Plan ${plan}` : null, joined ? `Joined ${joined}` : null]
+      .filter(Boolean)
+      .join(' · ')
+  }
+
   return (
     <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
       {success ? (
@@ -48,6 +88,9 @@ export default async function AdminDocumentsPage({ searchParams }: PageProps) {
           rows={(documents ?? []).map((document: any) => ({
             ...document,
             linked_label: document.property_id || document.customer_id || document.uploaded_by,
+            uploader_label: uploaderProfilesById.get(document.uploaded_by)?.full_name || uploaderProfilesById.get(document.uploaded_by)?.email || document.uploaded_by,
+            uploader_context: uploaderContext(document.uploaded_by),
+            uploader_href: document.uploaded_by ? `/admin/dashboard/customers/${document.uploaded_by}` : null,
           }))}
           linkedLabel="Linked record"
           empty="No documents submitted yet."
