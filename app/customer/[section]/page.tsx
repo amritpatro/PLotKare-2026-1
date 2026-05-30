@@ -21,6 +21,7 @@ import { linkedPropertyFrom, getCustomerWorkspaceData } from '@/lib/customer-wor
 import type { CustomerListing } from '@/lib/customer-workspace/types'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import StatusBadge from '@/components/ui/status-badge'
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass =
@@ -79,14 +80,6 @@ function statusLabel(value: string | null | undefined) {
   return String(value ?? 'pending').replaceAll('_', ' ')
 }
 
-function statusPill(value: string | null | undefined) {
-  return (
-    <span className="rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#6B7280]">
-      {statusLabel(value)}
-    </span>
-  )
-}
-
 function SectionTitle({ eyebrow, title, body }: { eyebrow: string; title: string; body: string }) {
   return (
     <div className={cardClass}>
@@ -140,7 +133,7 @@ function ListingsPage({ listings, savedIds }: { listings: CustomerListing[]; sav
                 <td className="px-3 py-4 text-[#6B7280]">{listingSubtitle(listing)}</td>
                 <td className="px-3 py-4 font-semibold text-[#1F2937]">{listing.price_display}</td>
                 <td className="px-3 py-4">
-                  {listing.approval_status === 'approved' && listing.is_published ? <PlotKareVerifiedStamp compact /> : statusPill(listing.approval_status)}
+                  {listing.approval_status === 'approved' && listing.is_published ? <PlotKareVerifiedStamp compact /> : <StatusBadge status={listing.approval_status} />}
                 </td>
                 <td className="px-3 py-4">
                   <div className="grid gap-2">
@@ -285,7 +278,7 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
               <thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Listing</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Notes</th><th className="px-3 py-3">Created</th></tr></thead>
               <tbody className="divide-y divide-[#F3F4F6]">
                 {rows.length === 0 ? <tr><td colSpan={4} className="px-3 py-8 text-center text-[#6B7280]">No records yet.</td></tr> : null}
-                {rows.map((row) => <tr key={row.id}><td className="px-3 py-3 text-[#1F2937]">{row.listing_id}</td><td className="px-3 py-3">{statusPill(row.status)}</td><td className="px-3 py-3 text-[#6B7280]">{'message' in row ? row.message : row.notes}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(row.created_at)}</td></tr>)}
+                {rows.map((row) => <tr key={row.id}><td className="px-3 py-3 text-[#1F2937]">{row.listing_id}</td><td className="px-3 py-3"><StatusBadge status={row.status} /></td><td className="px-3 py-3 text-[#6B7280]">{'message' in row ? row.message : row.notes}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(row.created_at)}</td></tr>)}
               </tbody>
             </table>
           </div>
@@ -304,7 +297,7 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
                 {data.propertyLinks.length === 0 ? <tr><td colSpan={5} className="px-3 py-8 text-center text-[#6B7280]">No linked properties yet.</td></tr> : null}
                 {data.propertyLinks.map((link) => {
                   const property = linkedPropertyFrom(link)
-                  return <tr key={link.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{property?.title ?? 'Property pending'}</td><td className="px-3 py-3 text-[#6B7280]">{property?.city || property?.address || 'Location pending'}</td><td className="px-3 py-3 text-[#6B7280]">{link.relationship_type}</td><td className="px-3 py-3">{statusPill(link.status)}</td><td className="px-3 py-3 text-[#6B7280]">{formatDate(link.registration_date)}</td></tr>
+                  return <tr key={link.id}><td className="px-3 py-3 font-semibold text-[#1F2937]">{property?.title ?? 'Property pending'}</td><td className="px-3 py-3 text-[#6B7280]">{property?.city || property?.address || 'Location pending'}</td><td className="px-3 py-3 text-[#6B7280]">{link.relationship_type}</td><td className="px-3 py-3"><StatusBadge status={link.status} /></td><td className="px-3 py-3 text-[#6B7280]">{formatDate(link.registration_date)}</td></tr>
                 })}
               </tbody>
             </table>
@@ -331,7 +324,7 @@ export default async function CustomerSectionPage({ params, searchParams }: Page
                 <thead><tr className="border-b border-[#E5E7EB] font-mono text-xs uppercase text-[#9CA3AF]"><th className="px-3 py-3">Request</th><th className="px-3 py-3">Relationship</th><th className="px-3 py-3">Status</th><th className="px-3 py-3">Next step</th></tr></thead>
                 <tbody className="divide-y divide-[#F3F4F6]">
                   {(propertyRequests ?? []).length === 0 ? <tr><td colSpan={4} className="px-3 py-8 text-center text-[#6B7280]">No property link requests yet.</td></tr> : null}
-                  {(propertyRequests ?? []).map((request: any) => <tr key={request.id}><td className="px-3 py-3"><p className="font-semibold text-[#1F2937]">{request.property_title}</p><p className="text-xs text-[#6B7280]">{request.city}, {request.state}</p></td><td className="px-3 py-3 text-[#6B7280]">{request.relationship_type}</td><td className="px-3 py-3">{statusPill(request.status)}</td><td className="px-3 py-3 text-[#6B7280]">{request.review_notes || (request.status === 'approved' ? 'Property access activated.' : 'Upload supporting documents in Document vault.')}</td></tr>)}
+                  {(propertyRequests ?? []).map((request: any) => <tr key={request.id}><td className="px-3 py-3"><p className="font-semibold text-[#1F2937]">{request.property_title}</p><p className="text-xs text-[#6B7280]">{request.city}, {request.state}</p></td><td className="px-3 py-3 text-[#6B7280]">{request.relationship_type}</td><td className="px-3 py-3"><StatusBadge status={request.status} /></td><td className="px-3 py-3 text-[#6B7280]">{request.review_notes || (request.status === 'approved' ? 'Property access activated.' : 'Upload supporting documents in Document vault.')}</td></tr>)}
                 </tbody>
               </table>
             </div>

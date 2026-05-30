@@ -15,7 +15,7 @@ export function LogoMark({ variant = 'default' }: LogoMarkProps) {
       : 'font-mono text-xs tracking-widest text-muted-foreground'
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3" role="img" aria-label="PlotKare — Plot management services">
       {/* Geometric P Mark */}
       <svg
         width="32"
@@ -51,6 +51,8 @@ export function LogoMarkSmall() {
       viewBox="0 0 32 32"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="PlotKare logo"
     >
       {/* Vertical rectangle */}
       <rect x="7" y="2" width="4" height="28" fill="#8B1538" />

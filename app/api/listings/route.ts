@@ -9,7 +9,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('listings')
     .select('*')
-    .eq('status', 'Active')
+    .in('status', ['Active', 'featured'])
     .eq('approval_status', 'approved')
     .eq('is_published', true)
     .order('created_at', { ascending: false })
@@ -50,10 +50,10 @@ export async function POST(request: Request) {
       bhk: parsed.data.bhk ?? null,
       floor_label: parsed.data.floorLabel ?? null,
       approval_status: 'approved',
-      is_published: parsed.data.status === 'Active',
+      is_published: ['Active', 'featured'].includes(parsed.data.status),
       verified_at: new Date().toISOString(),
       verified_by: context.user.id,
-      published_at: parsed.data.status === 'Active' ? new Date().toISOString() : null,
+      published_at: ['Active', 'featured'].includes(parsed.data.status) ? new Date().toISOString() : null,
     })
     .select('*')
     .single()

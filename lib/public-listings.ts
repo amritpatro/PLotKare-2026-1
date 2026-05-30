@@ -6,6 +6,7 @@ export type PublicPlotListing = {
   id: string
   plotNumber: string
   location: string
+  corridor?: string | null
   sizeSqYards: number
   sizeLabel: string
   facing: Facing
@@ -14,12 +15,15 @@ export type PublicPlotListing = {
   priceLakhs: number
   priceDisplay: string
   imageUrl: string
-  status: 'Active' | 'Sold'
+  imageUrls: string[]
+  status: 'Active' | 'Sold' | 'featured' | 'archived' | 'Featured' | 'Archived'
   verified?: boolean
   inquiriesCount: number
   propertyKind: PropertyKind
   bhk?: number
   floorLabel?: string
+  sellerName?: string
+  sellerPhone?: string | null
 }
 
 export const STORAGE_PUBLIC_LISTINGS = 'plotkare_public_listings'
@@ -41,7 +45,7 @@ export function getLocalListingImage(listing: {
   premium?: boolean
   imageUrl?: string
 }) {
-  if (listing.imageUrl && !isRemoteImage(listing.imageUrl)) return listing.imageUrl
+  if (listing.imageUrl) return listing.imageUrl
   if (listing.propertyKind === 'apartment') return LISTING_IMAGES.apartment
   if (listing.premium) return LISTING_IMAGES.premiumPlot
   if (listing.id?.includes('and') || listing.id?.includes('pnd')) return LISTING_IMAGES.town
@@ -61,10 +65,13 @@ export const DEFAULT_PUBLIC_LISTINGS: PublicPlotListing[] = [
     priceLakhs: 72,
     priceDisplay: 'Consult after verification',
     imageUrl: LISTING_IMAGES.plot,
+    imageUrls: [LISTING_IMAGES.plot],
     status: 'Active',
     verified: true,
     inquiriesCount: 2,
     propertyKind: 'plot',
+    sellerName: 'PlotKare Seller',
+    sellerPhone: null,
   },
   {
     id: 'plt-kmd-008',
@@ -78,10 +85,13 @@ export const DEFAULT_PUBLIC_LISTINGS: PublicPlotListing[] = [
     priceLakhs: 95,
     priceDisplay: 'Consult after verification',
     imageUrl: LISTING_IMAGES.premiumPlot,
+    imageUrls: [LISTING_IMAGES.premiumPlot],
     status: 'Active',
     verified: true,
     inquiriesCount: 5,
     propertyKind: 'plot',
+    sellerName: 'PlotKare Seller',
+    sellerPhone: null,
   },
   {
     id: 'apt-rk-204',
@@ -95,12 +105,15 @@ export const DEFAULT_PUBLIC_LISTINGS: PublicPlotListing[] = [
     priceLakhs: 135,
     priceDisplay: 'Consult after verification',
     imageUrl: LISTING_IMAGES.apartment,
+    imageUrls: [LISTING_IMAGES.apartment],
     status: 'Active',
     verified: true,
     inquiriesCount: 3,
     propertyKind: 'apartment',
     bhk: 3,
     floorLabel: '12th floor',
+    sellerName: 'PlotKare Seller',
+    sellerPhone: null,
   },
   {
     id: 'plt-and-034',
@@ -114,10 +127,13 @@ export const DEFAULT_PUBLIC_LISTINGS: PublicPlotListing[] = [
     priceLakhs: 48,
     priceDisplay: 'Consult after verification',
     imageUrl: LISTING_IMAGES.town,
+    imageUrls: [LISTING_IMAGES.town],
     status: 'Active',
     verified: true,
     inquiriesCount: 1,
     propertyKind: 'plot',
+    sellerName: 'PlotKare Seller',
+    sellerPhone: null,
   },
   {
     id: 'plt-pnd-017',
@@ -131,10 +147,13 @@ export const DEFAULT_PUBLIC_LISTINGS: PublicPlotListing[] = [
     priceLakhs: 68,
     priceDisplay: 'Consult after verification',
     imageUrl: LISTING_IMAGES.town,
+    imageUrls: [LISTING_IMAGES.town],
     status: 'Active',
     verified: true,
     inquiriesCount: 0,
     propertyKind: 'plot',
+    sellerName: 'PlotKare Seller',
+    sellerPhone: null,
   },
 ]
 
@@ -149,16 +168,33 @@ function normalizeListing(raw: Record<string, unknown>): PublicPlotListing | nul
   const cornerPlot = Boolean(raw.cornerPlot ?? base?.cornerPlot ?? false)
   const premium = Boolean(raw.premium ?? base?.premium ?? false)
   const priceLakhs = Number(raw.priceLakhs ?? base?.priceLakhs ?? 0) || 0
+  const rawStatus = raw.status != null ? String(raw.status) : base?.status ?? 'Active'
   const status =
-    raw.status === 'Sold' || raw.status === 'Active' ? raw.status : base?.status ?? 'Active'
+    rawStatus === 'Sold' || rawStatus === 'Active' || rawStatus === 'featured' || rawStatus === 'archived' || rawStatus === 'Featured' || rawStatus === 'Archived'
+      ? rawStatus
+      : base?.status ?? 'Active'
   const propertyKind =
     raw.propertyKind === 'apartment' || raw.propertyKind === 'plot'
       ? raw.propertyKind
       : base?.propertyKind ?? 'plot'
+  const fallbackImageUrl = getLocalListingImage({
+    id,
+    propertyKind,
+    premium,
+    imageUrl: String(raw.imageUrl ?? base?.imageUrl ?? ''),
+  })
+  const rawImageUrls = Array.isArray(raw.imageUrls)
+    ? raw.imageUrls.map((value) => String(value)).filter(Boolean)
+    : []
+  const imageUrls = rawImageUrls.length
+    ? rawImageUrls.map((imageUrl) => getLocalListingImage({ id, propertyKind, premium, imageUrl }))
+    : [fallbackImageUrl]
+
   return {
     id,
     plotNumber,
     location,
+    corridor: raw.corridor != null ? String(raw.corridor) : base?.corridor ?? null,
     sizeSqYards,
     sizeLabel: String(raw.sizeLabel ?? base?.sizeLabel ?? `${sizeSqYards} sq yards`),
     facing,
@@ -166,18 +202,16 @@ function normalizeListing(raw: Record<string, unknown>): PublicPlotListing | nul
     premium,
     priceLakhs,
     priceDisplay: String(raw.priceDisplay ?? base?.priceDisplay ?? 'Consult after verification'),
-    imageUrl: getLocalListingImage({
-      id,
-      propertyKind,
-      premium,
-      imageUrl: String(raw.imageUrl ?? base?.imageUrl ?? ''),
-    }),
+    imageUrl: imageUrls[0],
+    imageUrls,
     status,
     verified: Boolean(raw.verified ?? base?.verified ?? true),
     inquiriesCount: Number(raw.inquiriesCount ?? 0) || 0,
     propertyKind,
     bhk: raw.bhk != null ? Number(raw.bhk) : base?.bhk,
     floorLabel: raw.floorLabel != null ? String(raw.floorLabel) : base?.floorLabel,
+    sellerName: raw.sellerName != null ? String(raw.sellerName) : base?.sellerName ?? undefined,
+    sellerPhone: raw.sellerPhone != null ? String(raw.sellerPhone) : base?.sellerPhone ?? null,
   }
 }
 
@@ -202,7 +236,15 @@ export function loadPublicListings(): PublicPlotListing[] {
 export function savePublicListings(listings: PublicPlotListing[]) {
   localStorage.setItem(
     STORAGE_PUBLIC_LISTINGS,
-    JSON.stringify(listings.map((listing) => ({ ...listing, imageUrl: getLocalListingImage(listing) }))),
+    JSON.stringify(
+      listings.map((listing) => ({
+        ...listing,
+        imageUrl: getLocalListingImage(listing),
+        imageUrls: listing.imageUrls.length
+          ? listing.imageUrls.map((imageUrl) => getLocalListingImage({ ...listing, imageUrl }))
+          : [getLocalListingImage(listing)],
+      })),
+    ),
   )
   window.dispatchEvent(new Event('plotkare-listings-changed'))
 }
@@ -218,7 +260,7 @@ export function filterPublicListings(
   listings: PublicPlotListing[],
   filter: ListingFilter,
 ): PublicPlotListing[] {
-  const active = listings.filter((p) => p.status === 'Active')
+  const active = listings.filter((p) => ['active', 'featured'].includes(p.status.toLowerCase()))
   if (filter === 'Verified Plots') return active.filter((p) => p.propertyKind === 'plot' && p.verified !== false)
   if (filter === 'Site Visit Ready') return active
   if (filter === 'Corner Plots') return active.filter((p) => p.cornerPlot)
@@ -228,5 +270,5 @@ export function filterPublicListings(
 
 /** First three active listings for the landing page row */
 export function getLandingShowcaseListings(listings: PublicPlotListing[]): PublicPlotListing[] {
-  return listings.filter((p) => p.status === 'Active' && p.verified !== false).slice(0, 3)
+  return listings.filter((p) => ['active', 'featured'].includes(p.status.toLowerCase()) && p.verified !== false).slice(0, 3)
 }

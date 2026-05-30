@@ -23,6 +23,7 @@ import {
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 import { linkedPropertyFrom } from '@/lib/customer-workspace/data'
+import StatusBadge from '@/components/ui/status-badge'
 import type {
   CustomerListing,
   CustomerWorkspaceData,
@@ -81,14 +82,6 @@ function formatMoneyLakhs(value: number | null | undefined) {
 
 function statusLabel(value: string | null | undefined) {
   return value ? value.replace(/_/g, ' ') : 'pending'
-}
-
-function StatusPill({ value }: { value: string | null | undefined }) {
-  return (
-    <span className="rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-1 text-xs capitalize text-[#6B7280]">
-      {statusLabel(value)}
-    </span>
-  )
 }
 
 function EmptyState({ title, body }: { title: string; body: string }) {
@@ -276,7 +269,8 @@ function BrowseListingsSection({ data }: { data: CustomerWorkspaceData }) {
               </div>
               <div className="flex flex-wrap justify-start gap-2 sm:justify-end">
                 {listing.approval_status === 'approved' && listing.is_published ? <PlotKareVerifiedStamp compact /> : null}
-                <StatusPill value={listing.premium ? 'premium' : listing.status} />
+                {/* Use shared StatusBadge to ensure consistent tones */}
+                <StatusBadge status={listing.premium ? 'premium' : listing.status} />
               </div>
             </div>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
@@ -350,17 +344,17 @@ function TimelineList({
     <div className="mt-5 divide-y divide-[#E5E7EB]">
       {rows.length === 0 ? <EmptyState title={emptyTitle} body={emptyBody} /> : null}
       {rows.map((row) => {
-        const listing = listingsById.get(row.listing_id)
-        const preferredDate = 'preferred_date' in row ? row.preferred_date : null
-        const note = 'message' in row ? row.message : row.notes
+      const listing = listingsById.get(row.listing_id)
+      const preferredDate = (row as any).preferred_date ?? (row as any).scheduled_for ?? null
+      const note = 'message' in row ? row.message : row.notes
         return (
           <div key={row.id} className="py-4">
-            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="font-semibold text-[#1F2937]">{listing?.location ?? 'Listing reference'}</p>
                 <p className="mt-1 text-xs text-[#9CA3AF]">{preferredDate ? `Preferred ${formatDate(preferredDate)}` : `Created ${formatDate(row.created_at)}`}</p>
               </div>
-              <StatusPill value={row.status} />
+              <StatusBadge status={row.status} />
             </div>
             {note ? <p className="mt-2 text-sm leading-6 text-[#6B7280]">{note}</p> : null}
           </div>
@@ -513,7 +507,7 @@ export function CustomerWorkspace({ data, profileLabel, successCode, errorCode }
                         {property?.property_kind || 'property'} · {property?.city || property?.address || 'Location pending'} · {link.relationship_type}
                       </p>
                     </div>
-                    <StatusPill value={link.status} />
+                        <StatusBadge status={link.status} />
                   </div>
                   <p className="mt-3 text-sm text-[#9CA3AF]">
                     Registration: {formatDate(link.registration_date)} · Verification: {statusLabel(property?.verification_status)}
@@ -633,7 +627,7 @@ export function CustomerWorkspace({ data, profileLabel, successCode, errorCode }
                       <p className="font-medium text-[#1F2937]">{ticket.subject}</p>
                       <p className="mt-1 text-xs capitalize text-[#9CA3AF]">{ticket.priority}</p>
                     </div>
-                    <StatusPill value={ticket.status} />
+                    <StatusBadge status={ticket.status} />
                   </div>
                 ))}
               </div>

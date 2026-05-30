@@ -9,6 +9,7 @@
     "dev:all": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",
     "geo:india-states": "node scripts/extract-india-states.mjs",
+    "restore:verification-agent": "node scripts/restore-verification-agent.mjs",
     "build:github": "cross-env NEXT_PUBLIC_BASE_PATH=/PLotKAre-2026 next build",
     "start": "next start",
     "lint": "eslint ."

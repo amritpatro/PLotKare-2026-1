@@ -15,6 +15,19 @@ const adminTables = [
   'property_documents',
   'active_amenities',
   'customer_property_requests',
+  // Additional admin-relevant tables
+  'listings',
+  'saved_listings',
+  'listing_inquiries',
+  'site_visit_requests',
+  'profiles',
+  'plots',
+  'properties',
+  'public_listings',
+  'payments',
+  'subscriptions',
+  'inspections',
+  'maintenance_requests',
 ] as const
 
 export function AdminRealtimeBridge({ userId }: { userId: string }) {

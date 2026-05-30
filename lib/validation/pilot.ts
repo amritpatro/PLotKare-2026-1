@@ -82,7 +82,7 @@ export const listingSchema = z.object({
   priceLakhs: z.coerce.number().min(0).default(0),
   priceDisplay: z.string().trim().default('Consult after verification'),
   imagePath: optionalText,
-  status: z.enum(['Active', 'Sold']).default('Active'),
+  status: z.enum(['Active', 'Sold', 'featured', 'archived']).default('Active'),
   propertyKind: z.enum(['plot', 'apartment']).default('plot'),
   bhk: z.coerce.number().int().positive().optional().nullable(),
   floorLabel: optionalText,

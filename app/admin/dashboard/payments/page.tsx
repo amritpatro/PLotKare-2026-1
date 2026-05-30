@@ -1,4 +1,6 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import escapeSearchTerm from '@/lib/search'
+import StatusBadge from '@/components/ui/status-badge'
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass = 'rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
@@ -63,20 +65,7 @@ function formatAmount(amount: number) {
   }).format(amount)
 }
 
-function statusBadge(status: string) {
-  const className =
-    status === 'Paid'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-      : status === 'Failed'
-        ? 'border-red-200 bg-red-50 text-red-700'
-        : 'border-[#E5E7EB] bg-[#F9FAFB] text-[#6B7280]'
-
-  return (
-    <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] ${className}`}>
-      {status}
-    </span>
-  )
-}
+// use shared StatusBadge component
 
 export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsPageProps) {
   const supabase = await createSupabaseServerClient()
@@ -90,9 +79,9 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
     .order('created_at', { ascending: false })
     .limit(100)
 
-  if (q) {
-    const term = q.replaceAll('%', '\\%').replaceAll('_', '\\_')
-    paymentQuery = paymentQuery.or(`description.ilike.%${term}%,provider_payment_id.ilike.%${term}%,provider.ilike.%${term}%`)
+    if (q) {
+      const term = escapeSearchTerm(q)
+      paymentQuery = paymentQuery.or(`description.ilike.%${term}%,provider_payment_id.ilike.%${term}%,provider.ilike.%${term}%`)
   }
 
   if (status) {
@@ -212,7 +201,7 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
                     {row.provider_payment_id ? <span className="block text-[#9CA3AF]">{row.provider_payment_id}</span> : null}
                   </td>
                   <td className="px-3 py-3 font-semibold text-[#1F2937]">{formatAmount(Number(row.amount))}</td>
-                  <td className="px-3 py-3">{statusBadge(row.status)}</td>
+                  <td className="px-3 py-3"><StatusBadge status={row.status} /></td>
                 </tr>
               )
             })}

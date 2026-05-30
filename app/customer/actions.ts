@@ -91,7 +91,7 @@ async function ensureActiveListing(supabase: Awaited<ReturnType<typeof createSup
     .from('listings')
     .select('id,status,approval_status,is_published')
     .eq('id', listingId)
-    .eq('status', 'Active')
+    .in('status', ['Active', 'featured'])
     .eq('approval_status', 'approved')
     .eq('is_published', true)
     .maybeSingle()

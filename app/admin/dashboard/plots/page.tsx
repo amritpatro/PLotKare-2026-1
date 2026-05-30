@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import escapeSearchTerm from '@/lib/search'
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass = 'rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
@@ -75,9 +76,9 @@ export default async function AdminPlotsPage({ searchParams }: AdminPlotsPagePro
     .order('created_at', { ascending: false })
     .limit(100)
 
-  if (q) {
-    const term = q.replaceAll('%', '\\%').replaceAll('_', '\\_')
-    plotQuery = plotQuery.or(`plot_number.ilike.%${term}%,location.ilike.%${term}%,survey_number.ilike.%${term}%`)
+    if (q) {
+      const term = escapeSearchTerm(q)
+      plotQuery = plotQuery.or(`plot_number.ilike.%${term}%,location.ilike.%${term}%,survey_number.ilike.%${term}%`)
   }
 
   if (lifecycle) {

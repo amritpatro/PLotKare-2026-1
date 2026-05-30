@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -17,6 +17,7 @@ import {
   type PublicPlotListing,
 } from '@/lib/public-listings'
 import { withBasePath } from '@/lib/site-config'
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 
 const CRIMSON = '#C0392B'
 const GOLD = '#F59E0B'
@@ -27,6 +28,10 @@ const VERIFICATION_CHECKLIST = [
   'Vastu and facing notes verified with the owner before publication.',
   'Title, tax, and approval documents uploaded before the listing is marked public.',
 ] as const
+
+function resolveImageUrl(imageUrl: string) {
+  return imageUrl.startsWith('http') ? imageUrl : withBasePath(imageUrl)
+}
 
 function ListingInquiryForm({
   plot,
@@ -142,20 +147,38 @@ function PlotCard({
   onViewDetails: () => void
   onInquire: () => void
 }) {
+  const gallery = (plot.imageUrls?.length ? plot.imageUrls : [plot.imageUrl]).slice(0, 4)
   return (
     <motion.article
       whileHover={{ scale: 1.03 }}
       transition={{ type: 'spring', stiffness: 400, damping: 28 }}
       className="premium-interactive group relative h-[420px] overflow-hidden rounded-2xl border border-white/10 shadow-xl"
     >
-      <Image
-        src={withBasePath(plot.imageUrl)}
-        alt={`Verified ${plot.propertyKind === 'apartment' ? 'apartment' : 'plot'} listing in ${plot.location} - PlotKare marketplace preview`}
-        fill
-        className="object-cover transition-[filter,transform] duration-300 group-hover:brightness-[1.08]"
-        sizes="(max-width:768px) 100vw, 33vw"
-        priority
-      />
+      {gallery.length > 1 ? (
+        <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1">
+          {gallery.map((imageUrl, index) => (
+            <div key={`${plot.id}-${index}`} className="relative">
+              <Image
+                src={resolveImageUrl(imageUrl)}
+                alt={`Listing photo ${index + 1} for ${plot.plotNumber}`}
+                fill
+                className="object-cover transition-[filter,transform] duration-300 group-hover:brightness-[1.08]"
+                sizes="(max-width:768px) 50vw, 20vw"
+                priority={index === 0}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Image
+          src={resolveImageUrl(plot.imageUrl)}
+          alt={`Verified ${plot.propertyKind === 'apartment' ? 'apartment' : 'plot'} listing in ${plot.location} - PlotKare marketplace preview`}
+          fill
+          className="object-cover transition-[filter,transform] duration-300 group-hover:brightness-[1.08]"
+          sizes="(max-width:768px) 100vw, 33vw"
+          priority
+        />
+      )}
       <div
         className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10"
         aria-hidden
@@ -183,6 +206,9 @@ function PlotCard({
         <h3 className="font-serif text-2xl font-bold leading-tight text-white md:text-3xl">
           {plot.location}
         </h3>
+        <p className="text-xs text-white/70">
+          {plot.corridor ? `Location / corridor: ${plot.corridor}` : 'Location / corridor verified on request'}
+        </p>
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full border border-white/15 bg-black/30 px-3 py-1 font-sans text-xs text-white/60">
             {plot.propertyKind === 'apartment'
@@ -198,8 +224,11 @@ function PlotCard({
             </span>
           )}
         </div>
+        <p className="font-sans text-xs text-white/70">
+          Seller: {plot.sellerName ?? 'PlotKare Seller'} · {plot.sellerPhone || 'Phone on request'}
+        </p>
         <p className="font-mono text-xl font-bold uppercase tracking-wide md:text-2xl" style={{ color: GOLD }}>
-          Consult for pricing
+          {plot.priceDisplay || 'Consult for pricing'}
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
           <button
@@ -236,10 +265,43 @@ export function AvailablePlotsShowcaseSection({
   browseLabel?: string
   accountLabel?: string
 }) {
-  const [listings] = useState<PublicPlotListing[]>(initialListings)
+  const [listings, setListings] = useState<PublicPlotListing[]>(initialListings)
   const [detailPlot, setDetailPlot] = useState<PublicPlotListing | null>(null)
   const [inquiryPlot, setInquiryPlot] = useState<PublicPlotListing | null>(null)
   const [inquirySuccess, setInquirySuccess] = useState(false)
+  const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient()
+    const refreshListings = () => {
+      if (refreshTimeout.current) return
+      refreshTimeout.current = setTimeout(async () => {
+        refreshTimeout.current = null
+        try {
+          const response = await fetch('/api/public-listings', { cache: 'no-store' })
+          if (!response.ok) return
+          const result = (await response.json()) as { listings?: PublicPlotListing[] }
+          if (result.listings) setListings(result.listings)
+        } catch {
+          // No-op: keep last known listings.
+        }
+      }, 250)
+    }
+
+    const channel = supabase
+      .channel('public-listings')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'listings' },
+        refreshListings,
+      )
+      .subscribe()
+
+    return () => {
+      if (refreshTimeout.current) clearTimeout(refreshTimeout.current)
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   const showcase = getLandingShowcaseListings(listings)
 
@@ -337,13 +399,29 @@ export function AvailablePlotsShowcaseSection({
           {detailPlot && (
             <div className="space-y-5 pt-2">
               <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg border border-white/10">
-                <Image
-                  src={withBasePath(detailPlot.imageUrl)}
-                  alt={`Verified ${detailPlot.propertyKind === 'apartment' ? 'apartment' : 'plot'} listing in ${detailPlot.location} - PlotKare marketplace detail`}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 700px"
-                />
+                {detailPlot.imageUrls.length > 1 ? (
+                  <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1">
+                    {detailPlot.imageUrls.slice(0, 4).map((imageUrl, index) => (
+                      <div key={`${detailPlot.id}-detail-${index}`} className="relative">
+                        <Image
+                          src={resolveImageUrl(imageUrl)}
+                          alt={`Listing photo ${index + 1} for ${detailPlot.plotNumber}`}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 50vw, 350px"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Image
+                    src={resolveImageUrl(detailPlot.imageUrl)}
+                    alt={`Verified ${detailPlot.propertyKind === 'apartment' ? 'apartment' : 'plot'} listing in ${detailPlot.location} - PlotKare marketplace detail`}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 700px"
+                  />
+                )}
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
@@ -357,6 +435,9 @@ export function AvailablePlotsShowcaseSection({
                     </p>
                     <p>
                       <span className="text-white/50">Location:</span> {detailPlot.location}
+                    </p>
+                    <p>
+                      <span className="text-white/50">Corridor:</span> {detailPlot.corridor || 'Verified on request'}
                     </p>
                     <p>
                       <span className="text-white/50">Type:</span>{' '}
@@ -378,6 +459,10 @@ export function AvailablePlotsShowcaseSection({
                         <span className="text-white/50">Corner plot:</span> {detailPlot.cornerPlot ? 'Yes' : 'No'}
                       </p>
                     )}
+                    <p>
+                      <span className="text-white/50">Seller:</span> {detailPlot.sellerName ?? 'PlotKare Seller'} ·{' '}
+                      {detailPlot.sellerPhone || 'Phone on request'}
+                    </p>
                   </div>
                 </div>
                 <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
@@ -387,7 +472,7 @@ export function AvailablePlotsShowcaseSection({
                     before this property is shown publicly. We use the facing, site photos, and survey notes to validate the file.
                   </p>
                   <div className="mt-4 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/70">
-                    <span className="text-white/50">Pricing:</span> shared only after advisor consultation
+                    <span className="text-white/50">Pricing:</span> {detailPlot.priceDisplay || 'Consult for pricing'}
                   </div>
                 </div>
               </div>

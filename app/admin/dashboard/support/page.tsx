@@ -2,6 +2,7 @@ import { replyToSupportTicket, updateSupportTicket } from './actions'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import StatusBadge from '@/components/ui/status-badge'
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass =
@@ -36,14 +37,7 @@ function formatDateTime(value: string | null | undefined) {
   return new Date(value).toLocaleString('en-IN')
 }
 
-function statusBadge(value: string | null | undefined) {
-  const status = String(value ?? 'open').replaceAll('_', ' ')
-  return (
-    <span className="rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#6B7280]">
-      {status}
-    </span>
-  )
-}
+// use shared StatusBadge component
 
 export default async function AdminSupportPage({ searchParams }: PageProps) {
   await requirePageRole(['admin'])
@@ -162,7 +156,7 @@ export default async function AdminSupportPage({ searchParams }: PageProps) {
                 <div>
                   <div className="flex flex-wrap items-center gap-3">
                     <h2 className="font-serif text-2xl font-semibold text-[#1F2937]">{ticket.subject}</h2>
-                    {statusBadge(ticket.status)}
+                    <StatusBadge status={ticket.status} />
                     <span className="rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#6B7280]">
                       {ticket.priority}
                     </span>

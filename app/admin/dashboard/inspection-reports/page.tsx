@@ -1,4 +1,6 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import escapeSearchTerm from '@/lib/search'
+import StatusBadge from '@/components/ui/status-badge'
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass = 'rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
@@ -40,22 +42,7 @@ function unique(values: Array<string | null>) {
   return Array.from(new Set(values.filter(Boolean))) as string[]
 }
 
-function statusBadge(status: string) {
-  const className =
-    status === 'Completed'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-      : status === 'Scheduled'
-        ? 'border-amber-200 bg-amber-50 text-amber-700'
-        : status === 'Action Needed'
-          ? 'border-red-200 bg-red-50 text-red-700'
-          : 'border-[#E5E7EB] bg-[#F9FAFB] text-[#6B7280]'
-
-  return (
-    <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] ${className}`}>
-      {status}
-    </span>
-  )
-}
+// use shared StatusBadge component
 
 export default async function AdminInspectionReportsPage({ searchParams }: AdminInspectionReportsPageProps) {
   const supabase = await createSupabaseServerClient()
@@ -70,7 +57,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
     .limit(100)
 
   if (q) {
-    const term = q.replaceAll('%', '\\%').replaceAll('_', '\\_')
+     const term = escapeSearchTerm(q)
     reportQuery = reportQuery.or(`month.ilike.%${term}%,agent_name.ilike.%${term}%,finding.ilike.%${term}%`)
   }
 
@@ -166,7 +153,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                   <td className="px-3 py-3">{owner?.full_name || owner?.email || 'Owner pending'}</td>
                   <td className="px-3 py-3 text-[#6B7280]">{row.agent_name || 'Unassigned'}</td>
                   <td className="max-w-sm truncate px-3 py-3 text-[#6B7280]">{row.finding || 'No finding recorded'}</td>
-                  <td className="px-3 py-3">{statusBadge(row.status)}</td>
+                  <td className="px-3 py-3"><StatusBadge status={row.status} /></td>
                   <td className="px-3 py-3 text-[#6B7280]">{new Date(row.created_at).toLocaleDateString('en-IN')}</td>
                 </tr>
               )

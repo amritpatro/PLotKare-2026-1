@@ -29,6 +29,11 @@ export const HOME_FAQS: FaqItem[] = [
     answer:
       'Authorized users can access available inspection and document records through PlotKare and share appropriate records with family members or professional advisors. Any external delivery or coordination channel is confirmed during consultation.',
   },
+  {
+    question: 'How do I get started listing a plot for sale?',
+    answer:
+      'Create an account, complete the buyer or owner onboarding, add your property details and documents, and submit the listing for PlotKare review. Our team will confirm publication requirements and visible listing readiness.',
+  },
 ]
 
 export const VISAKHAPATNAM_FAQS: FaqItem[] = [

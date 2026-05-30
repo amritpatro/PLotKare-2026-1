@@ -374,14 +374,21 @@ function Boduvalasa3DCanvasImpl({ className = '', selectedPlot, onPlotSelect }: 
         <div className="absolute bottom-2 left-1/2 -translate-x-1/2 font-mono text-[10px] text-white/55">S</div>
         <div className="absolute left-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-white/55">W</div>
         <div className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-white/55">E</div>
-        <div
-          className="absolute left-1/2 top-1/2 h-11 w-11 -translate-x-1/2 -translate-y-1/2"
-          style={{ transform: `translate(-50%, -50%) rotate(${LAYOUT_NORTH_DEGREES}deg)` }}
-        >
-          <div className="absolute left-1/2 top-1/2 h-9 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-white/35" />
-          <div className="absolute left-1/2 top-1/2 h-0.5 w-9 -translate-x-1/2 -translate-y-1/2 bg-white/25" />
-          <div className="absolute left-1/2 top-0 h-5 w-3 -translate-x-1/2 bg-primary [clip-path:polygon(50%_0,100%_100%,50%_78%,0_100%)]" />
-        </div>
+          <div
+            className="absolute left-1/2 top-1/2 h-11 w-11 -translate-x-1/2 -translate-y-1/2"
+            style={{ transform: `translate(-50%, -50%) rotate(${LAYOUT_NORTH_DEGREES}deg)` }}
+          >
+            <div className="absolute left-1/2 top-1/2 h-9 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-white/35" />
+            <div className="absolute left-1/2 top-1/2 h-0.5 w-9 -translate-x-1/2 -translate-y-1/2 bg-white/25" />
+            <div
+              className="absolute left-1/2 top-0 h-5 w-3 -translate-x-1/2"
+              style={{
+                backgroundColor: GOLD,
+                clipPath: 'polygon(50% 0%, 100% 100%, 50% 78%, 0% 100%)',
+                opacity: 0.96,
+              }}
+            />
+          </div>
         <div className="absolute bottom-[-14px] left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-black/50 px-2 py-0.5 font-mono text-[8px] uppercase tracking-wide text-white/50">
           Layout north
         </div>

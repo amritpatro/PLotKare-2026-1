@@ -40,6 +40,46 @@ export function Navigation() {
     }
   }, [isMobileMenuOpen])
 
+  // Smooth and reliable hash scrolling for anchor links
+  useEffect(() => {
+    function handleAnchorClick(e: MouseEvent) {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+      const a = target.closest('a') as HTMLAnchorElement | null
+      if (!a || !a.hash) return
+      const id = a.hash.replace('#', '')
+      if (!id) return
+      const el = document.getElementById(id)
+      if (el) {
+        e.preventDefault()
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        // update history so link works as expected
+        window.history.replaceState(null, '', a.getAttribute('href') || a.href)
+        // close mobile menu if open
+        setIsMobileMenuOpen(false)
+      } else {
+        // if element not present yet, retry a few times
+        let attempts = 0
+        const tryScroll = () => {
+          const el2 = document.getElementById(id)
+          if (el2) {
+            e.preventDefault()
+            el2.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            window.history.replaceState(null, '', a.getAttribute('href') || a.href)
+            setIsMobileMenuOpen(false)
+            return
+          }
+          attempts += 1
+          if (attempts < 6) requestAnimationFrame(tryScroll)
+        }
+        tryScroll()
+      }
+    }
+
+    document.addEventListener('click', handleAnchorClick)
+    return () => document.removeEventListener('click', handleAnchorClick)
+  }, [])
+
   return (
     <>
       <motion.nav

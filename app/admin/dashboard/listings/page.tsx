@@ -1,5 +1,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import escapeSearchTerm from '@/lib/search'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
+import { archiveListing } from './actions'
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass =
@@ -80,8 +82,19 @@ export default async function AdminListingsPage({ searchParams }: AdminListingsP
     .limit(100)
 
   if (q) {
-    const term = q.replaceAll('%', '\\%').replaceAll('_', '\\_')
-    listingQuery = listingQuery.or(`plot_number.ilike.%${term}%,location.ilike.%${term}%,size_label.ilike.%${term}%`)
+      const term = escapeSearchTerm(q)
+    // find matching owners by name, email, or phone to include in the listing search
+    const { data: matchingProfiles } = await supabase
+      .from('profiles')
+      .select('id')
+      .or(`full_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`)
+
+    const ownerMatchIds = (matchingProfiles ?? []).map((p: any) => p.id).filter(Boolean) as string[]
+    const exprs = [`plot_number.ilike.%${term}%`, `location.ilike.%${term}%`, `size_label.ilike.%${term}%`]
+    if (ownerMatchIds.length) {
+      exprs.unshift(`owner_id.in.(${ownerMatchIds.join(',')})`)
+    }
+    listingQuery = listingQuery.or(exprs.join(','))
   }
 
   if (status) listingQuery = listingQuery.eq('status', status)
@@ -101,7 +114,7 @@ export default async function AdminListingsPage({ searchParams }: AdminListingsP
 
   const ownerById = new Map(((owners ?? []) as ProfileRow[]).map((row) => [row.id, row]))
   const plotById = new Map(((plots ?? []) as PlotRow[]).map((row) => [row.id, row]))
-  const activeRows = rows.filter((row) => row.status === 'Active')
+  const activeRows = rows.filter((row) => ['active', 'featured'].includes(row.status.toLowerCase()))
   const soldRows = rows.filter((row) => row.status === 'Sold')
 
   return (
@@ -121,7 +134,9 @@ export default async function AdminListingsPage({ searchParams }: AdminListingsP
           <select name="status" defaultValue={status} className={inputClass}>
             <option value="">All statuses</option>
             <option value="Active">Active</option>
+            <option value="featured">Featured</option>
             <option value="Sold">Sold</option>
+            <option value="archived">Archived</option>
           </select>
           <button className="rounded-lg bg-[#C0392B] px-4 py-2 text-sm font-semibold text-white" type="submit">
             Filter
@@ -158,12 +173,13 @@ export default async function AdminListingsPage({ searchParams }: AdminListingsP
               <th className="px-3 py-3">Inquiries</th>
               <th className="px-3 py-3">Status</th>
               <th className="px-3 py-3">Created</th>
+              <th className="px-3 py-3">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#F3F4F6]">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-3 py-10 text-center text-[#6B7280]">
+                <td colSpan={12} className="px-3 py-10 text-center text-[#6B7280]">
                   No listings found.
                 </td>
               </tr>
@@ -171,6 +187,7 @@ export default async function AdminListingsPage({ searchParams }: AdminListingsP
             {rows.map((row) => {
               const owner = row.owner_id ? ownerById.get(row.owner_id) : null
               const plot = row.plot_id ? plotById.get(row.plot_id) : null
+              const isArchived = row.status.toLowerCase() === 'archived'
 
               return (
                 <tr key={row.id} className="font-sans text-[#1F2937]">
@@ -198,6 +215,18 @@ export default async function AdminListingsPage({ searchParams }: AdminListingsP
                   <td className="px-3 py-3 font-mono text-[#1F2937]">{row.inquiries_count}</td>
                   <td className="px-3 py-3">{badge(row.status)}</td>
                   <td className="px-3 py-3 text-[#6B7280]">{new Date(row.created_at).toLocaleDateString('en-IN')}</td>
+                  <td className="px-3 py-3">
+                    <form action={archiveListing}>
+                      <input type="hidden" name="listingId" value={row.id} />
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-[#E5E7EB] px-3 py-1 text-xs font-semibold text-[#6B7280] hover:border-[#C0392B] hover:text-[#C0392B]"
+                        disabled={isArchived}
+                      >
+                        {isArchived ? 'Archived' : 'Archive'}
+                      </button>
+                    </form>
+                  </td>
                 </tr>
               )
             })}

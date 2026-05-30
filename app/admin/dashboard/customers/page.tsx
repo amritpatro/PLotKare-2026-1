@@ -1,4 +1,6 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import escapeSearchTerm from '@/lib/search'
+import StatusBadge from '@/components/ui/status-badge'
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass = 'rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
@@ -34,13 +36,7 @@ function getParam(params: Record<string, string | string[] | undefined>, key: st
   return Array.isArray(value) ? value[0] : value
 }
 
-function statusBadge(status: string) {
-  return (
-    <span className="rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#6B7280]">
-      {status.replaceAll('_', ' ')}
-    </span>
-  )
-}
+// use shared StatusBadge component
 
 export default async function AdminCustomersPage({ searchParams }: AdminCustomersPageProps) {
   const supabase = await createSupabaseServerClient()
@@ -55,7 +51,7 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
     .limit(100)
 
   if (q) {
-    const term = q.replaceAll('%', '\\%').replaceAll('_', '\\_')
+    const term = escapeSearchTerm(q)
     customerQuery = customerQuery.or(`full_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`)
   }
 
@@ -156,8 +152,8 @@ export default async function AdminCustomersPage({ searchParams }: AdminCustomer
                 <td className="px-4 py-3 text-[#6B7280]">{plans.get(row.id) ?? 'No subscription'}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">
-                    {statusBadge(row.account_status)}
-                    {statusBadge(row.kyc_status)}
+                    <StatusBadge status={row.account_status} />
+                    <StatusBadge status={row.kyc_status} />
                   </div>
                 </td>
                 <td className="px-4 py-3 text-[#6B7280]">{new Date(row.created_at).toLocaleDateString('en-IN')}</td>

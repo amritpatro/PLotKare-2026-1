@@ -63,7 +63,7 @@ export async function getCustomerWorkspaceData(
       .select(
         'id,property_id,seller_id,plot_id,plot_number,location,size_sq_yards,size_label,facing,corner_plot,premium,price_lakhs,price_display,status,approval_status,is_published,verified_at,verified_by,inquiries_count,property_kind,bhk,floor_label,created_at',
       )
-      .eq('status', 'Active')
+      .in('status', ['Active', 'featured'])
       .eq('approval_status', 'approved')
       .eq('is_published', true)
       .order('created_at', { ascending: false })

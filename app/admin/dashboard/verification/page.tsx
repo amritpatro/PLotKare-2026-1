@@ -46,23 +46,7 @@ function getParam(params: Record<string, string | string[] | undefined>, key: st
   return Array.isArray(value) ? value[0] : value
 }
 
-function statusBadge(status: string) {
-  const normalized = status.replaceAll('_', ' ')
-  const className =
-    status === 'approved'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-      : status === 'rejected'
-        ? 'border-red-200 bg-red-50 text-red-700'
-        : status === 'needs_clarification'
-          ? 'border-amber-200 bg-amber-50 text-amber-700'
-          : 'border-[#E5E7EB] bg-[#F9FAFB] text-[#6B7280]'
-
-  return (
-    <span className={`rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] ${className}`}>
-      {normalized}
-    </span>
-  )
-}
+import StatusBadge from '@/components/ui/status-badge'
 
 function formatStatus(value: string | null | undefined) {
   return String(value ?? 'none').replaceAll('_', ' ')
@@ -362,7 +346,7 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
             {(propertyLinkRequests ?? []).map((request: any) => (
               <div key={request.id} className="grid gap-4 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.95fr)]">
                 <div>
-                  <div className="flex flex-wrap items-center gap-3"><p className="font-semibold text-[#1F2937]">{request.property_title}</p>{statusBadge(request.status)}</div>
+                  <div className="flex flex-wrap items-center gap-3"><p className="font-semibold text-[#1F2937]">{request.property_title}</p><StatusBadge status={request.status} /></div>
                   <p className="mt-2 text-sm text-[#6B7280]">{request.property_kind} · {request.address}, {request.city}, {request.state} · {request.relationship_type}</p>
                   {request.review_notes ? <p className="mt-2 text-sm text-[#6B7280]">{request.review_notes}</p> : null}
                 </div>
@@ -385,41 +369,65 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
             ))}
           </div>
         </div>
-        <VerificationSection
-          title="Properties"
-          empty="No properties need review."
-          rows={propertyRows}
-          employeeOptions={employeeOptions}
-          employeeById={employeeById}
-        />
-        <VerificationSection
-          title="Business sellers"
-          empty="No sellers need review."
-          rows={sellerRows}
-          employeeOptions={employeeOptions}
-          employeeById={employeeById}
-        />
-        <VerificationSection
-          title="Land owners"
-          empty="No owners need review."
-          rows={ownerRows}
-          employeeOptions={employeeOptions}
-          employeeById={employeeById}
-        />
-        <VerificationSection
-          title="Customers / KYC"
-          empty="No customer KYC items need review."
-          rows={customerRows}
-          employeeOptions={employeeOptions}
-          employeeById={employeeById}
-        />
-        <VerificationSection
-          title="Documents"
-          empty="No documents need review."
-          rows={documentRows}
-          employeeOptions={employeeOptions}
-          employeeById={employeeById}
-        />
+        <div className="rounded-xl border border-[#E5E7EB] bg-white p-4">
+          <nav className="flex flex-wrap gap-2">
+            <a href="#properties" className="rounded-full px-3 py-1 text-sm font-medium bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]">Properties</a>
+            <a href="#business-sellers" className="rounded-full px-3 py-1 text-sm font-medium bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]">Business sellers</a>
+            <a href="#land-owners" className="rounded-full px-3 py-1 text-sm font-medium bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]">Land owners</a>
+            <a href="#customers-kyc" className="rounded-full px-3 py-1 text-sm font-medium bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]">Customers / KYC</a>
+            <a href="#documents" className="rounded-full px-3 py-1 text-sm font-medium bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]">Documents</a>
+          </nav>
+        </div>
+
+        <div id="properties">
+          <VerificationSection
+            title="Properties"
+            empty="No properties need review."
+            rows={propertyRows}
+            employeeOptions={employeeOptions}
+            employeeById={employeeById}
+          />
+        </div>
+
+        <div id="business-sellers">
+          <VerificationSection
+            title="Business sellers"
+            empty="No sellers need review."
+            rows={sellerRows}
+            employeeOptions={employeeOptions}
+            employeeById={employeeById}
+          />
+        </div>
+
+        <div id="land-owners">
+          <VerificationSection
+            title="Land owners"
+            empty="No owners need review."
+            rows={ownerRows}
+            employeeOptions={employeeOptions}
+            employeeById={employeeById}
+          />
+        </div>
+
+        <div id="customers-kyc">
+          <VerificationSection
+            title="Customers / KYC"
+            empty="No customer KYC items need review."
+            rows={customerRows}
+            employeeOptions={employeeOptions}
+            employeeById={employeeById}
+          />
+        </div>
+
+        <div id="documents">
+          <VerificationSection
+            title="Documents"
+            empty="No documents need review."
+            rows={documentRows}
+            employeeOptions={employeeOptions}
+            employeeById={employeeById}
+          />
+        </div>
       </section>
     </div>
   )
@@ -456,7 +464,7 @@ function VerificationSection({
             <div>
               <div className="flex flex-wrap items-center gap-3">
                 <p className="font-sans text-sm font-semibold text-[#1F2937]">{row.title}</p>
-                {statusBadge(row.status)}
+                <StatusBadge status={row.status} />
               </div>
               <p className="mt-2 font-sans text-sm text-[#6B7280]">{row.meta}</p>
               <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.12em] text-[#9CA3AF]">

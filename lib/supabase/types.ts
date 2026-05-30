@@ -3,7 +3,7 @@ export type EmployeeRole = 'verification_agent' | 'field_inspection_agent' | 'su
 export type CustomerType = 'land_owner' | 'plot_seller' | 'plot_buyer'
 export type Facing = 'East' | 'West' | 'North' | 'South'
 export type PropertyKind = 'plot' | 'apartment'
-export type ListingStatus = 'Active' | 'Sold'
+export type ListingStatus = 'Active' | 'Sold' | 'featured' | 'archived'
 export type PlanTier = 'basic' | 'standard' | 'premium'
 
 export const ROLE_DASHBOARD_PATHS: Record<UserRole, string> = {
