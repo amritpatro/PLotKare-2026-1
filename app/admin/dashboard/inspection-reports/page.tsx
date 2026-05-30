@@ -24,8 +24,18 @@ type ReportRow = {
 
 type PlotRow = {
   id: string
+  property_id: string | null
   plot_number: string
   location: string
+}
+
+type PropertyRow = {
+  id: string
+  title: string | null
+  city: string | null
+  state: string | null
+  latitude: number | null
+  longitude: number | null
 }
 
 type ProfileRow = {
@@ -48,6 +58,10 @@ type InspectionRow = {
   assigned_employee_id: string | null
   status: string
   scheduled_for: string | null
+  created_at: string
+  completed_at: string | null
+  summary: string | null
+  photos: unknown
 }
 
 function getParam(params: Record<string, string | string[] | undefined>, key: string) {
@@ -103,7 +117,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
       ? supabase.from('profiles').select('id,full_name,email').in('id', ownerIds)
       : Promise.resolve({ data: [] }),
     plotIds.length
-      ? supabase.from('plots').select('id,plot_number,location').in('id', plotIds)
+      ? supabase.from('plots').select('id,property_id,plot_number,location').in('id', plotIds)
       : Promise.resolve({ data: [] }),
     supabase
       .from('employees')
@@ -114,15 +128,21 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
     plotIds.length
       ? supabase
           .from('inspections')
-          .select('id,plot_id,assigned_employee_id,status,scheduled_for')
+          .select('id,plot_id,assigned_employee_id,status,scheduled_for,created_at,completed_at,summary,photos')
           .in('plot_id', plotIds)
           .in('status', ['requested', 'scheduled', 'in_progress', 'needs_followup'])
           .order('created_at', { ascending: false })
       : Promise.resolve({ data: [] }),
   ])
 
+  const propertyIds = unique(((plots ?? []) as PlotRow[]).map((plot) => plot.property_id))
+  const { data: properties } = propertyIds.length
+    ? await supabase.from('properties').select('id,title,city,state,latitude,longitude').in('id', propertyIds)
+    : { data: [] }
+
   const profileById = new Map(((profiles ?? []) as ProfileRow[]).map((row) => [row.id, row]))
   const plotById = new Map(((plots ?? []) as PlotRow[]).map((row) => [row.id, row]))
+  const propertyById = new Map(((properties ?? []) as PropertyRow[]).map((row) => [row.id, row]))
   const agents = (fieldAgents ?? []) as EmployeeRow[]
   const agentById = new Map(agents.map((employee) => [employee.id, employee]))
   const inspectionByPlotId = new Map<string, InspectionRow>()
@@ -214,9 +234,19 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
             ) : null}
             {rows.map((row) => {
               const plot = row.plot_id ? plotById.get(row.plot_id) : null
+              const property = plot?.property_id ? propertyById.get(plot.property_id) : null
               const owner = profileById.get(row.owner_id)
               const assignedInspection = row.plot_id ? inspectionByPlotId.get(row.plot_id) : null
               const assignedAgent = assignedInspection?.assigned_employee_id ? agentById.get(assignedInspection.assigned_employee_id) : null
+              const coordinateLabel =
+                property?.latitude != null && property?.longitude != null
+                  ? `${Number(property.latitude).toFixed(5)}, ${Number(property.longitude).toFixed(5)}`
+                  : 'Coordinates pending'
+              const assignedAtLabel = assignedInspection?.scheduled_for
+                ? new Date(assignedInspection.scheduled_for).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+                : assignedInspection?.created_at
+                  ? new Date(assignedInspection.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+                  : 'Assignment pending'
 
               return (
                 <tr key={row.id}>
@@ -224,6 +254,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                   <td className="px-3 py-3">
                     <span className="font-mono text-[#C0392B]">{plot?.plot_number || 'Unlinked'}</span>
                     {plot?.location ? <span className="block text-xs text-[#9CA3AF]">{plot.location}</span> : null}
+                    <span className="mt-1 block text-[10px] uppercase tracking-[0.12em] text-[#C9A962]">{coordinateLabel}</span>
                   </td>
                   <td className="px-3 py-3">{owner?.full_name || owner?.email || 'Owner pending'}</td>
                   <td className="px-3 py-3 text-[#6B7280]">{row.agent_name || 'Unassigned'}</td>
@@ -233,10 +264,12 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                     {assignedInspection ? (
                       <div>
                         <p className="font-semibold text-[#1F2937]">{assignedAgent ? employeeLabel(assignedAgent) : 'Assigned agent'}</p>
+                        <p className="text-xs text-[#9CA3AF]">Assigned {assignedAtLabel}</p>
                         <p className="text-xs text-[#9CA3AF]">
                           {assignedInspection.status.replaceAll('_', ' ')}
                           {assignedInspection.scheduled_for ? ` · ${new Date(assignedInspection.scheduled_for).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` : ''}
                         </p>
+                        <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#C9A962]">{coordinateLabel}</p>
                       </div>
                     ) : (
                       <span className="text-[#9CA3AF]">Not assigned to field portal</span>
