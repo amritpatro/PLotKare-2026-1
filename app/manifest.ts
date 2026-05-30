@@ -1,0 +1,26 @@
+import type { MetadataRoute } from 'next'
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: 'PlotKare Field Agent',
+    short_name: 'PlotKare Agent',
+    description: 'Mobile field inspections with GPS evidence, photo capture, and offline sync.',
+    start_url: '/agent',
+    scope: '/',
+    display: 'standalone',
+    background_color: '#F8F7F4',
+    theme_color: '#9F1239',
+    icons: [
+      {
+        src: '/icon-light-32x32.png',
+        sizes: '32x32',
+        type: 'image/png',
+      },
+      {
+        src: '/icon.svg',
+        sizes: 'any',
+        type: 'image/svg+xml',
+      },
+    ],
+  }
+}

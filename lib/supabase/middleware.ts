@@ -98,7 +98,7 @@ export async function updateSession(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, customer_type, onboarding_completed, onboarding_status')
+      .select('role, employee_role, customer_type, onboarding_completed, onboarding_status')
       .eq('id', user.id)
       .single()
 
@@ -110,8 +110,21 @@ export async function updateSession(request: NextRequest) {
     if (!role || !isUserRole(role)) {
       return NextResponse.redirect(new URL('/auth/choose-role', request.url))
     }
+
+    let employeeRole = profile.employee_role
+    if (role === 'employee') {
+      const { data: employee } = await supabase
+        .from('employees')
+        .select('employee_role,active')
+        .eq('profile_id', user.id)
+        .maybeSingle()
+      if (employee?.active !== false && employee?.employee_role) {
+        employeeRole = employee.employee_role
+      }
+    }
     const isAdminRoute = isPrefix(pathname, adminRoutes)
     const isEmployeeRoute = isPrefix(pathname, employeeRoutes)
+    const isAgentRoute = isPrefix(pathname, ['/agent'])
     const isSellerRoute = isPrefix(pathname, sellerRoutes)
     const isOwnerRoute = isPrefix(pathname, ownerRoutes)
     const isCustomerRoute = isPrefix(pathname, customerRoutes)
@@ -144,9 +157,17 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(new URL(onboardingPath ?? '/auth/choose-role', request.url))
     }
 
+    if (role === 'employee' && employeeRole === 'field_inspection_agent' && isEmployeeRoute && !isAgentRoute) {
+      return NextResponse.redirect(new URL('/agent', request.url))
+    }
+
+    if (isAgentRoute && !(role === 'employee' && employeeRole === 'field_inspection_agent')) {
+      return NextResponse.redirect(new URL(dashboardPathForRole(role), request.url))
+    }
+
     const allowed =
       (isAdminRoute && role === 'admin') ||
-      (isEmployeeRoute && (role === 'employee' || role === 'admin')) ||
+      (isEmployeeRoute && role === 'employee') ||
       (isSellerRoute && (role === 'plot_seller' || role === 'admin')) ||
       (isOwnerRoute && (role === 'land_owner' || role === 'admin')) ||
       (isCustomerRoute && (role === 'customer' || role === 'admin')) ||

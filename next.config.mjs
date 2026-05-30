@@ -29,7 +29,7 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   {
     key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(), geolocation=(self), payment=(self "https://checkout.razorpay.com")',
+    value: 'camera=(self), microphone=(), geolocation=(self), payment=(self "https://checkout.razorpay.com")',
   },
   ...(isProduction
     ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]
