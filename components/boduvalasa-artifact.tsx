@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { BODUVALASA_LAYOUT } from '@/lib/boduvalasa-layout'
 import { getMappedPlotMarks, getPlotProfile } from '@/lib/plot-profile'
 
@@ -137,6 +137,7 @@ type Boduvalasa3DCanvasProps = {
   className?: string
   selectedPlot?: number
   onPlotSelect?: (plotNumber: number) => void
+  onCompassChange?: (angle: number) => void
 }
 
 type LayoutPlotMark = {
@@ -174,11 +175,25 @@ function getLayoutMarks(): LayoutPlotMark[] {
     .sort((a, b) => a.n - b.n)
 }
 
-function BoduvalasaScene({ selectedPlot, onPlotSelect }: Boduvalasa3DCanvasProps) {
+function BoduvalasaScene({ selectedPlot, onPlotSelect, onCompassChange }: Boduvalasa3DCanvasProps) {
   const plotMarks = useMemo(() => getLayoutMarks(), [])
   const layoutSegments = useMemo(() => getClippedLayoutSegments(), [])
   const selectedProfile = selectedPlot ? getPlotProfile(selectedPlot) : null
   const boundaryViolations = useMemo(() => getPlotBoundaryViolations(plotMarks), [plotMarks])
+  const controlsRef = useRef<any>(null)
+
+  useEffect(() => {
+    const controls = controlsRef.current
+    if (!controls || !onCompassChange) return
+
+    const updateCompass = () => {
+      onCompassChange(controls.getAzimuthalAngle?.() ?? 0)
+    }
+
+    updateCompass()
+    controls.addEventListener?.('change', updateCompass)
+    return () => controls.removeEventListener?.('change', updateCompass)
+  }, [onCompassChange])
 
   if (process.env.NODE_ENV !== 'production' && boundaryViolations.length > 0) {
     console.warn('PlotKare layout boundary violations', boundaryViolations)
@@ -305,6 +320,7 @@ function BoduvalasaScene({ selectedPlot, onPlotSelect }: Boduvalasa3DCanvasProps
       </mesh>
 
       <OrbitControls
+        ref={controlsRef}
         autoRotate={false}
         enableDamping
         dampingFactor={0.06}
@@ -324,6 +340,7 @@ function Boduvalasa3DCanvasImpl({ className = '', selectedPlot, onPlotSelect }: 
   const activePlot = selectedPlot ?? internalSelected
   const selectedProfile = activePlot ? getPlotProfile(activePlot) : null
   const [zoom, setZoom] = useState(54)
+  const [compassAngle, setCompassAngle] = useState(0)
   const cameraRef = useRef<THREE.OrthographicCamera | null>(null)
   const plotCount = useMemo(() => getLayoutMarks().length, [])
 
@@ -361,6 +378,7 @@ function Boduvalasa3DCanvasImpl({ className = '', selectedPlot, onPlotSelect }: 
             setInternalSelected(plotNumber)
             onPlotSelect?.(plotNumber)
           }}
+          onCompassChange={setCompassAngle}
         />
       </Canvas>
       <div className="pointer-events-none absolute left-4 top-4 rounded-sm border border-white/10 bg-black/40 px-3 py-2 backdrop-blur">
@@ -376,7 +394,7 @@ function Boduvalasa3DCanvasImpl({ className = '', selectedPlot, onPlotSelect }: 
         <div className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-white/55">E</div>
           <div
             className="absolute left-1/2 top-1/2 h-11 w-11 -translate-x-1/2 -translate-y-1/2"
-            style={{ transform: `translate(-50%, -50%) rotate(${LAYOUT_NORTH_DEGREES}deg)` }}
+            style={{ transform: `translate(-50%, -50%) rotate(${LAYOUT_NORTH_DEGREES - (compassAngle * 180) / Math.PI}deg)` }}
           >
             <div className="absolute left-1/2 top-1/2 h-9 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-white/35" />
             <div className="absolute left-1/2 top-1/2 h-0.5 w-9 -translate-x-1/2 -translate-y-1/2 bg-white/25" />

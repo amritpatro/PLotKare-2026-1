@@ -126,7 +126,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${cormorant.variable} ${dmSans.variable} ${dmMono.variable} bg-background`}>
-      <body className="font-sans antialiased">
+      <body className="overflow-x-hidden font-sans antialiased">
         <JsonLd data={[organizationJsonLd, websiteJsonLd]} />
         <ThreeConsoleSanitizer />
         {children}

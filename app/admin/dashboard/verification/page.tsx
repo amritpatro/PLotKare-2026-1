@@ -213,6 +213,10 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
     escalationLevel: row.escalation_level,
   }))
 
+  const kycRows = [...customerRows, ...ownerRows].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const propertyDocumentRows = [...propertyRows, ...documentRows].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const businessRows = [...sellerRows].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
   const totalPending =
     propertyRows.length + sellerRows.length + ownerRows.length + customerRows.length + documentRows.length
   const pipelineSections = [
@@ -371,59 +375,37 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
         </div>
         <div className="rounded-xl border border-[#E5E7EB] bg-white p-4">
           <nav className="flex flex-wrap gap-2">
-            <a href="#properties" className="rounded-full px-3 py-1 text-sm font-medium bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]">Properties</a>
-            <a href="#business-sellers" className="rounded-full px-3 py-1 text-sm font-medium bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]">Business sellers</a>
-            <a href="#land-owners" className="rounded-full px-3 py-1 text-sm font-medium bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]">Land owners</a>
-            <a href="#customers-kyc" className="rounded-full px-3 py-1 text-sm font-medium bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]">Customers / KYC</a>
-            <a href="#documents" className="rounded-full px-3 py-1 text-sm font-medium bg-white border border-[#E5E7EB] hover:bg-[#F9FAFB]">Documents</a>
+            <a href="#kyc-verification" className="rounded-full border border-[#E5E7EB] bg-white px-3 py-1 text-sm font-medium hover:bg-[#F9FAFB]">KYC verification</a>
+            <a href="#property-document-verification" className="rounded-full border border-[#E5E7EB] bg-white px-3 py-1 text-sm font-medium hover:bg-[#F9FAFB]">Property document verification</a>
+            <a href="#business-verification" className="rounded-full border border-[#E5E7EB] bg-white px-3 py-1 text-sm font-medium hover:bg-[#F9FAFB]">Business verification</a>
           </nav>
         </div>
 
-        <div id="properties">
+        <div id="kyc-verification">
           <VerificationSection
-            title="Properties"
-            empty="No properties need review."
-            rows={propertyRows}
+            title="KYC Verification"
+            empty="No KYC items need review."
+            rows={kycRows}
             employeeOptions={employeeOptions}
             employeeById={employeeById}
           />
         </div>
 
-        <div id="business-sellers">
+        <div id="property-document-verification">
           <VerificationSection
-            title="Business sellers"
-            empty="No sellers need review."
-            rows={sellerRows}
+            title="Property Document Verification"
+            empty="No property documents need review."
+            rows={propertyDocumentRows}
             employeeOptions={employeeOptions}
             employeeById={employeeById}
           />
         </div>
 
-        <div id="land-owners">
+        <div id="business-verification">
           <VerificationSection
-            title="Land owners"
-            empty="No owners need review."
-            rows={ownerRows}
-            employeeOptions={employeeOptions}
-            employeeById={employeeById}
-          />
-        </div>
-
-        <div id="customers-kyc">
-          <VerificationSection
-            title="Customers / KYC"
-            empty="No customer KYC items need review."
-            rows={customerRows}
-            employeeOptions={employeeOptions}
-            employeeById={employeeById}
-          />
-        </div>
-
-        <div id="documents">
-          <VerificationSection
-            title="Documents"
-            empty="No documents need review."
-            rows={documentRows}
+            title="Business Verification"
+            empty="No business sellers need review."
+            rows={businessRows}
             employeeOptions={employeeOptions}
             employeeById={employeeById}
           />

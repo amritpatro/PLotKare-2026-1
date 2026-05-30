@@ -52,7 +52,7 @@ export function AdminSidebar() {
       setIsSigningOut(false)
       return
     }
-    router.replace('/admin/login')
+    router.replace('/')
     router.refresh()
   }
 
