@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 
 const steps = [
@@ -39,15 +39,8 @@ export function HowItWorksSection({
   heading?: string
   highlightedHeading?: string
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
   const sectionRef = useRef<HTMLElement>(null)
-  const [showHint, setShowHint] = useState(true)
   const [highlightedSteps, setHighlightedSteps] = useState<Set<number>>(new Set())
-
-  useEffect(() => {
-    const timer = setTimeout(() => setShowHint(false), 3000)
-    return () => clearTimeout(timer)
-  }, [])
 
   useEffect(() => {
     if (!sectionRef.current) return
@@ -95,51 +88,8 @@ export function HowItWorksSection({
           </h2>
         </motion.div>
 
-        {/* Scroll Hint */}
-        <motion.div
-          initial={{ opacity: 1 }}
-          animate={{ opacity: showHint ? 1 : 0 }}
-          className="mb-4 text-center lg:hidden"
-        >
-          <span className="font-mono text-xs text-white/40">
-            Scroll horizontally to see all steps
-          </span>
-        </motion.div>
-
-        {/* Horizontal Scroll Container - Mobile/Tablet */}
-        <div
-          ref={scrollRef}
-          className="scrollbar-hide scroll-snap-x -mx-6 flex gap-6 overflow-x-auto px-6 pb-4 lg:hidden"
-        >
-          {steps.map((step, index) => (
-            <motion.div
-              key={step.number}
-              data-step-index={index}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`premium-surface-dark scroll-snap-start min-w-[280px] flex-shrink-0 rounded-lg p-8 transition-all duration-500 ${
-                highlightedSteps.has(index)
-                  ? 'bg-white/10 shadow-[0_0_20px_rgba(139,21,56,0.6)]'
-                  : 'bg-white/5'
-              }`}
-            >
-              <span className={`font-mono text-4xl font-bold transition-all duration-500 ${highlightedSteps.has(index) ? 'drop-shadow-[0_0_8px_rgba(139,21,56,0.8)]' : 'text-primary'}`} style={{color: highlightedSteps.has(index) ? '#8B1538' : undefined}}>
-                {step.number}
-              </span>
-              <h3 className="mt-4 font-serif text-2xl font-semibold text-white">
-                {step.title}
-              </h3>
-              <p className="mt-3 font-sans text-sm leading-relaxed text-white/60">
-                {step.description}
-              </p>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Desktop Grid */}
-        <div className="hidden lg:grid lg:grid-cols-5 lg:gap-6">
+        {/* Responsive Grid */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
           {steps.map((step, index) => (
             <motion.div
               key={step.number}
