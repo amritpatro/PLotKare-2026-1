@@ -207,6 +207,9 @@ export function Footer() {
             PlotKare 2026. All rights reserved. Property monitoring for owners across{' '}
             <span className="text-primary">India</span>.
           </p>
+          <p className="mt-2 text-center font-sans text-sm text-white/40">
+            PlotKare&apos;s field operations are managed by a local team based in Visakhapatnam, Andhra Pradesh.
+          </p>
         </div>
       </div>
     </footer>

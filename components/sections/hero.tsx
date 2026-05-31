@@ -17,7 +17,7 @@ const pillars = [
 
 export function HeroSection({
   heading = 'Manage, Monitor, and Protect Your Plot From Anywhere in India',
-  description = 'PlotKare is a property operations platform for Indian landowners who cannot personally watch their plots. Field inspections, document tracking, issue reporting, and a verified marketplace come together in one platform, whether you own one plot or a portfolio. Starting from Visakhapatnam, expanding across India.',
+  description = 'PlotKare is a plot management and property monitoring platform for Indian landowners who cannot personally watch their plots. Field inspections, document tracking, issue reporting, and a verified marketplace come together in one platform, whether you own one plot or a portfolio. Starting from Visakhapatnam, expanding across India.',
   primaryLabel = 'See Real Plot Layout',
   secondaryLabel = 'Register My Plot',
   supportingLink,
@@ -54,7 +54,7 @@ export function HeroSection({
             </Link>
           ) : null}
           {quickAnswer ? (
-            <p className="premium-surface mt-6 max-w-2xl rounded-lg border border-border bg-white/75 p-5 font-sans text-sm leading-relaxed text-[#5f5f5f]">
+            <p className="mt-6 max-w-2xl font-sans text-lg leading-relaxed text-[#5f5f5f] md:text-xl">
               {quickAnswer}
             </p>
           ) : null}

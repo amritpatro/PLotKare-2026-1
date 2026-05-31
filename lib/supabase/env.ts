@@ -2,7 +2,7 @@ export function getSiteUrl() {
   const raw =
     process.env.NEXT_PUBLIC_SITE_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
-    'http://127.0.0.1:3002'
+    'https://p-lot-kare-2026-1.vercel.app'
 
   return raw.replace(/\/$/, '')
 }

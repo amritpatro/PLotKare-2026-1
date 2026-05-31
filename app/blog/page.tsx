@@ -4,7 +4,7 @@ import { SITE_NAME, canonicalPageUrl } from '@/lib/site-config'
 import { getAllPosts } from '@/lib/blog-posts'
 
 export const metadata: Metadata = {
-  title: 'Property Asset Protection and Growth Guides | PlotKare Blog',
+  title: 'Property Protection and Investment Guides | PlotKare Blog',
   description:
     'Guides for property owners who want to protect vacant plots, manage documents, track value, grow idle assets, and prepare verified listings.',
   alternates: { canonical: canonicalPageUrl('/blog/') },

@@ -73,6 +73,7 @@ export default async function HomePage() {
           href: '/visakhapatnam/',
           label: 'Explore plot management in Visakhapatnam',
         }}
+        quickAnswer="PlotKare coordinates monthly plot inspections with geotagged photos, encroachment monitoring, EC certificate and document tracking, and a verified property marketplace for landowners across India. Owners receive a PDF report every inspection cycle. Pricing is confirmed after a free consultation call with no billing before scope is agreed."
       />
       <TrustStrip />
       <ProblemSection />

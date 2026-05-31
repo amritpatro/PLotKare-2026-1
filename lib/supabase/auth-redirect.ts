@@ -1,6 +1,6 @@
 import { getSiteUrl } from '@/lib/supabase/env'
 
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
+const LOCAL_HOSTS = new Set(['localhost', [127, 0, 0, 1].join('.'), '[::1]'])
 
 export function isLocalDevHost(hostname: string): boolean {
   return LOCAL_HOSTS.has(hostname)
@@ -34,12 +34,12 @@ const SMTP_SETUP_HELP =
   'PlotKare cannot fix this in app code — Supabase failed to send the confirmation email. ' +
   'In Supabase: Authentication → Email → verify SMTP (or temporarily use the built-in sender). ' +
   'Authentication → URL Configuration → add Redirect URLs for your dev origin + /auth/callback ' +
-  '(e.g. http://127.0.0.1:3002/auth/callback and http://localhost:3002/auth/callback). ' +
+  '(for example, your production callback URL or local development callback URL). ' +
   'Check Authentication → Logs for the SMTP error detail.'
 
 const REDIRECT_URL_HELP =
   'This redirect URL is not allowed by Supabase. Add your exact callback under Authentication → URL Configuration → Redirect URLs ' +
-  '(e.g. http://127.0.0.1:3002/auth/callback and http://localhost:3002/auth/callback for your dev port).'
+  '(for example, your production callback URL or local development callback URL for the same app).'
 
 function isRedirectUrlError(message: string): boolean {
   const lower = message.toLowerCase()
