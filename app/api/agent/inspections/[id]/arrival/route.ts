@@ -10,6 +10,7 @@ const bodySchema = z.object({
   longitude: z.coerce.number().min(-180).max(180),
   accuracy: z.coerce.number().positive(),
   capturedAt: z.string().datetime(),
+  confirmOutsideRadius: z.coerce.boolean().optional().default(false),
 })
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -40,7 +41,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { data: inspection, error } = await admin
     .from('inspections')
-    .select('id,status,assigned_employee_id,photos,properties(latitude,longitude)')
+    .select('id,status,assigned_employee_id,photos,target_latitude,target_longitude,properties(latitude,longitude)')
     .eq('id', id)
     .eq('assigned_employee_id', employee.id)
     .maybeSingle()
@@ -50,24 +51,32 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const property = Array.isArray(inspection.properties) ? inspection.properties[0] : inspection.properties
-  const targetLatitude = Number(property?.latitude)
-  const targetLongitude = Number(property?.longitude)
+  const targetLatitude = inspection.target_latitude == null ? Number(property?.latitude) : Number(inspection.target_latitude)
+  const targetLongitude = inspection.target_longitude == null ? Number(property?.longitude) : Number(inspection.target_longitude)
 
   if (!Number.isFinite(targetLatitude) || !Number.isFinite(targetLongitude)) {
     return NextResponse.json({ ok: false, error: { code: 'TARGET_COORDINATES_REQUIRED', message: 'Admin must confirm plot coordinates before this inspection can start.' } }, { status: 409 })
   }
 
   const distance = Math.round(distanceMeters(parsed.data, { latitude: targetLatitude, longitude: targetLongitude }))
-  const verified = distance <= 50 && parsed.data.accuracy <= 100
-  if (!verified) {
+  const weakAccuracy = parsed.data.accuracy > 80
+  const verified = distance <= 150 && !weakAccuracy
+  const outsideRadius = distance > 150 && distance <= 300
+
+  if (weakAccuracy || distance > 300 || (outsideRadius && !parsed.data.confirmOutsideRadius)) {
     return NextResponse.json({
       ok: false,
       error: {
-        code: 'OUT_OF_RADIUS',
-        message: parsed.data.accuracy > 100 ? 'GPS accuracy is too weak. Move to an open area and try again.' : 'You are not within 50 meters of the plot.',
+        code: weakAccuracy ? 'WEAK_GPS' : distance > 300 ? 'TOO_FAR_FROM_PLOT' : 'OUTSIDE_RADIUS_CONFIRM_REQUIRED',
+        message: weakAccuracy
+          ? 'Weak GPS. Move to an open area and wait.'
+          : distance > 300
+            ? 'You are too far from the plot. Please walk to the plot before starting the inspection.'
+            : 'You appear to be a little far from the plot. Confirm only if you are at the right location.',
       },
       distanceMeters: distance,
       accuracy: parsed.data.accuracy,
+      canConfirmOutsideRadius: outsideRadius && !weakAccuracy,
     }, { status: 409 })
   }
 
@@ -78,7 +87,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     accuracy: parsed.data.accuracy,
     captured_at: parsed.data.capturedAt,
     distance_meters: distance,
-    verified: true,
+    verified,
+    outside_radius: outsideRadius,
+    target_latitude: targetLatitude,
+    target_longitude: targetLongitude,
     submitted_by: context.user.id,
   }
 
@@ -86,6 +98,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .from('inspections')
     .update({
       status: inspection.status === 'scheduled' || inspection.status === 'requested' ? 'in_progress' : inspection.status,
+      workflow_step: 'photos',
+      started_at: new Date().toISOString(),
+      arrival_latitude: parsed.data.latitude,
+      arrival_longitude: parsed.data.longitude,
+      arrival_accuracy_meters: parsed.data.accuracy,
+      arrival_distance_meters: distance,
+      arrival_captured_at: parsed.data.capturedAt,
+      arrival_verified: verified,
+      target_latitude: targetLatitude,
+      target_longitude: targetLongitude,
       photos: [...inspectionJsonArray(inspection.photos), event],
     })
     .eq('id', inspection.id)

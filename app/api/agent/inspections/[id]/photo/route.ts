@@ -86,14 +86,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .insert({
       owner_id: ownerId,
       plot_id: inspection.plot_id ?? null,
+      inspection_id: inspection.id,
+      agent_employee_id: employee.id,
       bucket: 'inspection-photos',
       object_path: objectPath,
       mime_type: file.type,
       size_bytes: file.size,
+      compressed_size_bytes: file.size,
       latitude: Number.isFinite(latitude) ? latitude : null,
       longitude: Number.isFinite(longitude) ? longitude : null,
+      accuracy_meters: Number.isFinite(accuracy) ? accuracy : null,
       captured_at: capturedAt,
+      direction,
+      subject,
       caption: `${subject} (${direction})`,
+      upload_status: 'complete',
+      finalized_at: new Date().toISOString(),
     })
     .select('id,bucket,object_path,size_bytes,caption')
     .single()

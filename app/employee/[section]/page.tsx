@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { replyToAssignedSupportTicket, reviewAssignedPropertyLinkRequest, updateAssignedAmenityReview, updateAssignedVerificationStatus, updateAssignedWorkItem, updateMyAdminTask } from '@/app/employee/actions'
 import { CustomerContextPanel, CustomerContextPanelSkeleton } from '@/components/admin/customer-context-panel'
@@ -310,11 +311,16 @@ export default async function EmployeeSectionPage({ params, searchParams }: Page
                           ? row.amenityName
                           : row.subject || row.title || row.entity_type || row.property_id || row.id}
                       </p>
-                      <p className="mt-1 font-mono text-xs text-[#9CA3AF]">
-                        {section === 'amenities'
-                          ? `${row.requesterName} · ${row.plotNumber || row.propertyTitle || row.location || row.id}`
-                          : row.entity_id || row.property_id || row.plot_id || row.id}
-                      </p>
+                        <p className="mt-1 font-mono text-xs text-[#9CA3AF]">
+                          {section === 'amenities'
+                            ? `${row.requesterName} · ${row.plotNumber || row.propertyTitle || row.location || row.id}`
+                            : row.entity_id || row.property_id || row.plot_id || row.id}
+                        </p>
+                      {section === 'inspections' ? (
+                        <Link href={`/employee/inspections/${row.id}`} className="mt-2 inline-flex rounded-md border border-[#C0392B] px-2.5 py-1 text-xs font-semibold text-[#C0392B]">
+                          View evidence
+                        </Link>
+                      ) : null}
                       {section === 'support' ? (
                         <>
                           <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[#C0392B]">{row.ticket_reference || `Ticket ${row.id.slice(0, 8).toUpperCase()}`}</p>

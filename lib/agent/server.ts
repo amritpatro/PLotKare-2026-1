@@ -50,7 +50,7 @@ export async function getAssignedInspectionForAgent(inspectionId: string, employ
   const { data, error } = await admin
     .from('inspections')
     .select(
-      'id,property_id,plot_id,customer_id,assigned_employee_id,status,scheduled_for,completed_at,summary,photos,created_at,properties(id,title,address,city,state,latitude,longitude,owner_profile_id),plots(id,plot_number,location,sq_yards,facing)',
+      'id,property_id,plot_id,customer_id,assigned_employee_id,status,scheduled_for,completed_at,summary,photos,created_at,workflow_step,target_latitude,target_longitude,proximity_radius_meters,arrival_latitude,arrival_longitude,arrival_accuracy_meters,arrival_distance_meters,arrival_verified,properties(id,title,address,city,state,latitude,longitude,owner_profile_id),plots(id,plot_number,location,sq_yards,facing)',
     )
     .eq('id', inspectionId)
     .eq('assigned_employee_id', employeeId)

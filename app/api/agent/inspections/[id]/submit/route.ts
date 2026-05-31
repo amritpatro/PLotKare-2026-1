@@ -50,7 +50,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { data: inspection, error } = await admin
     .from('inspections')
-    .select('id,status,assigned_employee_id,property_id,plot_id,photos,properties(owner_profile_id,title)')
+    .select('id,status,assigned_employee_id,property_id,plot_id,photos,arrival_latitude,arrival_longitude,arrival_distance_meters,arrival_verified,properties(owner_profile_id,title)')
     .eq('id', id)
     .eq('assigned_employee_id', employee.id)
     .maybeSingle()
@@ -59,8 +59,21 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ ok: false, error: { code: 'INSPECTION_NOT_FOUND', message: 'Assigned inspection was not found.' } }, { status: 404 })
   }
 
+  if (inspection.arrival_latitude == null || inspection.arrival_longitude == null || Number(inspection.arrival_distance_meters) > 300) {
+    return NextResponse.json({ ok: false, error: { code: 'ARRIVAL_REQUIRED', message: 'Verify arrival at the plot before submitting.' } }, { status: 400 })
+  }
+
+  const { data: storedPhotos, error: photoReadError } = await admin
+    .from('inspection_photos')
+    .select('id,direction,upload_status')
+    .eq('inspection_id', inspection.id)
+
+  if (photoReadError) {
+    return NextResponse.json({ ok: false, error: { code: 'PHOTO_CHECK_FAILED', message: photoReadError.message } }, { status: 400 })
+  }
+
   const requiredDirections = new Set(['north', 'south', 'east', 'west'])
-  const submittedDirections = new Set(parsed.data.photos.map((photo) => photo.direction.toLowerCase()))
+  const submittedDirections = new Set((storedPhotos ?? []).filter((photo) => photo.upload_status === 'complete').map((photo) => String(photo.direction).toLowerCase()))
   for (const direction of requiredDirections) {
     if (!submittedDirections.has(direction)) {
       return NextResponse.json({ ok: false, error: { code: 'MISSING_REQUIRED_PHOTO', message: `Capture ${direction} boundary photo before submitting.` } }, { status: 400 })
@@ -68,7 +81,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const hasEncroachment = parsed.data.checklist.some((answer) => answer.key === 'encroachment' && answer.value === true)
-  const issuePhotos = parsed.data.photos.filter((photo) => photo.direction.startsWith('issue'))
+  const issuePhotos = (storedPhotos ?? []).filter((photo) => String(photo.direction).startsWith('issue') && photo.upload_status === 'complete')
   if (hasEncroachment && issuePhotos.length < 2) {
     return NextResponse.json({ ok: false, error: { code: 'ENCROACHMENT_EVIDENCE_REQUIRED', message: 'Encroachment requires two issue photos.' } }, { status: 400 })
   }
@@ -87,8 +100,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { error: updateError } = await admin
     .from('inspections')
     .update({
-      status: parsed.data.actionRequired ? 'needs_followup' : 'completed',
-      completed_at: new Date().toISOString(),
+      status: 'completed',
+      workflow_step: 'submitted',
+      submitted_at: new Date().toISOString(),
       summary: parsed.data.summary,
       field_condition: parsed.data.issueSeverity === 'normal' ? 'stable' : 'attention_required',
       issue_severity: parsed.data.issueSeverity,
@@ -106,14 +120,42 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const property = Array.isArray(inspection.properties) ? inspection.properties[0] : inspection.properties
   if (property?.owner_profile_id) {
     const month = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(new Date())
-    await admin.from('inspection_reports').insert({
+    const reportPayload = {
       owner_id: property.owner_profile_id,
       plot_id: inspection.plot_id ?? null,
+      inspection_id: inspection.id,
       month,
       agent_name: context.profile.email ?? 'PlotKare field agent',
       finding: parsed.data.summary,
-      status: parsed.data.actionRequired ? 'Action Needed' : 'Completed',
-    })
+      status: parsed.data.actionRequired ? 'Action Needed' : 'Draft',
+      delivery_status: 'pending_review',
+      email_delivery_status: 'not_ready',
+    }
+
+    const { data: existingReport } = await admin
+      .from('inspection_reports')
+      .select('id')
+      .eq('inspection_id', inspection.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existingReport?.id) {
+      await admin.from('inspection_reports').update(reportPayload).eq('id', existingReport.id)
+    } else {
+      await admin.from('inspection_reports').insert(reportPayload)
+    }
+
+    const { data: admins } = await admin.from('profiles').select('id').eq('role', 'admin').limit(10)
+    const adminNotifications = (admins ?? []).map((adminProfile) => ({
+      recipient_id: adminProfile.id,
+      actor_id: context.user.id,
+      title: 'Inspection submitted for review',
+      message: 'A field inspection was submitted and is waiting for admin review.',
+      category: 'inspection',
+      metadata: { inspection_id: inspection.id, plot_id: inspection.plot_id },
+    }))
+    if (adminNotifications.length) await admin.from('notifications').insert(adminNotifications)
   }
 
   await recordAuditLog({

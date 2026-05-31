@@ -44,6 +44,10 @@ export default async function AgentInspectionPage({ params }: PageProps) {
 
   const title = property?.title || plot?.location || 'Assigned inspection'
   const location = [property?.address, property?.city, property?.state].filter(Boolean).join(', ') || plot?.location || 'Location pending'
+  const targetLatitude =
+    inspection.target_latitude == null ? (property?.latitude == null ? null : Number(property.latitude)) : Number(inspection.target_latitude)
+  const targetLongitude =
+    inspection.target_longitude == null ? (property?.longitude == null ? null : Number(property.longitude)) : Number(inspection.target_longitude)
 
   return (
     <AgentShell title="Inspection workflow" subtitle="One screen at a time: verify arrival, capture evidence, complete checks, and sync safely.">
@@ -57,8 +61,8 @@ export default async function AgentInspectionPage({ params }: PageProps) {
         location={location}
         plotLabel={plot?.plot_number || inspection.id.slice(0, 8)}
         target={{
-          latitude: property?.latitude == null ? null : Number(property.latitude),
-          longitude: property?.longitude == null ? null : Number(property.longitude),
+          latitude: Number.isFinite(targetLatitude) ? targetLatitude : null,
+          longitude: Number.isFinite(targetLongitude) ? targetLongitude : null,
         }}
         documents={(documents ?? []).map((doc) => ({
           id: doc.id,

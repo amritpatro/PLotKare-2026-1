@@ -12,6 +12,7 @@ export async function GET() {
     .from('inspection_reports')
     .select('*, inspection_photos(*)')
     .eq('owner_id', context.user.id)
+    .not('released_at', 'is', null)
     .order('created_at', { ascending: false })
 
   if (error) return apiError(error.message, 400, 'INSPECTIONS_FETCH_FAILED')

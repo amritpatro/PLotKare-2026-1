@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Camera, CheckCircle2, Loader2, MapPin, Navigation, RefreshCcw, Save } from 'lucide-react'
+import { clearInspectionDrafts, savePhotoDraft } from '@/lib/offline/inspectionStore'
 
 type GpsPoint = {
   latitude: number
@@ -150,6 +151,13 @@ function boolLabel(value: boolean | null) {
   return 'Pending'
 }
 
+function gpsSignalLabel(accuracy: number | null | undefined) {
+  if (accuracy == null) return 'GPS not captured'
+  if (accuracy < 30) return 'GPS locked - good signal'
+  if (accuracy <= 80) return 'GPS acceptable - you can proceed'
+  return 'Weak GPS - move to open area and wait'
+}
+
 export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, target, documents, amenities }: AgentInspectionFlowProps) {
   const [online, setOnline] = useState(true)
   const [arrival, setArrival] = useState<GpsPoint | null>(null)
@@ -159,6 +167,8 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
   const [notes, setNotes] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [confirmOutsideRadius, setConfirmOutsideRadius] = useState(false)
+  const autoSyncingRef = useRef(false)
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const requiredCaptured = directions.every((direction) => photos.some((photo) => photo.direction === direction.key))
@@ -222,13 +232,17 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
       const response = await fetch(`/api/agent/inspections/${inspectionId}/arrival`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(gps),
+        body: JSON.stringify({ ...gps, confirmOutsideRadius }),
       })
       const result = await response.json()
-      if (!response.ok) throw new Error(result.error?.message || 'Arrival verification failed.')
+      if (!response.ok) {
+        if (result.canConfirmOutsideRadius) setConfirmOutsideRadius(true)
+        throw new Error(result.error?.message || 'Arrival verification failed.')
+      }
       setArrival(gps)
       setArrivalVerified(true)
-      setMessage(`GPS verified within ${result.arrival.distance_meters} meters.`)
+      setConfirmOutsideRadius(false)
+      setMessage(result.arrival.outside_radius ? 'Arrival accepted outside the normal radius. Admin will review the GPS flag.' : 'Arrival verified. Start capturing boundary photos.')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Arrival verification failed.')
     } finally {
@@ -254,6 +268,15 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
         uploadStatus: 'pending',
         gps,
       }
+      await savePhotoDraft(inspectionId, direction, blob, {
+        gpsLat: gps?.latitude ?? null,
+        gpsLng: gps?.longitude ?? null,
+        gpsAccuracy: gps?.accuracy ?? null,
+        capturedAt: gps?.capturedAt ?? new Date().toISOString(),
+        direction,
+        inspectionId,
+        mimeType: blob.type || 'image/jpeg',
+      }).catch(() => undefined)
       setPhotos((current) => [...current.filter((item) => item.direction !== direction || direction.startsWith('issue')), photo])
       setMessage(`Photo saved offline at ${Math.round(blob.size / 1024)}KB.`)
     } catch (error) {
@@ -332,6 +355,7 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
       })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error?.message || 'Inspection submission failed.')
+      await clearInspectionDrafts(inspectionId).catch(() => undefined)
       setMessage('Inspection submitted to admin review.')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Inspection submission failed.')
@@ -340,6 +364,18 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
     }
   }
 
+  useEffect(() => {
+    const pending = photos.some((photo) => !photo.uploadedPhotoId)
+    if (!online || !pending || busy || autoSyncingRef.current) return
+    autoSyncingRef.current = true
+    syncPhotos()
+      .then(() => setMessage('All saved photos are synced.'))
+      .catch((error) => setMessage(error instanceof Error ? error.message : 'Photo sync failed. Tap retry.'))
+      .finally(() => {
+        autoSyncingRef.current = false
+      })
+  }, [online, photos, busy])
+
   return (
     <div className="space-y-4">
       <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
@@ -347,9 +383,26 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
         <h2 className="mt-2 text-2xl font-bold text-[#111827]">{title}</h2>
         <p className="mt-1 text-sm text-[#6B7280]">{location}</p>
         <div className="mt-4 grid gap-2 text-sm text-[#6B7280]">
-          <span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-[#C0392B]" /> Target: {target.latitude ?? 'pending'}, {target.longitude ?? 'pending'}</span>
-          <span className="flex items-center gap-2"><Navigation className="h-4 w-4 text-[#C0392B]" /> Current: {arrival ? `${arrival.latitude.toFixed(5)}, ${arrival.longitude.toFixed(5)} (${Math.round(arrival.accuracy)}m)` : 'not captured'}</span>
+          <span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-[#C0392B]" /> Plot location: {target.latitude && target.longitude ? 'set by admin' : 'not set'}</span>
+          <span className="flex items-center gap-2"><Navigation className="h-4 w-4 text-[#C0392B]" /> Current location: {arrival ? gpsSignalLabel(arrival.accuracy) : 'not captured'}</span>
         </div>
+        <div className="mt-4 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
+          <div className="relative h-44 overflow-hidden rounded-lg border border-[#E5E7EB] bg-[radial-gradient(circle_at_center,#ffffff_0,#eef6ff_48%,#e5edf7_100%)]">
+            <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#C0392B]/30 bg-[#C0392B]/5" />
+            <div className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#C0392B] shadow-[0_0_0_5px_rgba(192,57,43,0.16)]" title="Plot target" />
+            <div className="absolute left-[58%] top-[43%] h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600 shadow-[0_0_0_5px_rgba(37,99,235,0.16)]" title="Your GPS" />
+            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-lg bg-white/90 px-3 py-2 text-xs text-[#4B5563]">
+              <span className="font-semibold text-[#C0392B]">Red pin: plot</span>
+              <span className="font-semibold text-blue-700">Blue dot: you</span>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-[#6B7280]">Move near the plot pin, wait for GPS to lock, then confirm arrival.</p>
+        </div>
+        {confirmOutsideRadius ? (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            You appear a little far from the plot. Tap again only if you are sure you are at the right location, or use maps to navigate closer.
+          </div>
+        ) : null}
         <button type="button" disabled={busy || !target.latitude || !target.longitude} onClick={verifyArrival} className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#C0392B] px-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-[#9CA3AF]">
           {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapPin className="h-5 w-5" />}
           I am at the plot

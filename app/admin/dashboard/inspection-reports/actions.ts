@@ -62,6 +62,23 @@ export async function assignInspectionReport(formData: FormData) {
     inspectionRedirect('error', 'property_required')
   }
 
+  const { data: property, error: propertyError } = await supabase
+    .from('properties')
+    .select('id,latitude,longitude')
+    .eq('id', plot.property_id)
+    .maybeSingle()
+
+  if (propertyError || !property) {
+    console.error('Inspection property lookup failed:', propertyError)
+    inspectionRedirect('error', 'property_required')
+  }
+
+  const targetLatitude = Number(property.latitude)
+  const targetLongitude = Number(property.longitude)
+  if (!Number.isFinite(targetLatitude) || !Number.isFinite(targetLongitude)) {
+    inspectionRedirect('error', 'coordinates_required')
+  }
+
   const scheduledFor = parsed.data.scheduledFor ? new Date(parsed.data.scheduledFor).toISOString() : null
 
   const { data: existingInspection, error: existingError } = await supabase
@@ -85,6 +102,11 @@ export async function assignInspectionReport(formData: FormData) {
     requested_by: user.id,
     status: 'scheduled',
     scheduled_for: scheduledFor,
+    target_latitude: targetLatitude,
+    target_longitude: targetLongitude,
+    proximity_radius_meters: 150,
+    workflow_step: 'briefing',
+    sync_status: 'server',
     summary: report.finding || `Inspection assigned for ${plot.plot_number || plot.location || report.month}.`,
   }
 
@@ -121,8 +143,11 @@ export async function assignInspectionReport(formData: FormData) {
   const { error: reportUpdateError } = await supabase
     .from('inspection_reports')
     .update({
+      inspection_id: inspectionId,
       agent_name: agentName,
       status: 'Scheduled',
+      delivery_status: 'pending_review',
+      email_delivery_status: 'not_ready',
     })
     .eq('id', report.id)
 

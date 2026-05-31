@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 import escapeSearchTerm from '@/lib/search'
 import StatusBadge from '@/components/ui/status-badge'
 import { assignInspectionReport } from './actions'
@@ -158,6 +159,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
     invalid_field_agent: 'Choose an active field inspection agent.',
     plot_required: 'This report is not linked to a plot, so it cannot become a field assignment yet.',
     property_required: 'The linked plot does not have a property record. Register/verify the plot first.',
+    coordinates_required: 'Add confirmed latitude and longitude to the linked property before assigning a field inspection.',
     assignment_failed: 'Inspection assignment failed. Please try again.',
   }
   const errorMessage = error ? errorMessages[error] ?? 'Inspection assignment failed.' : null
@@ -270,6 +272,9 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                           {assignedInspection.scheduled_for ? ` · ${new Date(assignedInspection.scheduled_for).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` : ''}
                         </p>
                         <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#C9A962]">{coordinateLabel}</p>
+                        <Link href={`/admin/dashboard/inspections/${assignedInspection.id}/review`} className="mt-2 inline-flex rounded-md border border-[#C0392B] px-2.5 py-1 text-xs font-semibold text-[#C0392B]">
+                          Review evidence
+                        </Link>
                       </div>
                     ) : (
                       <span className="text-[#9CA3AF]">Not assigned to field portal</span>
