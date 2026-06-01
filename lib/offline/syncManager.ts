@@ -11,9 +11,13 @@ export type SyncProgress = {
 
 export class SyncManager extends EventTarget {
   private running = false
+  private readonly agentUserId: string
+  private readonly supabaseClient: unknown
 
-  constructor(private readonly agentUserId: string) {
+  constructor(supabaseClientOrAgentUserId?: unknown, agentUserId?: string) {
     super()
+    this.supabaseClient = typeof supabaseClientOrAgentUserId === 'string' ? null : supabaseClientOrAgentUserId ?? null
+    this.agentUserId = typeof supabaseClientOrAgentUserId === 'string' ? supabaseClientOrAgentUserId : agentUserId || 'current'
   }
 
   async startSync() {
@@ -26,7 +30,21 @@ export class SyncManager extends EventTarget {
       progress.inProgress += 1
       this.emitProgress(progress)
       try {
-        await this.uploadSinglePhoto(photo)
+        let lastError: unknown = null
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+          try {
+            await this.uploadSinglePhoto(photo)
+            lastError = null
+            break
+          } catch (error) {
+            lastError = error
+            if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 2000))
+          }
+        }
+        if (lastError) {
+          await markPhotoFailed(photo.inspectionId, photo.direction)
+          throw lastError
+        }
         progress.synced += 1
       } catch {
         progress.failed += 1
@@ -51,7 +69,6 @@ export class SyncManager extends EventTarget {
     })
     const upload = await uploadResponse.json()
     if (!uploadResponse.ok) {
-      await markPhotoFailed(photo.inspectionId, photo.direction)
       throw new Error(upload.error?.message || 'Could not prepare upload.')
     }
 
@@ -61,7 +78,6 @@ export class SyncManager extends EventTarget {
       body: photo.blob,
     })
     if (!putResponse.ok) {
-      await markPhotoFailed(photo.inspectionId, photo.direction)
       throw new Error('Photo upload failed.')
     }
 
@@ -81,7 +97,6 @@ export class SyncManager extends EventTarget {
     })
     const confirmed = await confirmResponse.json()
     if (!confirmResponse.ok) {
-      await markPhotoFailed(photo.inspectionId, photo.direction)
       throw new Error(confirmed.error?.message || 'Photo upload confirmation failed.')
     }
 

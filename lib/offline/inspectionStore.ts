@@ -24,9 +24,62 @@ export type OfflinePhotoRecord = {
 
 const DB_NAME = 'plotkare-field'
 const DB_VERSION = 1
+const FALLBACK_PREFIX = 'plotkare-field:fallback'
 
 function hasIndexedDb() {
   return typeof window !== 'undefined' && 'indexedDB' in window
+}
+
+function emitPrivateModeWarning() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('plotkare-private-mode-storage'))
+  }
+}
+
+function fallbackKey(store: string, key: string) {
+  return `${FALLBACK_PREFIX}:${store}:${key}`
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+}
+
+function dataUrlToBlob(dataUrl: string) {
+  const [header, value] = dataUrl.split(',')
+  const mimeType = /data:(.*?);base64/.exec(header)?.[1] || 'image/jpeg'
+  const binary = atob(value || '')
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
+  return new Blob([bytes], { type: mimeType })
+}
+
+async function saveFallbackPhoto(record: OfflinePhotoRecord) {
+  emitPrivateModeWarning()
+  const { blob, ...rest } = record
+  sessionStorage.setItem(fallbackKey('photos', `${record.inspectionId}:${record.direction}`), JSON.stringify({ ...rest, dataUrl: await blobToDataUrl(blob) }))
+}
+
+function readFallbackPhoto(value: string | null): OfflinePhotoRecord | null {
+  if (!value) return null
+  const parsed = JSON.parse(value) as Omit<OfflinePhotoRecord, 'blob'> & { dataUrl: string }
+  return { ...parsed, blob: dataUrlToBlob(parsed.dataUrl) }
+}
+
+function getFallbackPhotos() {
+  emitPrivateModeWarning()
+  const records: OfflinePhotoRecord[] = []
+  for (let index = 0; index < sessionStorage.length; index += 1) {
+    const key = sessionStorage.key(index)
+    if (!key?.startsWith(`${FALLBACK_PREFIX}:photos:`)) continue
+    const record = readFallbackPhoto(sessionStorage.getItem(key))
+    if (record) records.push(record)
+  }
+  return records
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -80,52 +133,117 @@ export async function savePhotoDraft(inspectionId: string, direction: string, bl
     retryCount: 0,
     savedAt: new Date().toISOString(),
   }
-  await withStore('photos', 'readwrite', (store) => store.put(record))
+  try {
+    await withStore('photos', 'readwrite', (store) => store.put(record))
+  } catch {
+    await saveFallbackPhoto(record)
+  }
 }
 
 export async function getPhotoDraft(inspectionId: string, direction: string) {
-  return (await withStore<OfflinePhotoRecord>('photos', 'readonly', (store) => store.get([inspectionId, direction]))) ?? null
+  try {
+    return (await withStore<OfflinePhotoRecord>('photos', 'readonly', (store) => store.get([inspectionId, direction]))) ?? null
+  } catch {
+    return readFallbackPhoto(sessionStorage.getItem(fallbackKey('photos', `${inspectionId}:${direction}`)))
+  }
 }
 
 export async function getAllPhotoDrafts(inspectionId: string) {
-  const all = (await withStore<OfflinePhotoRecord[]>('photos', 'readonly', (store) => store.getAll())) ?? []
+  let all: OfflinePhotoRecord[]
+  try {
+    all = (await withStore<OfflinePhotoRecord[]>('photos', 'readonly', (store) => store.getAll())) ?? []
+  } catch {
+    all = getFallbackPhotos()
+  }
   return all.filter((record) => record.inspectionId === inspectionId)
 }
 
 export async function saveDraft(inspectionId: string, step: string, data: unknown) {
-  await withStore('drafts', 'readwrite', (store) => store.put({ inspectionId, step, data, savedAt: new Date().toISOString() }))
+  const record = { inspectionId, step, data, savedAt: new Date().toISOString() }
+  try {
+    await withStore('drafts', 'readwrite', (store) => store.put(record))
+  } catch {
+    emitPrivateModeWarning()
+    sessionStorage.setItem(fallbackKey('drafts', `${inspectionId}:${step}`), JSON.stringify(record))
+  }
 }
 
 export async function getDraft<T>(inspectionId: string, step: string) {
-  const record = await withStore<{ data: T }>('drafts', 'readonly', (store) => store.get([inspectionId, step]))
-  return record?.data ?? null
+  try {
+    const record = await withStore<{ data: T }>('drafts', 'readonly', (store) => store.get([inspectionId, step]))
+    return record?.data ?? null
+  } catch {
+    emitPrivateModeWarning()
+    const record = JSON.parse(sessionStorage.getItem(fallbackKey('drafts', `${inspectionId}:${step}`)) || 'null') as { data: T } | null
+    return record?.data ?? null
+  }
 }
 
 export async function cacheAssignment(inspection: { id?: string; inspectionId?: string; [key: string]: unknown }) {
   const inspectionId = String(inspection.inspectionId || inspection.id || '')
   if (!inspectionId) throw new Error('Inspection id is required.')
-  await withStore('assignments', 'readwrite', (store) => store.put({ ...inspection, inspectionId, cachedAt: new Date().toISOString() }))
+  const record = { ...inspection, inspectionId, cachedAt: new Date().toISOString() }
+  try {
+    await withStore('assignments', 'readwrite', (store) => store.put(record))
+  } catch {
+    emitPrivateModeWarning()
+    sessionStorage.setItem(fallbackKey('assignments', inspectionId), JSON.stringify(record))
+  }
+}
+
+export async function getCachedAssignment<T = unknown>(inspectionId: string) {
+  try {
+    return (await withStore<T>('assignments', 'readonly', (store) => store.get(inspectionId))) ?? null
+  } catch {
+    emitPrivateModeWarning()
+    return JSON.parse(sessionStorage.getItem(fallbackKey('assignments', inspectionId)) || 'null') as T | null
+  }
 }
 
 export async function getPendingUploads() {
-  const all = (await withStore<OfflinePhotoRecord[]>('photos', 'readonly', (store) => store.getAll())) ?? []
+  let all: OfflinePhotoRecord[]
+  try {
+    all = (await withStore<OfflinePhotoRecord[]>('photos', 'readonly', (store) => store.getAll())) ?? []
+  } catch {
+    all = getFallbackPhotos()
+  }
   return all.filter((record) => record.syncStatus === 'pending' || record.syncStatus === 'failed')
 }
 
 export async function markPhotoSynced(inspectionId: string, direction: string, storagePath?: string) {
   const record = await getPhotoDraft(inspectionId, direction)
   if (!record) return
-  await withStore('photos', 'readwrite', (store) => store.put({ ...record, storagePath, syncStatus: 'uploaded' as const }))
+  const updated = { ...record, storagePath, syncStatus: 'uploaded' as const }
+  try {
+    await withStore('photos', 'readwrite', (store) => store.put(updated))
+  } catch {
+    await saveFallbackPhoto(updated)
+  }
 }
 
 export async function markPhotoFailed(inspectionId: string, direction: string) {
   const record = await getPhotoDraft(inspectionId, direction)
   if (!record) return
-  await withStore('photos', 'readwrite', (store) => store.put({ ...record, syncStatus: 'failed' as const, retryCount: record.retryCount + 1 }))
+  const updated = { ...record, syncStatus: 'failed' as const, retryCount: record.retryCount + 1 }
+  try {
+    await withStore('photos', 'readwrite', (store) => store.put(updated))
+  } catch {
+    await saveFallbackPhoto(updated)
+  }
 }
 
 export async function clearInspectionDrafts(inspectionId: string) {
-  const db = await openDb()
+  let db: IDBDatabase
+  try {
+    db = await openDb()
+  } catch {
+    emitPrivateModeWarning()
+    for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+      const key = sessionStorage.key(index)
+      if (key?.includes(`:${inspectionId}:`) || key?.endsWith(`:${inspectionId}`)) sessionStorage.removeItem(key)
+    }
+    return
+  }
   await Promise.all(['photos', 'drafts'].map((storeName) => new Promise<void>((resolve, reject) => {
     const tx = db.transaction(storeName, 'readwrite')
     const store = tx.objectStore(storeName)

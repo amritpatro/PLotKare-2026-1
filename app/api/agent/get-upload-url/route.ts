@@ -6,7 +6,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 const schema = z.object({
   inspectionId: z.string().uuid(),
   direction: z.string().trim().min(2).max(40),
-  mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  mimeType: z.enum(['image/jpeg', 'image/png']),
 })
 
 function safeSegment(value: string) {
@@ -54,16 +54,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: { code: 'OWNER_REQUIRED', message: 'Inspection owner is missing.' } }, { status: 409 })
   }
 
-  const extension = parsed.data.mimeType === 'image/png' ? 'png' : parsed.data.mimeType === 'image/webp' ? 'webp' : 'jpg'
+  const extension = parsed.data.mimeType === 'image/png' ? 'png' : 'jpg'
   const storagePath = `inspections/${parsed.data.inspectionId}/${safeSegment(parsed.data.direction)}_${Date.now()}.${extension}`
   const { data: upload, error: uploadError } = await admin.storage.from('inspection-photos').createSignedUploadUrl(storagePath)
   if (uploadError || !upload?.signedUrl) {
     return NextResponse.json({ ok: false, error: { code: 'SIGNED_UPLOAD_FAILED', message: uploadError?.message || 'Could not prepare upload.' } }, { status: 400 })
   }
 
-  const { data: photo, error: photoError } = await admin
-    .from('inspection_photos')
-    .insert({
+  const photoPayload = {
       owner_id: ownerId,
       plot_id: inspection.plot_id ?? null,
       inspection_id: inspection.id,
@@ -74,9 +72,23 @@ export async function POST(request: Request) {
       direction: parsed.data.direction,
       subject: parsed.data.direction,
       upload_status: 'pending',
-    })
+    }
+
+  const { data: existingPhoto } = await admin
+    .from('inspection_photos')
     .select('id')
-    .single()
+    .eq('inspection_id', inspection.id)
+    .eq('agent_employee_id', employee.id)
+    .eq('direction', parsed.data.direction)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const write = existingPhoto?.id
+    ? admin.from('inspection_photos').update(photoPayload).eq('id', existingPhoto.id).select('id').single()
+    : admin.from('inspection_photos').insert(photoPayload).select('id').single()
+
+  const { data: photo, error: photoError } = await write
 
   if (photoError) {
     return NextResponse.json({ ok: false, error: { code: 'PHOTO_METADATA_FAILED', message: photoError.message } }, { status: 400 })

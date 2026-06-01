@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { ClipboardCheck, History, LogOut, Settings, UserCircle } from 'lucide-react'
 import { AgentPwaControls } from './agent-pwa'
+import { AgentSyncBanner } from './agent-sync-banner'
 
 type AgentShellProps = {
   title: string
@@ -24,6 +25,7 @@ export function AgentShell({ title, subtitle, children }: AgentShellProps) {
           <AgentPwaControls />
         </div>
       </header>
+      <AgentSyncBanner />
 
       <section className="mx-auto max-w-3xl px-4 pb-28 pt-6">
         <div className="mb-5">

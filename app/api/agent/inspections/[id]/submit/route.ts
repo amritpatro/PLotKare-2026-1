@@ -9,6 +9,7 @@ const answerSchema = z.object({
   key: z.string(),
   label: z.string(),
   value: z.boolean().nullable(),
+  note: z.string().optional().nullable(),
 })
 
 const submitSchema = z.object({
@@ -80,6 +81,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
   }
 
+  const answeredChecklist = parsed.data.checklist.filter((answer) => answer.value !== null)
+  if (answeredChecklist.length < 5) {
+    return NextResponse.json({ ok: false, error: { code: 'CHECKLIST_INCOMPLETE', message: 'Answer all required checklist questions before submitting.' } }, { status: 400 })
+  }
+
   const hasEncroachment = parsed.data.checklist.some((answer) => answer.key === 'encroachment' && answer.value === true)
   const issuePhotos = (storedPhotos ?? []).filter((photo) => String(photo.direction).startsWith('issue') && photo.upload_status === 'complete')
   if (hasEncroachment && issuePhotos.length < 2) {
@@ -97,12 +103,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     notes: parsed.data.notes ?? null,
   }
 
+  const submittedAt = new Date().toISOString()
   const { error: updateError } = await admin
     .from('inspections')
     .update({
       status: 'completed',
       workflow_step: 'submitted',
-      submitted_at: new Date().toISOString(),
+      submitted_at: submittedAt,
       summary: parsed.data.summary,
       field_condition: parsed.data.issueSeverity === 'normal' ? 'stable' : 'attention_required',
       issue_severity: parsed.data.issueSeverity,
@@ -128,7 +135,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       agent_name: context.profile.email ?? 'PlotKare field agent',
       finding: parsed.data.summary,
       status: parsed.data.actionRequired ? 'Action Needed' : 'Draft',
-      delivery_status: 'pending_review',
+      delivery_status: 'pending',
       email_delivery_status: 'not_ready',
     }
 
@@ -151,8 +158,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       recipient_id: adminProfile.id,
       actor_id: context.user.id,
       title: 'Inspection submitted for review',
-      message: 'A field inspection was submitted and is waiting for admin review.',
+      message: 'New inspection submitted for review',
       category: 'inspection',
+      priority: parsed.data.actionRequired ? 'urgent' : 'normal',
       metadata: { inspection_id: inspection.id, plot_id: inspection.plot_id },
     }))
     if (adminNotifications.length) await admin.from('notifications').insert(adminNotifications)
@@ -165,10 +173,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     entityId: inspection.id,
     metadata: {
       status: parsed.data.actionRequired ? 'needs_followup' : 'completed',
-      photo_count: parsed.data.photos.length,
+      photo_count: (storedPhotos ?? []).filter((photo) => photo.upload_status === 'complete').length,
+      issue_count: issuePhotos.length,
+      arrival_distance_meters: inspection.arrival_distance_meters,
       action_required: parsed.data.actionRequired,
     },
   })
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, success: true, inspectionId: inspection.id, submittedAt })
 }

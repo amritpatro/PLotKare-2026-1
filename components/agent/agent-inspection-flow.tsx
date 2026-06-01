@@ -2,7 +2,9 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Camera, CheckCircle2, Loader2, MapPin, Navigation, RefreshCcw, Save } from 'lucide-react'
-import { clearInspectionDrafts, savePhotoDraft } from '@/lib/offline/inspectionStore'
+import { LivePlotMap } from '@/components/agent/live-plot-map'
+import { cacheAssignment, clearInspectionDrafts, savePhotoDraft } from '@/lib/offline/inspectionStore'
+import { getArrivalStatus, getGpsLabel, haversineDistance } from '@/lib/utils/haversine'
 
 type GpsPoint = {
   latitude: number
@@ -26,6 +28,7 @@ type ChecklistAnswer = {
   key: string
   label: string
   value: boolean | null
+  required?: boolean
 }
 
 type AgentInspectionFlowProps = {
@@ -49,16 +52,18 @@ const directions = [
 ]
 
 const checklistDefaults: ChecklistAnswer[] = [
-  { key: 'boundary_intact', label: 'Compound wall or boundary intact?', value: null },
-  { key: 'gate_accessible', label: 'Gate or entrance accessible?', value: null },
-  { key: 'encroachment', label: 'Encroachment observed?', value: null },
-  { key: 'new_construction', label: 'New construction nearby?', value: null },
-  { key: 'access_clear', label: 'Access path clear?', value: null },
+  { key: 'boundary_intact', label: 'Compound wall or boundary intact?', value: null, required: true },
+  { key: 'gate_accessible', label: 'Gate or entrance accessible?', value: null, required: true },
+  { key: 'encroachment', label: 'Encroachment observed?', value: null, required: true },
+  { key: 'new_construction', label: 'New construction nearby?', value: null, required: true },
+  { key: 'access_clear', label: 'Access path clear?', value: null, required: true },
   { key: 'vegetation', label: 'Vegetation or weeds covering boundary/access?', value: null },
   { key: 'waste_dumping', label: 'Waste dumped inside or against boundary?', value: null },
   { key: 'water_logging', label: 'Standing water or water logging visible?', value: null },
   { key: 'survey_markers', label: 'Survey stones or corner markers visible?', value: null },
 ]
+
+const requiredChecklistKeys = new Set(checklistDefaults.filter((answer) => answer.required).map((answer) => answer.key))
 
 function dbName(inspectionId: string) {
   return `plotkare-agent-${inspectionId}`
@@ -115,7 +120,7 @@ function getGps(): Promise<GpsPoint> {
           capturedAt: new Date().toISOString(),
         }),
       () => reject(new Error('GPS permission denied or unavailable. Move to an open area and try again.')),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
     )
   })
 }
@@ -145,6 +150,10 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number):
   })
 }
 
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 function boolLabel(value: boolean | null) {
   if (value === true) return 'Yes'
   if (value === false) return 'No'
@@ -153,37 +162,50 @@ function boolLabel(value: boolean | null) {
 
 function gpsSignalLabel(accuracy: number | null | undefined) {
   if (accuracy == null) return 'GPS not captured'
-  if (accuracy < 30) return 'GPS locked - good signal'
-  if (accuracy <= 80) return 'GPS acceptable - you can proceed'
-  return 'Weak GPS - move to open area and wait'
+  return getGpsLabel(accuracy)
 }
 
 export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, target, documents, amenities }: AgentInspectionFlowProps) {
   const [online, setOnline] = useState(true)
   const [arrival, setArrival] = useState<GpsPoint | null>(null)
+  const [currentGps, setCurrentGps] = useState<GpsPoint | null>(null)
   const [arrivalVerified, setArrivalVerified] = useState(false)
+  const [arrivalOutsideRadius, setArrivalOutsideRadius] = useState(false)
   const [photos, setPhotos] = useState<EvidencePhoto[]>([])
   const [checklist, setChecklist] = useState<ChecklistAnswer[]>(checklistDefaults)
   const [notes, setNotes] = useState('')
   const [message, setMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmOutsideRadius, setConfirmOutsideRadius] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
   const autoSyncingRef = useRef(false)
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const requiredCaptured = directions.every((direction) => photos.some((photo) => photo.direction === direction.key))
   const encroachment = checklist.find((answer) => answer.key === 'encroachment')?.value === true
   const issuePhotoCount = photos.filter((photo) => photo.direction.startsWith('issue')).length
-  const checklistComplete = checklist.every((answer) => answer.value !== null)
-  const canSubmit = arrivalVerified && requiredCaptured && checklistComplete && (!encroachment || issuePhotoCount >= 2)
+  const checklistComplete = checklist.filter((answer) => requiredChecklistKeys.has(answer.key)).every((answer) => answer.value !== null)
+  const arrivalAccepted = arrivalVerified || arrivalOutsideRadius
+  const submitBlockers = [
+    !arrivalAccepted ? 'Verify arrival at the plot before submitting.' : null,
+    !requiredCaptured ? 'Capture north, south, east, and west boundary photos.' : null,
+    !checklistComplete ? 'Answer the 5 required checklist questions.' : null,
+    encroachment && issuePhotoCount < 2 ? 'Add two issue photos for the encroachment flag.' : null,
+  ].filter(Boolean) as string[]
+  const canSubmit = submitBlockers.length === 0
+  const displayedGps = currentGps ?? arrival
+  const distanceFromTarget = displayedGps && target.latitude != null && target.longitude != null
+    ? haversineDistance(displayedGps.latitude, displayedGps.longitude, target.latitude, target.longitude)
+    : null
+  const arrivalStatus = distanceFromTarget == null ? null : getArrivalStatus(distanceFromTarget)
 
   const statusText = useMemo(() => {
-    if (!arrivalVerified) return 'Step 1 of 6 - verify arrival'
+    if (!arrivalAccepted) return 'Step 1 of 6 - verify arrival'
     if (!requiredCaptured) return 'Step 2 of 6 - capture four corners'
     if (!checklistComplete) return 'Step 3 of 6 - complete checklist'
     if (encroachment && issuePhotoCount < 2) return 'Step 4 of 6 - add issue evidence'
     return 'Step 6 of 6 - review and submit'
-  }, [arrivalVerified, requiredCaptured, checklistComplete, encroachment, issuePhotoCount])
+  }, [arrivalAccepted, requiredCaptured, checklistComplete, encroachment, issuePhotoCount])
 
   useEffect(() => {
     setOnline(navigator.onLine)
@@ -194,6 +216,7 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
     loadDraft<{
       arrival: GpsPoint | null
       arrivalVerified: boolean
+      arrivalOutsideRadius?: boolean
       photos: EvidencePhoto[]
       checklist: ChecklistAnswer[]
       notes: string
@@ -202,12 +225,14 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
         if (!draft) return
         setArrival(draft.arrival)
         setArrivalVerified(draft.arrivalVerified)
+        setArrivalOutsideRadius(Boolean(draft.arrivalOutsideRadius))
         setPhotos(draft.photos.map((photo) => ({ ...photo, previewUrl: URL.createObjectURL(photo.blob) })))
         setChecklist(draft.checklist)
         setNotes(draft.notes)
         setMessage('Saved offline draft restored.')
       })
       .catch(() => undefined)
+    cacheAssignment({ inspectionId, title, location, plotLabel, target, documents, amenities }).catch(() => undefined)
     return () => {
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
@@ -215,24 +240,52 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
   }, [inspectionId])
 
   useEffect(() => {
-    saveDraft(inspectionId, { arrival, arrivalVerified, photos: photos.map(({ previewUrl, ...photo }) => photo), checklist, notes }).catch(() => undefined)
-  }, [inspectionId, arrival, arrivalVerified, photos, checklist, notes])
+    if (!navigator.geolocation || target.latitude == null || target.longitude == null) return
+    let mounted = true
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        if (!mounted) return
+        setCurrentGps({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          capturedAt: new Date().toISOString(),
+        })
+      },
+      () => undefined,
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+    )
+    return () => {
+      mounted = false
+      navigator.geolocation.clearWatch(watchId)
+    }
+  }, [target.latitude, target.longitude])
 
-  async function verifyArrival() {
+  useEffect(() => {
+    saveDraft(inspectionId, { arrival, arrivalVerified, arrivalOutsideRadius, photos: photos.map(({ previewUrl, ...photo }) => photo), checklist, notes }).catch(() => undefined)
+  }, [inspectionId, arrival, arrivalVerified, arrivalOutsideRadius, photos, checklist, notes])
+
+  async function verifyArrival(forceOutsideRadius = false) {
+    if (target.latitude == null || target.longitude == null) {
+      setMessage('Location not set for this plot. Contact your admin to add the plot location.')
+      return
+    }
     setBusy(true)
     setMessage('Capturing GPS...')
     try {
-      const gps = await getGps()
+      const gpsAgeMs = currentGps ? Date.now() - new Date(currentGps.capturedAt).getTime() : Number.POSITIVE_INFINITY
+      const gps = currentGps && gpsAgeMs < 30000 ? currentGps : await getGps()
       if (!online) {
         setArrival(gps)
         setArrivalVerified(false)
-        setMessage('GPS saved offline. Reconnect to verify distance with server.')
+        setArrivalOutsideRadius(false)
+        setMessage('No connection. Your work is saved. It will submit automatically when you are online.')
         return
       }
       const response = await fetch(`/api/agent/inspections/${inspectionId}/arrival`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...gps, confirmOutsideRadius }),
+        body: JSON.stringify({ ...gps, confirmOutsideRadius: forceOutsideRadius || confirmOutsideRadius }),
       })
       const result = await response.json()
       if (!response.ok) {
@@ -240,7 +293,8 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
         throw new Error(result.error?.message || 'Arrival verification failed.')
       }
       setArrival(gps)
-      setArrivalVerified(true)
+      setArrivalVerified(Boolean(result.verified ?? result.arrival?.verified))
+      setArrivalOutsideRadius(Boolean(result.arrival?.outside_radius))
       setConfirmOutsideRadius(false)
       setMessage(result.arrival.outside_radius ? 'Arrival accepted outside the normal radius. Admin will review the GPS flag.' : 'Arrival verified. Start capturing boundary photos.')
     } catch (error) {
@@ -292,26 +346,40 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
       return photos
     }
     const synced: EvidencePhoto[] = []
+    const pendingPhotos = photos.filter((photo) => !photo.uploadedPhotoId)
+    let uploadedCount = 0
     for (const photo of photos) {
       if (photo.uploadedPhotoId) {
         synced.push(photo)
         continue
       }
-      setMessage(`Syncing ${photo.subject}...`)
-      const form = new FormData()
-      form.set('file', new File([photo.blob], `${photo.direction}.jpg`, { type: photo.blob.type || 'image/jpeg' }))
-      form.set('direction', photo.direction)
-      form.set('subject', photo.subject)
-      if (photo.gps) {
-        form.set('latitude', String(photo.gps.latitude))
-        form.set('longitude', String(photo.gps.longitude))
-        form.set('accuracy', String(photo.gps.accuracy))
-        form.set('capturedAt', photo.gps.capturedAt)
+      uploadedCount += 1
+      setMessage(`Uploading photos ${uploadedCount} of ${pendingPhotos.length}...`)
+      let lastError: Error | null = null
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        try {
+          const form = new FormData()
+          form.set('file', new File([photo.blob], `${photo.direction}.jpg`, { type: photo.blob.type || 'image/jpeg' }))
+          form.set('direction', photo.direction)
+          form.set('subject', photo.subject)
+          if (photo.gps) {
+            form.set('latitude', String(photo.gps.latitude))
+            form.set('longitude', String(photo.gps.longitude))
+            form.set('accuracy', String(photo.gps.accuracy))
+            form.set('capturedAt', photo.gps.capturedAt)
+          }
+          const response = await fetch(`/api/agent/inspections/${inspectionId}/photo`, { method: 'POST', body: form })
+          const result = await response.json()
+          if (!response.ok) throw new Error(result.error?.message || `Upload failed for ${photo.subject}.`)
+          synced.push({ ...photo, uploadedPhotoId: result.photo.id, uploadStatus: 'uploaded' })
+          lastError = null
+          break
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(`Upload failed for ${photo.subject}.`)
+          if (attempt < 3) await wait(2000)
+        }
       }
-      const response = await fetch(`/api/agent/inspections/${inspectionId}/photo`, { method: 'POST', body: form })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error?.message || `Upload failed for ${photo.subject}.`)
-      synced.push({ ...photo, uploadedPhotoId: result.photo.id, uploadStatus: 'uploaded' })
+      if (lastError) throw lastError
     }
     setPhotos(synced)
     return synced
@@ -319,13 +387,17 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
 
   async function submitInspection() {
     if (!canSubmit) {
-      setMessage('Complete arrival, four photos, checklist, and required issue evidence first.')
+      setMessage(submitBlockers[0] || 'Complete the inspection before submitting.')
       return
     }
     setBusy(true)
     try {
       const synced = await syncPhotos()
-      if (!online) return
+      if (!online) {
+        window.localStorage.setItem(`plotkare-pending-submit-${inspectionId}`, 'true')
+        setMessage('Saved. Your inspection will upload automatically when you have signal.')
+        return
+      }
       const summary = notes.trim() || `Field inspection completed for ${plotLabel}.`
       const actionRequired = checklist.some((answer) =>
         ['encroachment', 'new_construction', 'vegetation', 'waste_dumping', 'water_logging'].includes(answer.key) && answer.value === true,
@@ -356,9 +428,16 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
       const result = await response.json()
       if (!response.ok) throw new Error(result.error?.message || 'Inspection submission failed.')
       await clearInspectionDrafts(inspectionId).catch(() => undefined)
+      window.localStorage.removeItem(`plotkare-pending-submit-${inspectionId}`)
+      setSubmitted(true)
       setMessage('Inspection submitted to admin review.')
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Inspection submission failed.')
+      if (!online) {
+        window.localStorage.setItem(`plotkare-pending-submit-${inspectionId}`, 'true')
+        setMessage('No connection. Your work is saved. It will submit automatically when you are online.')
+      } else {
+        setMessage(error instanceof Error ? error.message : 'Something went wrong. Your photos are still saved. Please try again or contact admin.')
+      }
     } finally {
       setBusy(false)
     }
@@ -376,6 +455,26 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
       })
   }, [online, photos, busy])
 
+  useEffect(() => {
+    if (!online || busy || !canSubmit || submitted) return
+    if (window.localStorage.getItem(`plotkare-pending-submit-${inspectionId}`) !== 'true') return
+    submitInspection()
+  }, [online, busy, canSubmit, submitted, inspectionId])
+
+  if (submitted) {
+    return (
+      <section className="rounded-xl border border-emerald-200 bg-white p-8 text-center shadow-sm">
+        <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-600" />
+        <h2 className="mt-4 text-2xl font-bold text-[#111827]">Inspection submitted</h2>
+        <p className="mt-2 text-sm text-[#6B7280]">{location}</p>
+        <p className="mt-2 text-sm text-[#4B5563]">Your report will be reviewed by admin and sent to the owner.</p>
+        <a href="/agent" className="mt-6 inline-flex min-h-12 items-center justify-center rounded-lg bg-[#C0392B] px-5 text-sm font-bold text-white">
+          Back to home
+        </a>
+      </section>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
@@ -384,26 +483,40 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
         <p className="mt-1 text-sm text-[#6B7280]">{location}</p>
         <div className="mt-4 grid gap-2 text-sm text-[#6B7280]">
           <span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-[#C0392B]" /> Plot location: {target.latitude && target.longitude ? 'set by admin' : 'not set'}</span>
-          <span className="flex items-center gap-2"><Navigation className="h-4 w-4 text-[#C0392B]" /> Current location: {arrival ? gpsSignalLabel(arrival.accuracy) : 'not captured'}</span>
+          <span className="flex items-center gap-2"><Navigation className="h-4 w-4 text-[#C0392B]" /> Current location: {displayedGps ? gpsSignalLabel(displayedGps.accuracy) : 'waiting for GPS'}</span>
         </div>
         <div className="mt-4 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4">
-          <div className="relative h-44 overflow-hidden rounded-lg border border-[#E5E7EB] bg-[radial-gradient(circle_at_center,#ffffff_0,#eef6ff_48%,#e5edf7_100%)]">
-            <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#C0392B]/30 bg-[#C0392B]/5" />
-            <div className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#C0392B] shadow-[0_0_0_5px_rgba(192,57,43,0.16)]" title="Plot target" />
-            <div className="absolute left-[58%] top-[43%] h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600 shadow-[0_0_0_5px_rgba(37,99,235,0.16)]" title="Your GPS" />
-            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-lg bg-white/90 px-3 py-2 text-xs text-[#4B5563]">
-              <span className="font-semibold text-[#C0392B]">Red pin: plot</span>
-              <span className="font-semibold text-blue-700">Blue dot: you</span>
-            </div>
-          </div>
-          <p className="mt-2 text-xs text-[#6B7280]">Move near the plot pin, wait for GPS to lock, then confirm arrival.</p>
+          <LivePlotMap
+            target={target}
+            current={displayedGps}
+            distanceMeters={distanceFromTarget}
+            arrivalStatus={arrivalStatus}
+            accuracyLabel={displayedGps ? gpsSignalLabel(displayedGps.accuracy) : 'Allow location access'}
+          />
+          <p className="mt-2 text-xs text-[#6B7280]">
+            {target.latitude && target.longitude
+              ? arrivalStatus === 'outside-radius'
+                ? 'You appear to be a little far from the plot. Confirm only if this is the right location.'
+                : arrivalStatus === 'too-far'
+                  ? 'You are too far from the plot. Walk closer before starting.'
+                  : 'Move near the plot pin, wait for GPS to lock, then confirm arrival.'
+              : 'Location not set for this plot. Contact your admin to add the plot location.'}
+          </p>
         </div>
         {confirmOutsideRadius ? (
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-            You appear a little far from the plot. Tap again only if you are sure you are at the right location, or use maps to navigate closer.
+          <div className="mt-4 grid gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <p>You appear to be a little far from the plot. Are you sure you are at the right location?</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button type="button" disabled={busy} onClick={() => verifyArrival(true)} className="min-h-11 rounded-lg bg-amber-600 px-3 text-sm font-bold text-white disabled:bg-[#9CA3AF]">
+                Yes I am here
+              </button>
+              <a className="inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-300 bg-white px-3 text-sm font-bold text-amber-800" href={`https://www.google.com/maps/dir/?api=1&destination=${target.latitude},${target.longitude}`} target="_blank" rel="noreferrer">
+                Navigate to plot
+              </a>
+            </div>
           </div>
         ) : null}
-        <button type="button" disabled={busy || !target.latitude || !target.longitude} onClick={verifyArrival} className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#C0392B] px-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-[#9CA3AF]">
+        <button type="button" disabled={busy || !target.latitude || !target.longitude} onClick={() => verifyArrival()} className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#C0392B] px-4 text-sm font-bold text-white disabled:cursor-not-allowed disabled:bg-[#9CA3AF]">
           {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <MapPin className="h-5 w-5" />}
           I am at the plot
         </button>
@@ -436,7 +549,7 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
         <div className="mt-4 space-y-3">
           {checklist.map((answer) => (
             <div key={answer.key} className="rounded-lg border border-[#E5E7EB] p-3">
-              <p className="text-sm font-semibold">{answer.label}</p>
+              <p className="text-sm font-semibold">{answer.label} {answer.required ? <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#B45309]">Required</span> : null}</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {[true, false].map((value) => (
                   <button key={String(value)} type="button" onClick={() => setChecklist((current) => current.map((item) => item.key === answer.key ? { ...item, value } : item))} className={`min-h-11 rounded-lg border text-sm font-bold ${answer.value === value ? 'border-[#C0392B] bg-red-50 text-[#C0392B]' : 'border-[#E5E7EB] bg-white text-[#6B7280]'}`}>
@@ -479,9 +592,14 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
         {message ? <p className="mt-2 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3 text-sm text-[#6B7280]">{message}</p> : null}
         <div className="mt-4 grid gap-2 text-sm text-[#6B7280]">
           <p>Photos: {photos.length} captured, {photos.filter((photo) => photo.uploadedPhotoId).length} synced</p>
-          <p>Checklist: {checklist.filter((answer) => answer.value !== null).length} of {checklist.length}</p>
+          <p>Checklist: {checklist.filter((answer) => requiredChecklistKeys.has(answer.key) && answer.value !== null).length} of 5 required</p>
           <p>Mode: {online ? 'Online sync available' : 'Saved offline until signal returns'}</p>
         </div>
+        {submitBlockers.length ? (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            {submitBlockers.map((blocker) => <p key={blocker}>{blocker}</p>)}
+          </div>
+        ) : null}
         <div className="mt-4 grid gap-2">
           <button type="button" disabled={busy} onClick={() => syncPhotos().then(() => setMessage('Sync complete.')).catch((error) => setMessage(error.message))} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-4 text-sm font-bold text-[#1F2937]">
             <RefreshCcw className="h-5 w-5" />

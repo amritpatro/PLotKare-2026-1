@@ -10,13 +10,8 @@ import {
 } from '@/components/ui/dialog'
 import { DashboardSidebar } from '@/components/dashboard-sidebar'
 import { DashboardTopBar } from '@/components/dashboard-topbar'
-import { getAmenityByName } from '@/lib/amenity-catalog'
-import {
-  getStoredPlan,
-  loadActiveAmenityNames,
-  setStoredPlan,
-  type PlanTier,
-} from '@/lib/plotkare-storage'
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
+import type { PlanTier } from '@/lib/plotkare-storage'
 
 const PLAN_LABEL: Record<PlanTier, string> = {
   basic: 'Basic Plan',
@@ -40,70 +35,134 @@ const PLAN_AMENITY_BLURB: Record<PlanTier, string[]> = {
   ],
 }
 
-type HistoryRow = {
-  date: string
-  description: string
-  status: string
+type SubscriptionRow = {
+  id: string
+  plan: PlanTier | string | null
+  status: string | null
+  provider_subscription_id?: string | null
+  created_at: string
 }
 
-const DEMO_HISTORY: HistoryRow[] = [
-  { date: 'Apr 2026', description: 'Standard Plan consultation record', status: 'Recorded' },
-  { date: 'Mar 2026', description: 'Solar hosting scope review', status: 'Advisor review' },
-  { date: 'Mar 2026', description: 'Monitoring cadence confirmation', status: 'Recorded' },
-  { date: 'Feb 2026', description: 'Container farming feasibility review', status: 'Advisor review' },
-  { date: 'Feb 2026', description: 'Owner service consultation', status: 'Recorded' },
-]
+type ConsultationRow = {
+  id: string
+  subject: string
+  message: string | null
+  status: string | null
+  source: string | null
+  created_at: string
+}
+
+function normalizePlan(plan: string | null | undefined): PlanTier | null {
+  if (plan === 'basic' || plan === 'standard' || plan === 'premium') return plan
+  return null
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric' }).format(new Date(value))
+}
 
 export default function PaymentsPage() {
-  const [plan, setPlan] = useState<PlanTier>('standard')
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
+  const [plan, setPlan] = useState<PlanTier | null>(null)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const [amenityNames, setAmenityNames] = useState<string[]>([])
+  const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([])
+  const [consultations, setConsultations] = useState<ConsultationRow[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const refresh = () => {
-    setPlan(getStoredPlan())
-    setAmenityNames(loadActiveAmenityNames())
+  const refresh = async () => {
+    setLoading(true)
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      setSubscriptions([])
+      setConsultations([])
+      setPlan(null)
+      setLoading(false)
+      return
+    }
+
+    const [{ data: subscriptionRows, error: subscriptionError }, { data: consultationRows, error: consultationError }] = await Promise.all([
+      supabase
+        .from('subscriptions')
+        .select('id,plan,status,provider_subscription_id,created_at')
+        .eq('owner_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20),
+      supabase
+        .from('consultation_requests')
+        .select('id,subject,message,status,source,created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20),
+    ])
+
+    if (subscriptionError) toast.error(subscriptionError.message)
+    if (consultationError) toast.error(consultationError.message)
+
+    const liveSubscriptions = (subscriptionRows ?? []) as SubscriptionRow[]
+    setSubscriptions(liveSubscriptions)
+    setConsultations((consultationRows ?? []) as ConsultationRow[])
+    setPlan(normalizePlan(liveSubscriptions[0]?.plan))
+    setLoading(false)
   }
 
   useEffect(() => {
-    refresh()
-    const h = () => refresh()
-    window.addEventListener('plotkare-amenities-changed', h)
-    window.addEventListener('plotkare-plan-changed', h)
-    window.addEventListener('storage', h)
-    return () => {
-      window.removeEventListener('plotkare-amenities-changed', h)
-      window.removeEventListener('plotkare-plan-changed', h)
-      window.removeEventListener('storage', h)
-    }
-  }, [])
+    void refresh()
+  }, [supabase])
 
   const displayRows = useMemo(() => {
     const rows: { label: string; detail: string; status: string }[] = [
       {
-        label: PLAN_LABEL[plan],
-        detail: 'Service scope reviewed by PlotKare advisor',
-        status: 'Active',
+        label: plan ? PLAN_LABEL[plan] : 'No active plan',
+        detail: plan ? 'Service scope loaded from PlotKare billing records' : 'Request a consultation to activate a service plan',
+        status: subscriptions[0]?.status || 'Pending',
       },
     ]
 
-    for (const name of amenityNames) {
-      const amenity = getAmenityByName(name)
-      if (!amenity) continue
+    for (const subscription of subscriptions.slice(1, 4)) {
+      const tier = normalizePlan(subscription.plan)
       rows.push({
-        label: amenity.name,
-        detail: 'Pricing and feasibility shared only after consultation',
-        status: amenity.kind === 'monthly' ? 'Recurring scope' : 'One-time scope',
+        label: tier ? PLAN_LABEL[tier] : subscription.plan || 'Service plan',
+        detail: subscription.provider_subscription_id ? `Provider ref ${subscription.provider_subscription_id}` : 'PlotKare billing record',
+        status: subscription.status || 'Recorded',
       })
     }
 
     return rows
-  }, [plan, amenityNames])
+  }, [plan, subscriptions])
 
-  const selectPlan = (tier: PlanTier) => {
-    setStoredPlan(tier)
-    setPlan(tier)
+  const selectPlan = async (tier: PlanTier) => {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      toast.error('Please sign in again before requesting a consultation.')
+      return
+    }
+
+    const { error } = await supabase.from('consultation_requests').insert({
+      user_id: user.id,
+      role: 'owner',
+      source: 'dashboard_payments',
+      subject: `${PLAN_LABEL[tier]} consultation request`,
+      message: `User requested the ${PLAN_LABEL[tier]} consultation path from the payments dashboard.`,
+      status: 'open',
+      metadata: { requested_plan: tier },
+    })
+
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+
     setUpgradeOpen(false)
-    toast.success('Consultation plan updated')
+    toast.success('Consultation request sent')
+    await refresh()
   }
 
   return (
@@ -117,13 +176,12 @@ export default function PaymentsPage() {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="font-mono text-xs text-[#9CA3AF]">Active Plan</p>
-                  <h2 className="mt-2 font-serif text-2xl font-bold text-[#1F2937]">{PLAN_LABEL[plan]}</h2>
+                  <h2 className="mt-2 font-serif text-2xl font-bold text-[#1F2937]">{plan ? PLAN_LABEL[plan] : 'No active plan'}</h2>
                   <p className="mt-2 font-mono text-sm font-semibold uppercase tracking-wide text-[#F59E0B]">
-                    Consult for pricing
+                    {subscriptions[0]?.status || 'Consult for pricing'}
                   </p>
                   <p className="mt-2 max-w-xl font-sans text-sm text-[#6B7280]">
-                    Final service scope is shared after PlotKare reviews your property access, inspection needs,
-                    documents, and selected amenities.
+                    Final service scope is loaded from PlotKare billing records after advisor review and plan activation.
                   </p>
                 </div>
                 <button
@@ -159,12 +217,12 @@ export default function PaymentsPage() {
                     className="font-mono text-2xl font-bold uppercase tracking-wide text-[#F59E0B]"
                     style={{ fontFamily: 'var(--font-dm-mono), monospace' }}
                   >
-                    Book Demo
+                    {loading ? 'Loading' : consultations[0]?.status || 'Book Demo'}
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => toast.success('Advisor consultation request saved')}
+                  onClick={() => selectPlan(plan ?? 'standard')}
                   className="rounded-lg bg-[#C0392B] px-8 py-3 font-sans text-sm font-semibold text-white hover:opacity-95"
                 >
                   Talk to PlotKare
@@ -184,11 +242,18 @@ export default function PaymentsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {DEMO_HISTORY.map((row, i) => (
-                      <tr key={i} className="border-b border-[#F3F4F6] text-[#1F2937]">
-                        <td className="py-3 pr-4 font-mono text-[#6B7280]">{row.date}</td>
-                        <td className="py-3 pr-4">{row.description}</td>
-                        <td className="py-3 text-right font-mono text-[#16A34A]">{row.status}</td>
+                    {!loading && consultations.length === 0 ? (
+                      <tr className="border-b border-[#F3F4F6] text-[#1F2937]">
+                        <td className="py-6 pr-4 text-[#6B7280]" colSpan={3}>
+                          No consultation records yet. Request a consultation and it will appear here.
+                        </td>
+                      </tr>
+                    ) : null}
+                    {consultations.map((row) => (
+                      <tr key={row.id} className="border-b border-[#F3F4F6] text-[#1F2937]">
+                        <td className="py-3 pr-4 font-mono text-[#6B7280]">{formatDate(row.created_at)}</td>
+                        <td className="py-3 pr-4">{row.subject}</td>
+                        <td className="py-3 text-right font-mono text-[#16A34A]">{row.status || 'Recorded'}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -4,6 +4,7 @@ import { requireUserContext } from '@/lib/api/auth'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { distanceMeters, inspectionJsonArray } from '@/lib/agent/server'
 import { recordAuditLog } from '@/lib/audit'
+import { getArrivalStatus } from '@/lib/utils/haversine'
 
 const bodySchema = z.object({
   latitude: z.coerce.number().min(-90).max(90),
@@ -55,27 +56,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const targetLongitude = inspection.target_longitude == null ? Number(property?.longitude) : Number(inspection.target_longitude)
 
   if (!Number.isFinite(targetLatitude) || !Number.isFinite(targetLongitude)) {
-    return NextResponse.json({ ok: false, error: { code: 'TARGET_COORDINATES_REQUIRED', message: 'Admin must confirm plot coordinates before this inspection can start.' } }, { status: 409 })
+    return NextResponse.json({ ok: false, error: { code: 'TARGET_COORDINATES_REQUIRED', message: 'Location not set for this plot. Contact your admin to add the plot location.' } }, { status: 409 })
   }
 
   const distance = Math.round(distanceMeters(parsed.data, { latitude: targetLatitude, longitude: targetLongitude }))
   const weakAccuracy = parsed.data.accuracy > 80
-  const verified = distance <= 150 && !weakAccuracy
-  const outsideRadius = distance > 150 && distance <= 300
+  const arrivalStatus = getArrivalStatus(distance)
+  const verified = arrivalStatus === 'verified' && !weakAccuracy
+  const outsideRadius = arrivalStatus === 'outside-radius'
 
-  if (weakAccuracy || distance > 300 || (outsideRadius && !parsed.data.confirmOutsideRadius)) {
+  if (weakAccuracy || arrivalStatus === 'too-far' || (outsideRadius && !parsed.data.confirmOutsideRadius)) {
     return NextResponse.json({
       ok: false,
       error: {
-        code: weakAccuracy ? 'WEAK_GPS' : distance > 300 ? 'TOO_FAR_FROM_PLOT' : 'OUTSIDE_RADIUS_CONFIRM_REQUIRED',
+        code: weakAccuracy ? 'WEAK_GPS' : arrivalStatus === 'too-far' ? 'TOO_FAR_FROM_PLOT' : 'OUTSIDE_RADIUS_CONFIRM_REQUIRED',
         message: weakAccuracy
-          ? 'Weak GPS. Move to an open area and wait.'
-          : distance > 300
+          ? 'Weak GPS — move to open area and wait'
+          : arrivalStatus === 'too-far'
             ? 'You are too far from the plot. Please walk to the plot before starting the inspection.'
-            : 'You appear to be a little far from the plot. Confirm only if you are at the right location.',
+            : 'You appear to be a little far from the plot. Are you sure you are at the right location?',
       },
       distanceMeters: distance,
-      accuracy: parsed.data.accuracy,
       canConfirmOutsideRadius: outsideRadius && !weakAccuracy,
     }, { status: 409 })
   }
@@ -125,5 +126,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     metadata: event,
   })
 
-  return NextResponse.json({ ok: true, arrival: event })
+  return NextResponse.json({
+    ok: true,
+    success: true,
+    nextStep: 'photos',
+    distanceMeters: distance,
+    verified,
+    arrival: event,
+  })
 }

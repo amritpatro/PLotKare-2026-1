@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { haversineDistance } from '@/lib/utils/haversine'
 
 export type FieldAgentContext = {
   userId: string
@@ -61,16 +62,7 @@ export async function getAssignedInspectionForAgent(inspectionId: string, employ
 }
 
 export function distanceMeters(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) {
-  const radius = 6371000
-  const toRad = (value: number) => (value * Math.PI) / 180
-  const lat1 = toRad(a.latitude)
-  const lat2 = toRad(b.latitude)
-  const deltaLat = toRad(b.latitude - a.latitude)
-  const deltaLng = toRad(b.longitude - a.longitude)
-  const h =
-    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2)
-  return radius * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
+  return haversineDistance(a.latitude, a.longitude, b.latitude, b.longitude)
 }
 
 export function inspectionJsonArray(value: unknown) {

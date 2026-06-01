@@ -39,6 +39,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.info('Contact form submission stored', {
+      source: hasListingRef ? 'landing_listing_inquiry' : 'website_contact',
+      email,
+      hasPhone: Boolean(phone),
+    })
+
     return NextResponse.json({ success: true, message: 'Message received' })
   } catch (error) {
     console.error('Contact form error:', error)

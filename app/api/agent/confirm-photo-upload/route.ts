@@ -70,5 +70,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: { code: 'PHOTO_CONFIRM_FAILED', message: error.message } }, { status: 400 })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, success: true })
 }
