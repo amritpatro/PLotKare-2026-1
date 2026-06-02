@@ -89,7 +89,7 @@ async function main() {
   const requesterFullName = readArg('requester-full-name', process.env.REQUESTER_FULL_NAME || SNAPSHOT.requesterFullName)
   const adminEmail = readArg('admin-email', process.env.ADMIN_EMAIL || SNAPSHOT.adminEmail)
   const adminFullName = readArg('admin-full-name', process.env.ADMIN_FULL_NAME || SNAPSHOT.adminFullName)
-  const password = process.env.QA_RESTORE_PASSWORD || 'PlotKareQA!2026'
+  const password = dryRun ? '[redacted]' : env('QA_RESTORE_PASSWORD')
   const dueAt = parseIsoDate(process.env.VERIFICATION_DUE_AT, '2026-05-26T15:38:25.465304+00:00')
   const assignedBy = process.env.ASSIGNED_BY || null
 

@@ -6,14 +6,21 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH?.trim() || ''
 const isProduction = process.env.NODE_ENV === 'production'
+const scriptSources = [
+  "'self'",
+  "'unsafe-inline'",
+  ...(isProduction ? [] : ["'unsafe-eval'"]),
+  'https://checkout.razorpay.com',
+  'https://*.posthog.com',
+].join(' ')
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+  `script-src ${scriptSources}`,
   "style-src 'self' 'unsafe-inline' https:",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://checkout.razorpay.com https://app.posthog.com https://*.posthog.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://checkout.razorpay.com https://app.posthog.com https://*.posthog.com https://router.project-osrm.org https://nominatim.openstreetmap.org",
   "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
   "object-src 'none'",
   "base-uri 'self'",

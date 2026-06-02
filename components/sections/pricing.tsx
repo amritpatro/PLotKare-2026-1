@@ -1,6 +1,3 @@
-'use client'
-
-import { motion } from 'framer-motion'
 import { CalendarCheck, Check, FileSearch, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 
@@ -75,29 +72,19 @@ export function PricingSection({
   return (
     <section id="pricing" className="premium-section bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="premium-reveal mb-12 text-center"
-        >
+        <div className="premium-reveal mb-12 text-center">
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
             {heading} <span className="text-primary">{highlightedHeading}</span>
           </h2>
           <p className="mx-auto mt-4 max-w-2xl font-sans text-base leading-relaxed text-muted-foreground">
             {description}
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid gap-8 md:grid-cols-3">
-          {plans.map((plan, index) => (
-            <motion.div
+          {plans.map((plan) => (
+            <div
               key={plan.name}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
               className={`relative rounded-xl p-8 ${
                 plan.variant === 'premium'
                   ? 'premium-surface-dark bg-charcoal text-white'
@@ -179,7 +166,7 @@ export function PricingSection({
               >
                 {buttonLabel}
               </Link>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

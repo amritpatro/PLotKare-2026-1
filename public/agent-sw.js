@@ -1,11 +1,5 @@
-const CACHE_NAME = 'plotkare-agent-shell-v2'
+const CACHE_NAME = 'plotkare-agent-static-v3'
 const SHELL_URLS = [
-  '/agent',
-  '/agent/reports',
-  '/agent/profile',
-  '/agent/settings',
-  '/agent/support',
-  '/agent/notifications',
   '/manifest.webmanifest',
   '/manifest.json',
   '/icon.svg',
@@ -34,15 +28,17 @@ self.addEventListener('fetch', (event) => {
 
   if (request.method !== 'GET' || url.origin !== self.location.origin) return
 
-  if (url.pathname.startsWith('/agent') || SHELL_URLS.includes(url.pathname)) {
+  if (SHELL_URLS.includes(url.pathname)) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone()
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => undefined)
+          if (response.ok) {
+            const copy = response.clone()
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => undefined)
+          }
           return response
         })
-        .catch(() => caches.match(request).then((cached) => cached || caches.match('/agent'))),
+        .catch(() => caches.match(request)),
     )
   }
 })

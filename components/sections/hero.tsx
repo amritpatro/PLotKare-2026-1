@@ -1,12 +1,6 @@
-'use client'
-
-import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import Link from 'next/link'
-
-const IndiaHeroMapLazy = dynamic(() => import('./india-hero-map').then((m) => ({ default: m.IndiaHeroMap })), {
-  ssr: false,
-  loading: () => <div className="h-[460px] w-full animate-pulse bg-transparent" aria-hidden />,
-})
+import { withBasePath } from '@/lib/site-config'
 
 const pillars = [
   { title: 'Protect', label: 'Inspections and evidence' },
@@ -62,6 +56,7 @@ export function HeroSection({
           <div className="mt-9 flex flex-wrap gap-4">
             <Link
               href="/demo/plot-3d/"
+              prefetch={false}
               className="premium-button inline-flex min-h-12 items-center justify-center rounded-sm bg-[#8B1538] px-7 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-[#75112f] md:text-base"
             >
               {primaryLabel}
@@ -88,7 +83,15 @@ export function HeroSection({
           <div className="pointer-events-none absolute inset-[-8%] bg-[radial-gradient(circle_at_54%_45%,rgba(248,246,243,0.82)_0%,rgba(248,246,243,0.46)_44%,rgba(255,255,255,0)_76%)]" />
           <div className="pointer-events-none absolute inset-y-[8%] right-[-8%] w-1/2 bg-[radial-gradient(circle_at_center,rgba(139,21,56,0.045)_0%,rgba(255,255,255,0)_70%)]" />
           <div className="absolute inset-0 flex items-center justify-center opacity-100">
-            <IndiaHeroMapLazy />
+            <Image
+              src={withBasePath('/geo/india-states-hero.svg')}
+              alt="India state boundary map highlighting PlotKare launch coordination from Visakhapatnam"
+              fill
+              priority
+              unoptimized
+              sizes="(max-width: 1024px) 100vw, 56vw"
+              className="object-contain drop-shadow-[0_30px_42px_rgba(26,26,26,0.14)]"
+            />
           </div>
         </div>
       </div>

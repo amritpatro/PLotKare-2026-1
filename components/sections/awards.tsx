@@ -1,7 +1,3 @@
-'use client'
-
-import { motion } from 'framer-motion'
-
 /** Replace with real certifications only after they are issued and citeable. */
 const governance = [
   {
@@ -36,29 +32,19 @@ export function AwardsSection({
   return (
     <section className="premium-section-dark bg-charcoal py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="premium-reveal mb-16 text-center"
-        >
+        <div className="premium-reveal mb-16 text-center">
           <h2 className="font-serif text-4xl font-bold text-white md:text-5xl">
             {heading}
           </h2>
           <p className="mx-auto mt-4 max-w-2xl font-sans text-sm text-white/55">
             {introduction}
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid gap-8 md:grid-cols-2">
           {governance.map((row, index) => (
-            <motion.div
+            <div
               key={row.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
               className="flex gap-6 border-l-2 border-accent pl-6"
             >
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center bg-accent font-mono text-sm font-bold text-charcoal">
@@ -69,7 +55,7 @@ export function AwardsSection({
                 <p className="mt-2 font-sans text-sm text-white/60">{row.description}</p>
                 <p className="mt-2 font-mono text-sm text-primary">{row.tag}</p>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

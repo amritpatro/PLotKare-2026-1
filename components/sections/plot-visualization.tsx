@@ -2,10 +2,12 @@
 
 import { motion } from 'framer-motion'
 import { Compass, Route, Ruler, ShieldCheck, UserRound } from 'lucide-react'
+import Image from 'next/image'
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { BODUVALASA_LAYOUT } from '@/lib/boduvalasa-layout'
-import { Boduvalasa3DCanvas } from '@/components/boduvalasa-artifact'
 import { getMappedPlotNumbers, getPlotProfile } from '@/lib/plot-profile'
+import { withBasePath } from '@/lib/site-config'
 
 const stats = [
   { label: 'Total plots', value: String(BODUVALASA_LAYOUT.plotCount) },
@@ -125,12 +127,26 @@ export function PlotVisualizationSection({
           >
             <div className="relative">
               <div className="absolute inset-x-8 -bottom-5 h-10 rounded-full bg-black/15 blur-xl" />
-              <div className="premium-surface-dark relative overflow-hidden rounded-xl border border-foreground/10 bg-[#151515] p-3 shadow-2xl">
-                <Boduvalasa3DCanvas
-                  selectedPlot={selectedPlot}
-                  onPlotSelect={setSelectedPlot}
-                  className="h-[560px] rounded-lg"
+              <div className="premium-surface-dark relative h-[560px] overflow-hidden rounded-xl border border-foreground/10 bg-[#151515] p-3 shadow-2xl">
+                <Image
+                  src={withBasePath('/images/boduvalasa-layout-preview.webp')}
+                  alt="Source-mapped Boduvalasa layout preview with real plot geometry and roads"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 52vw"
+                  className="object-cover"
                 />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-6 pb-6 pt-20">
+                  <p className="max-w-md font-sans text-sm leading-relaxed text-white/75">
+                    Open the source-mapped layout to inspect plots, roads, compass direction, and plot-level records.
+                  </p>
+                  <Link
+                    href="/demo/layout-3d/"
+                    prefetch={false}
+                    className="mt-4 inline-flex rounded-sm bg-primary px-5 py-3 font-sans text-sm font-semibold text-white transition-colors hover:bg-primary/90"
+                  >
+                    Open Interactive 3D Viewer
+                  </Link>
+                </div>
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

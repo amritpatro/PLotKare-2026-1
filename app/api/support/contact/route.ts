@@ -5,6 +5,15 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 import { captureServerEvent } from '@/lib/analytics/server'
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
 export async function POST(request: Request) {
   const parsed = supportMessageSchema.safeParse(await parseJson(request))
   if (!parsed.success) return validationError(parsed.error)
@@ -35,7 +44,7 @@ export async function POST(request: Request) {
     to: supportEmail,
     replyTo: parsed.data.email,
     subject: `PlotKare support: ${parsed.data.topic}`,
-    html: `<p><strong>${parsed.data.name}</strong> (${parsed.data.email}) wrote:</p><p>${parsed.data.message.replace(/\n/g, '<br />')}</p>`,
+    html: `<p><strong>${escapeHtml(parsed.data.name)}</strong> (${escapeHtml(parsed.data.email)}) wrote:</p><p>${escapeHtml(parsed.data.message).replace(/\n/g, '<br />')}</p>`,
     text: `${parsed.data.name} (${parsed.data.email}) wrote:\n\n${parsed.data.message}`,
   })
 

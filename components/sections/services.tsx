@@ -1,6 +1,3 @@
-'use client'
-
-import { motion } from 'framer-motion'
 import { 
   Camera, 
   FileText, 
@@ -43,25 +40,6 @@ const services = [
   },
 ]
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5 },
-  },
-}
-
 export function ServicesSection({
   heading = 'Monthly Inspection, Legal Monitoring, and Document Tracking',
   introduction = 'PlotKare organizes the field, document, and support records owners need to monitor property responsibly.',
@@ -73,35 +51,22 @@ export function ServicesSection({
     <section id="services" className="premium-section bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="premium-reveal mb-16 text-center"
-        >
+        <div className="premium-reveal mb-16 text-center">
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
             {heading}
           </h2>
           <p className="mx-auto mt-4 max-w-2xl font-sans text-lg text-muted-foreground">
             {introduction}
           </p>
-        </motion.div>
+        </div>
 
         {/* Services Grid */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
-        >
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {services.map((service, index) => {
             const Icon = service.icon
             return (
-              <motion.div
+              <div
                 key={index}
-                variants={itemVariants}
                 className="premium-surface group rounded-lg border border-border bg-white p-8"
               >
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -113,10 +78,10 @@ export function ServicesSection({
                 <p className="font-sans text-sm leading-relaxed text-muted-foreground">
                   {service.description}
                 </p>
-              </motion.div>
+              </div>
             )
           })}
-        </motion.div>
+        </div>
       </div>
     </section>
   )

@@ -51,17 +51,33 @@ create trigger push_subscriptions_updated_at before update on public.push_subscr
 
 do $$
 begin
-  alter table public.plots
-    add constraint plots_target_latitude_range
-    check (target_latitude is null or target_latitude between -90 and 90) not valid;
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'plots'
+      and column_name = 'target_latitude'
+  ) then
+    alter table public.plots
+      add constraint plots_target_latitude_range
+      check (target_latitude is null or target_latitude between -90 and 90) not valid;
+  end if;
 exception when duplicate_object then null;
 end $$;
 
 do $$
 begin
-  alter table public.plots
-    add constraint plots_target_longitude_range
-    check (target_longitude is null or target_longitude between -180 and 180) not valid;
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'plots'
+      and column_name = 'target_longitude'
+  ) then
+    alter table public.plots
+      add constraint plots_target_longitude_range
+      check (target_longitude is null or target_longitude between -180 and 180) not valid;
+  end if;
 exception when duplicate_object then null;
 end $$;
 

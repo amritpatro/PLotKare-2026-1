@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      console.error('Contact form persistence error:', error)
+      console.error('Contact form persistence error')
       return NextResponse.json(
         { error: 'Could not submit your request right now. Please try again.' },
         { status: 500 }
@@ -41,13 +41,18 @@ export async function POST(request: NextRequest) {
 
     console.info('Contact form submission stored', {
       source: hasListingRef ? 'landing_listing_inquiry' : 'website_contact',
-      email,
       hasPhone: Boolean(phone),
     })
 
     return NextResponse.json({ success: true, message: 'Message received' })
   } catch (error) {
-    console.error('Contact form error:', error)
+    if (error instanceof SyntaxError) {
+      return NextResponse.json(
+        { error: 'Request body must be valid JSON' },
+        { status: 400 }
+      )
+    }
+    console.error('Contact form error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
