@@ -24,6 +24,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { LogoMarkSmall } from '@/components/logo'
 import { RoleRealtimeBridge } from '@/components/realtime/role-realtime-bridge'
+import { signOutToLanding } from '@/lib/auth/client-logout'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 
 type RoleDashboardShellProps = {
@@ -115,15 +116,12 @@ export function RoleDashboardShell({ role, title, subtitle, userLabel, avatarUrl
     if (isSigningOut) return
     setSessionError(null)
     setIsSigningOut(true)
-    const supabase = createSupabaseBrowserClient()
-    const { error } = await supabase.auth.signOut()
-    if (error) {
+    try {
+      await signOutToLanding(router)
+    } catch {
       setSessionError('Sign out failed. Please retry.')
       setIsSigningOut(false)
-      return
     }
-    router.replace('/')
-    router.refresh()
   }
 
   return (

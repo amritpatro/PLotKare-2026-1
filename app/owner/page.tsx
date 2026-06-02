@@ -1,5 +1,8 @@
 import { createOwnerServiceRequest, createOwnerSupportTicket, registerOwnerProperty } from './actions'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
+import { OwnerCoordinatePanel } from '@/components/owner/owner-coordinate-panel'
+import { OwnerLiveTrackingPanel } from '@/components/owner/owner-live-tracking-panel'
+import { OwnerPlotArchiveList } from '@/components/owner/owner-plot-archive-list'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
@@ -17,6 +20,7 @@ const ownerMessages = {
     property_registered: 'Property submitted for verification and connected to your dashboard.',
     service_requested: 'Service request created and routed to PlotKare operations.',
     support_ticket_created: 'Support ticket created. PlotKare support can now track this request.',
+    coordinates_saved: 'Plot coordinates saved for field inspection routing.',
   },
   error: {
     invalid_property_form: 'Please complete the required property details before submitting.',
@@ -25,6 +29,8 @@ const ownerMessages = {
     property_save_failed: 'We could not save the property. Please try again or contact support.',
     service_request_failed: 'We could not create the service request. Please try again or contact support.',
     support_ticket_failed: 'We could not create the support ticket. Please try again or contact support.',
+    invalid_coordinates: 'Select a valid plot and confirmed map coordinates.',
+    coordinates_save_failed: 'We could not save the coordinates. Please try again or contact support.',
   },
 } as const
 
@@ -61,6 +67,7 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
     { data: supportTickets },
     { data: plans },
     { data: subscriptions },
+    { data: ownerPlots },
   ] = await Promise.all([
     supabase
       .from('owners')
@@ -112,6 +119,11 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false })
       .limit(5),
+    supabase
+      .from('plots')
+      .select('id,property_id,plot_number,location,sq_yards,facing,status,lifecycle_status,verification_status,target_latitude,target_longitude,created_at')
+      .eq('owner_id', user.id)
+      .order('created_at', { ascending: false }),
   ])
 
   const propertyRows = properties ?? []
@@ -121,9 +133,57 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
   const ticketRows = supportTickets ?? []
   const planRows = plans ?? []
   const subscriptionRows = subscriptions ?? []
-  const approvedCount = propertyRows.filter((property) => property.verification_status === 'approved').length
-  const pendingCount = propertyRows.filter((property) => property.verification_status !== 'approved').length
+  const plotRows = ownerPlots ?? []
+  const archivedPlotRows = plotRows.filter(
+    (plot) => plot.lifecycle_status === 'archived' || String(plot.status ?? '').toLowerCase() === 'archived',
+  )
+  const visiblePropertyRows = propertyRows.filter((property) => property.lifecycle_status !== 'archived')
+  const approvedCount = visiblePropertyRows.filter((property) => property.verification_status === 'approved').length
+  const pendingCount = visiblePropertyRows.filter((property) => property.verification_status !== 'approved').length
   const registeredPropertyCount = Math.max(propertyRows.length, onboardingDetails ? 1 : 0)
+  const ownerPropertyIds = propertyRows.map((property) => property.id)
+  const { data: liveInspections } = ownerPropertyIds.length
+    ? await supabase
+        .from('inspections')
+        .select('id,status,property_id,plot_id,target_latitude,target_longitude,properties(title,latitude,longitude),plots(plot_number,location,target_latitude,target_longitude)')
+        .in('property_id', ownerPropertyIds)
+        .in('status', ['requested', 'scheduled', 'in_progress', 'needs_followup'])
+        .order('created_at', { ascending: false })
+        .limit(10)
+    : { data: [] }
+  const liveInspectionIds = (liveInspections ?? []).map((inspection: any) => inspection.id)
+  const { data: agentLocations } = liveInspectionIds.length
+    ? await supabase
+        .from('agent_locations')
+        .select('inspection_id,latitude,longitude,accuracy_meters,captured_at')
+        .in('inspection_id', liveInspectionIds)
+        .order('captured_at', { ascending: false })
+        .limit(50)
+    : { data: [] }
+  const latestLocationByInspection = new Map<string, any>()
+  for (const location of agentLocations ?? []) {
+    if (!latestLocationByInspection.has(location.inspection_id)) {
+      latestLocationByInspection.set(location.inspection_id, location)
+    }
+  }
+  const liveTrackingRows = (liveInspections ?? []).map((inspection: any) => {
+    const property = Array.isArray(inspection.properties) ? inspection.properties[0] : inspection.properties
+    const plot = Array.isArray(inspection.plots) ? inspection.plots[0] : inspection.plots
+    const location = latestLocationByInspection.get(inspection.id)
+
+    return {
+      inspectionId: inspection.id,
+      title: property?.title || plot?.location || 'Inspection in progress',
+      plotLabel: plot?.plot_number || inspection.id.slice(0, 8),
+      status: inspection.status,
+      targetLatitude: inspection.target_latitude ?? plot?.target_latitude ?? property?.latitude ?? null,
+      targetLongitude: inspection.target_longitude ?? plot?.target_longitude ?? property?.longitude ?? null,
+      agentLatitude: location?.latitude ?? null,
+      agentLongitude: location?.longitude ?? null,
+      accuracyMeters: location?.accuracy_meters ?? null,
+      capturedAt: location?.captured_at ?? null,
+    }
+  })
 
   return (
     <RoleDashboardShell
@@ -176,7 +236,7 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
             ['Registered properties', registeredPropertyCount],
             ['Approved', approvedCount],
             ['Pending review', Math.max(pendingCount, onboardingDetails && approvedCount === 0 ? 1 : 0)],
-            ['Documents', documentRows.length],
+            ['Archived plots', archivedPlotRows.length],
           ].map(([label, value]) => (
             <div key={label} className={cardClass}>
               <p className="font-mono text-xs uppercase tracking-[0.16em] text-[#6B7280]">{label}</p>
@@ -184,6 +244,10 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
             </div>
           ))}
         </section>
+
+        <OwnerPlotArchiveList plots={plotRows} />
+        <OwnerCoordinatePanel plots={plotRows} />
+        <OwnerLiveTrackingPanel rows={liveTrackingRows} />
 
         <section className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]" id="register">
           <div className={cardClass}>

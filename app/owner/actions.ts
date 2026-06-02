@@ -33,6 +33,15 @@ const amenityRequestSchema = z.object({
   amenityId: z.string().trim().min(1),
 })
 
+const coordinateNumber = (min: number, max: number) =>
+  z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.coerce.number().min(min).max(max))
+
+const coordinateSchema = z.object({
+  plotId: z.string().uuid(),
+  latitude: coordinateNumber(-90, 90),
+  longitude: coordinateNumber(-180, 180),
+})
+
 const supportTicketSchema = z.object({
   propertyId: z.string().uuid().optional().or(z.literal('')),
   subject: z.string().trim().min(3),
@@ -49,6 +58,7 @@ function ownerActionUrl(kind: 'success' | 'error', code: string, section = 'regi
     services: '/owner/services',
     support: '/owner/support',
     amenities: '/owner/amenities',
+    properties: '/owner/properties',
   }
   return `${routeBySection[section] ?? '/owner'}?${params.toString()}`
 }
@@ -184,6 +194,89 @@ export async function requestOwnerAmenity(formData: FormData) {
 
   revalidatePath('/owner')
   redirect(ownerActionUrl('success', 'amenity_requested', 'amenities'))
+}
+
+export async function updateOwnerPlotCoordinates(formData: FormData) {
+  const parsed = coordinateSchema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) {
+    redirect(ownerActionUrl('error', 'invalid_coordinates', 'properties'))
+  }
+
+  const { user } = await requirePageRole(['land_owner', 'admin'])
+  const supabase = createSupabaseAdminClient()
+  let failure: string | null = null
+
+  try {
+    const { data: plot, error: plotError } = await supabase
+      .from('plots')
+      .select('id,owner_id,property_id,plot_number')
+      .eq('id', parsed.data.plotId)
+      .eq('owner_id', user.id)
+      .maybeSingle()
+
+    if (plotError) throw plotError
+    if (!plot) throw new Error('Plot is not attached to this owner.')
+
+    const now = new Date().toISOString()
+    const { error: plotUpdateError } = await supabase
+      .from('plots')
+      .update({
+        target_latitude: parsed.data.latitude,
+        target_longitude: parsed.data.longitude,
+        coordinates_confirmed_at: now,
+        coordinates_confirmed_by: user.id,
+      })
+      .eq('id', plot.id)
+      .eq('owner_id', user.id)
+
+    if (plotUpdateError) throw plotUpdateError
+
+    if (plot.property_id) {
+      const { error: propertyUpdateError } = await supabase
+        .from('properties')
+        .update({
+          latitude: parsed.data.latitude,
+          longitude: parsed.data.longitude,
+        })
+        .eq('id', plot.property_id)
+        .eq('owner_profile_id', user.id)
+
+      if (propertyUpdateError) throw propertyUpdateError
+    }
+
+    await supabase
+      .from('inspections')
+      .update({
+        target_latitude: parsed.data.latitude,
+        target_longitude: parsed.data.longitude,
+      })
+      .eq('plot_id', plot.id)
+      .in('status', ['requested', 'scheduled', 'in_progress', 'needs_followup'])
+
+    await recordAuditLog({
+      actorId: user.id,
+      action: 'owner.plot_coordinates_saved',
+      entityType: 'plot',
+      entityId: plot.id,
+      metadata: {
+        propertyId: plot.property_id,
+        latitude: parsed.data.latitude,
+        longitude: parsed.data.longitude,
+      },
+    })
+  } catch (error) {
+    console.error('Owner coordinate update failed:', error)
+    failure = 'coordinates_save_failed'
+  }
+
+  if (failure) {
+    redirect(ownerActionUrl('error', failure, 'properties'))
+  }
+
+  revalidatePath('/owner')
+  revalidatePath('/owner/properties')
+  revalidatePath('/owner/verification')
+  redirect(ownerActionUrl('success', 'coordinates_saved', 'properties'))
 }
 
 async function ensureOwnerProperty(supabase: ReturnType<typeof createSupabaseAdminClient>, userId: string, propertyId: string) {

@@ -179,6 +179,7 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
   const [confirmOutsideRadius, setConfirmOutsideRadius] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const autoSyncingRef = useRef(false)
+  const lastLocationPostRef = useRef(0)
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const requiredCaptured = directions.every((direction) => photos.some((photo) => photo.direction === direction.key))
@@ -245,12 +246,27 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         if (!mounted) return
-        setCurrentGps({
+        const nextGps = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
           capturedAt: new Date().toISOString(),
-        })
+        }
+        setCurrentGps(nextGps)
+
+        const now = Date.now()
+        if (navigator.onLine && now - lastLocationPostRef.current > 8000) {
+          lastLocationPostRef.current = now
+          fetch(`/api/agent/inspections/${inspectionId}/location`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              ...nextGps,
+              heading: position.coords.heading,
+              speed: position.coords.speed,
+            }),
+          }).catch(() => undefined)
+        }
       },
       () => undefined,
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
@@ -259,7 +275,7 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
       mounted = false
       navigator.geolocation.clearWatch(watchId)
     }
-  }, [target.latitude, target.longitude])
+  }, [inspectionId, target.latitude, target.longitude])
 
   useEffect(() => {
     saveDraft(inspectionId, { arrival, arrivalVerified, arrivalOutsideRadius, photos: photos.map(({ previewUrl, ...photo }) => photo), checklist, notes }).catch(() => undefined)

@@ -98,6 +98,8 @@ export default async function AdminOverviewPage() {
   sevenDaysAgo.setHours(0, 0, 0, 0)
   const staleCutoff = new Date()
   staleCutoff.setDate(staleCutoff.getDate() - 3)
+  const liveTrackingCutoff = new Date()
+  liveTrackingCutoff.setMinutes(liveTrackingCutoff.getMinutes() - 15)
 
   const [
     totalProfiles,
@@ -117,6 +119,7 @@ export default async function AdminOverviewPage() {
     inspectionsQuery,
     maintenanceQuery,
     supportTicketsQuery,
+    liveTrackingCount,
     notificationsQuery,
   ] = await Promise.all([
     countRows('profiles'),
@@ -181,6 +184,7 @@ export default async function AdminOverviewPage() {
       .select('id,subject,priority,status,created_at,updated_at,assigned_employee_id')
       .order('created_at', { ascending: false })
       .limit(100),
+    countRows('agent_locations', (query) => query.gte('captured_at', liveTrackingCutoff.toISOString())),
     supabase
       .from('notifications')
       .select('id,title,message,category,read_at,created_at')
@@ -259,6 +263,21 @@ export default async function AdminOverviewPage() {
           Open approval pipeline
         </Link>
       </div>
+
+      <section className="mt-8 grid gap-4 lg:grid-cols-4">
+        {[
+          ['Live tracking', liveTrackingCount, 'Agent GPS updates in last 15 min', '/admin/dashboard/tracking'],
+          ['Support desk', openSupportCount, 'Open support tickets', '/admin/dashboard/support'],
+          ['Approval queue', totalPending, 'Records awaiting admin decision', '/admin/dashboard/verification'],
+          ['Unassigned work', unassignedWork, 'Operations not yet owned', '/admin/dashboard/employees'],
+        ].map(([label, value, description, href]) => (
+          <Link key={label} href={String(href)} className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition hover:border-[#C0392B]">
+            <p className="font-mono text-xs uppercase tracking-[0.16em] text-[#6B7280]">{label}</p>
+            <p className="mt-3 font-mono text-3xl font-bold text-[#C0392B]">{value}</p>
+            <p className="mt-2 text-xs text-[#9CA3AF]">{description}</p>
+          </Link>
+        ))}
+      </section>
 
       <section className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[

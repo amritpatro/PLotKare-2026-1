@@ -88,6 +88,7 @@ export function LivePlotMap({ target, current, distanceMeters, arrivalStatus, ac
     agent?: Leaflet.Marker
     radius?: Leaflet.Circle
     line?: Leaflet.Polyline
+    route?: Leaflet.Polyline
   }>({})
   const [ready, setReady] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -168,11 +169,40 @@ export function LivePlotMap({ target, current, distanceMeters, arrivalStatus, ac
     } else {
       layersRef.current.agent?.remove()
       layersRef.current.line?.remove()
+      layersRef.current.route?.remove()
       layersRef.current.agent = undefined
       layersRef.current.line = undefined
+      layersRef.current.route = undefined
       mapRef.current.setView(targetPoint, 17)
     }
     requestAnimationFrame(() => mapRef.current?.invalidateSize())
+  }, [ready, targetPoint, currentPoint])
+
+  useEffect(() => {
+    if (!ready || !mapRef.current || !leafletRef.current || !targetPoint || !currentPoint) return
+    let cancelled = false
+    const L = leafletRef.current
+    const url = `https://router.project-osrm.org/route/v1/driving/${currentPoint[1]},${currentPoint[0]};${targetPoint[1]},${targetPoint[0]}?overview=full&geometries=geojson`
+    fetch(url)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (cancelled || !payload?.routes?.[0]?.geometry?.coordinates) return
+        const latLngs = payload.routes[0].geometry.coordinates.map(([lng, lat]: [number, number]) => [lat, lng] as [number, number])
+        if (layersRef.current.route) {
+          layersRef.current.route.setLatLngs(latLngs)
+        } else {
+          layersRef.current.route = L.polyline(latLngs, {
+            color: '#0F766E',
+            weight: 4,
+            opacity: 0.85,
+          }).addTo(mapRef.current!)
+        }
+      })
+      .catch(() => undefined)
+
+    return () => {
+      cancelled = true
+    }
   }, [ready, targetPoint, currentPoint])
 
   if (!targetPoint) {

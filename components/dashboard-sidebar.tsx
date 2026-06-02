@@ -14,7 +14,7 @@ import {
   LogOut,
   Building2,
 } from 'lucide-react'
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
+import { signOutToLanding } from '@/lib/auth/client-logout'
 
 const navItems = [
   { href: '/owner', label: 'Overview', icon: BarChart3 },
@@ -31,10 +31,7 @@ export function DashboardSidebar() {
   const router = useRouter()
 
   const handleLogout = async () => {
-    const supabase = createSupabaseBrowserClient()
-    await supabase.auth.signOut()
-    router.replace('/')
-    router.refresh()
+    await signOutToLanding(router)
   }
 
   return (

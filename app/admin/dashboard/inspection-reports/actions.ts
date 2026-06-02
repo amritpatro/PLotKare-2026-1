@@ -13,8 +13,104 @@ const assignmentSchema = z.object({
   scheduledFor: z.string().trim().optional().or(z.literal('')),
 })
 
+const coordinateNumber = (min: number, max: number) =>
+  z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.coerce.number().min(min).max(max))
+
+const coordinateSchema = z.object({
+  reportId: z.string().uuid(),
+  latitude: coordinateNumber(-90, 90),
+  longitude: coordinateNumber(-180, 180),
+})
+
 function inspectionRedirect(kind: 'success' | 'error', code: string): never {
   redirect(`/admin/dashboard/inspection-reports?${kind}=${code}`)
+}
+
+export async function updateInspectionReportCoordinates(formData: FormData) {
+  const parsed = coordinateSchema.safeParse(Object.fromEntries(formData))
+  if (!parsed.success) inspectionRedirect('error', 'invalid_coordinates')
+
+  const { user } = await requirePageRole(['admin'])
+  const supabase = createSupabaseAdminClient()
+
+  const { data: report, error: reportError } = await supabase
+    .from('inspection_reports')
+    .select('id,plot_id')
+    .eq('id', parsed.data.reportId)
+    .maybeSingle()
+
+  if (reportError || !report?.plot_id) {
+    console.error('Inspection report coordinate lookup failed:', reportError)
+    inspectionRedirect('error', 'coordinates_save_failed')
+  }
+
+  const { data: plot, error: plotError } = await supabase
+    .from('plots')
+    .select('id,property_id')
+    .eq('id', report.plot_id)
+    .maybeSingle()
+
+  if (plotError || !plot) {
+    console.error('Plot coordinate lookup failed:', plotError)
+    inspectionRedirect('error', 'coordinates_save_failed')
+  }
+
+  const now = new Date().toISOString()
+  const { error: plotUpdateError } = await supabase
+    .from('plots')
+    .update({
+      target_latitude: parsed.data.latitude,
+      target_longitude: parsed.data.longitude,
+      coordinates_confirmed_at: now,
+      coordinates_confirmed_by: user.id,
+    })
+    .eq('id', plot.id)
+
+  if (plotUpdateError) {
+    console.error('Plot coordinate update failed:', plotUpdateError)
+    inspectionRedirect('error', 'coordinates_save_failed')
+  }
+
+  if (plot.property_id) {
+    const { error: propertyUpdateError } = await supabase
+      .from('properties')
+      .update({
+        latitude: parsed.data.latitude,
+        longitude: parsed.data.longitude,
+      })
+      .eq('id', plot.property_id)
+
+    if (propertyUpdateError) {
+      console.error('Property coordinate update failed:', propertyUpdateError)
+      inspectionRedirect('error', 'coordinates_save_failed')
+    }
+  }
+
+  await supabase
+    .from('inspections')
+    .update({
+      target_latitude: parsed.data.latitude,
+      target_longitude: parsed.data.longitude,
+    })
+    .eq('plot_id', plot.id)
+    .in('status', ['requested', 'scheduled', 'in_progress', 'needs_followup'])
+
+  await recordAuditLog({
+    actorId: user.id,
+    action: 'admin.inspection.coordinates_updated',
+    entityType: 'inspection_report',
+    entityId: report.id,
+    metadata: {
+      plot_id: plot.id,
+      property_id: plot.property_id,
+      latitude: parsed.data.latitude,
+      longitude: parsed.data.longitude,
+    },
+  })
+
+  revalidatePath('/admin/dashboard/inspection-reports')
+  revalidatePath('/agent')
+  inspectionRedirect('success', 'coordinates_saved')
 }
 
 export async function assignInspectionReport(formData: FormData) {

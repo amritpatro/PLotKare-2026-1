@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { ClipboardCheck, History, LogOut, Settings, UserCircle } from 'lucide-react'
+import { Bell, ClipboardCheck, Headphones, History, Settings, UserCircle } from 'lucide-react'
+import { LogoutButton } from '@/components/auth/logout-button'
 import { AgentPwaControls } from './agent-pwa'
 import { AgentSyncBanner } from './agent-sync-banner'
 
@@ -22,7 +23,10 @@ export function AgentShell({ title, subtitle, children }: AgentShellProps) {
               <span className="block text-sm font-semibold">Field Agent</span>
             </span>
           </Link>
-          <AgentPwaControls />
+          <div className="flex items-center gap-2">
+            <AgentPwaControls />
+            <LogoutButton iconOnly className="inline-grid min-h-11 min-w-11 place-items-center rounded-full border border-[#E5E7EB] bg-white text-[#C0392B] disabled:opacity-60" />
+          </div>
         </div>
       </header>
       <AgentSyncBanner />
@@ -36,10 +40,18 @@ export function AgentShell({ title, subtitle, children }: AgentShellProps) {
       </section>
 
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-[#E5E7EB] bg-white/95 px-4 py-2 backdrop-blur">
-        <div className="mx-auto grid max-w-3xl grid-cols-5 gap-1 text-xs font-semibold text-[#6B7280]">
+        <div className="mx-auto grid max-w-3xl grid-cols-6 gap-1 text-xs font-semibold text-[#6B7280]">
           <Link className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg hover:bg-[#F9FAFB]" href="/agent">
             <ClipboardCheck className="h-5 w-5" />
             Today
+          </Link>
+          <Link className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg hover:bg-[#F9FAFB]" href="/agent/notifications">
+            <Bell className="h-5 w-5" />
+            Alerts
+          </Link>
+          <Link className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg hover:bg-[#F9FAFB]" href="/agent/support">
+            <Headphones className="h-5 w-5" />
+            Support
           </Link>
           <Link className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg hover:bg-[#F9FAFB]" href="/agent/reports">
             <History className="h-5 w-5" />
@@ -52,10 +64,6 @@ export function AgentShell({ title, subtitle, children }: AgentShellProps) {
           <Link className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg hover:bg-[#F9FAFB]" href="/agent/settings">
             <Settings className="h-5 w-5" />
             Settings
-          </Link>
-          <Link className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg text-[#C0392B] hover:bg-red-50" href="/auth/login">
-            <LogOut className="h-5 w-5" />
-            Exit
           </Link>
         </div>
       </nav>

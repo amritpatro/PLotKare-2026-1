@@ -1,5 +1,16 @@
-const CACHE_NAME = 'plotkare-agent-shell-v1'
-const SHELL_URLS = ['/agent', '/agent/reports', '/agent/profile', '/icon.svg', '/icon-light-32x32.png']
+const CACHE_NAME = 'plotkare-agent-shell-v2'
+const SHELL_URLS = [
+  '/agent',
+  '/agent/reports',
+  '/agent/profile',
+  '/agent/settings',
+  '/agent/support',
+  '/agent/notifications',
+  '/manifest.webmanifest',
+  '/manifest.json',
+  '/icon.svg',
+  '/icon-light-32x32.png',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

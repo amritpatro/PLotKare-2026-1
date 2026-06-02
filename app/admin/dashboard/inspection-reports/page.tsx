@@ -2,7 +2,8 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import escapeSearchTerm from '@/lib/search'
 import StatusBadge from '@/components/ui/status-badge'
-import { assignInspectionReport } from './actions'
+import { CoordinatePicker } from '@/components/maps/coordinate-picker'
+import { assignInspectionReport, updateInspectionReportCoordinates } from './actions'
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass = 'rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
@@ -28,6 +29,8 @@ type PlotRow = {
   property_id: string | null
   plot_number: string
   location: string
+  target_latitude: number | null
+  target_longitude: number | null
 }
 
 type PropertyRow = {
@@ -118,7 +121,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
       ? supabase.from('profiles').select('id,full_name,email').in('id', ownerIds)
       : Promise.resolve({ data: [] }),
     plotIds.length
-      ? supabase.from('plots').select('id,property_id,plot_number,location').in('id', plotIds)
+      ? supabase.from('plots').select('id,property_id,plot_number,location,target_latitude,target_longitude').in('id', plotIds)
       : Promise.resolve({ data: [] }),
     supabase
       .from('employees')
@@ -153,13 +156,20 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
     }
   }
 
-  const successMessage = success === 'inspection_assigned' ? 'Inspection assigned. It will appear in the field agent portal.' : null
+  const successMessage =
+    success === 'inspection_assigned'
+      ? 'Inspection assigned. It will appear in the field agent portal.'
+      : success === 'coordinates_saved'
+        ? 'Coordinates saved and synced to active field assignments.'
+        : null
   const errorMessages: Record<string, string> = {
     invalid_assignment: 'Choose a valid field agent and inspection report.',
     invalid_field_agent: 'Choose an active field inspection agent.',
+    invalid_coordinates: 'Choose a valid map coordinate before saving.',
     plot_required: 'This report is not linked to a plot, so it cannot become a field assignment yet.',
     property_required: 'The linked plot does not have a property record. Register/verify the plot first.',
     coordinates_required: 'Add confirmed latitude and longitude to the linked property before assigning a field inspection.',
+    coordinates_save_failed: 'Coordinate update failed. Please try again.',
     assignment_failed: 'Inspection assignment failed. Please try again.',
   }
   const errorMessage = error ? errorMessages[error] ?? 'Inspection assignment failed.' : null
@@ -240,9 +250,11 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
               const owner = profileById.get(row.owner_id)
               const assignedInspection = row.plot_id ? inspectionByPlotId.get(row.plot_id) : null
               const assignedAgent = assignedInspection?.assigned_employee_id ? agentById.get(assignedInspection.assigned_employee_id) : null
+              const targetLatitude = plot?.target_latitude ?? property?.latitude ?? null
+              const targetLongitude = plot?.target_longitude ?? property?.longitude ?? null
               const coordinateLabel =
-                property?.latitude != null && property?.longitude != null
-                  ? `${Number(property.latitude).toFixed(5)}, ${Number(property.longitude).toFixed(5)}`
+                targetLatitude != null && targetLongitude != null
+                  ? `${Number(targetLatitude).toFixed(5)}, ${Number(targetLongitude).toFixed(5)}`
                   : 'Coordinates pending'
               const assignedAtLabel = assignedInspection?.scheduled_for
                 ? new Date(assignedInspection.scheduled_for).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
@@ -295,6 +307,23 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                       <input name="scheduledFor" type="datetime-local" defaultValue={assignedInspection?.scheduled_for ? new Date(assignedInspection.scheduled_for).toISOString().slice(0, 16) : ''} className={inputClass} />
                       <button type="submit" className="rounded-lg bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white disabled:bg-[#9CA3AF]" disabled={!row.plot_id || agents.length === 0}>
                         Assign to field portal
+                      </button>
+                    </form>
+                    <form action={updateInspectionReportCoordinates} className="mt-3 min-w-72 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3">
+                      <input type="hidden" name="reportId" value={row.id} />
+                      <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[#C9A962]">Correct GPS pin</p>
+                      <CoordinatePicker
+                        initialLatitude={targetLatitude}
+                        initialLongitude={targetLongitude}
+                        defaultQuery={[plot?.location, property?.city, property?.state].filter(Boolean).join(', ')}
+                        compact
+                      />
+                      <button
+                        type="submit"
+                        className="mt-2 inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-[#C0392B] bg-white px-3 text-xs font-semibold text-[#C0392B] disabled:border-[#D1D5DB] disabled:text-[#9CA3AF]"
+                        disabled={!row.plot_id}
+                      >
+                        Save corrected pin
                       </button>
                     </form>
                   </td>

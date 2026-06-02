@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { signOutToLanding } from '@/lib/auth/client-logout'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 import type { EmployeeRole, UserRole } from '@/lib/supabase/types'
 
@@ -220,9 +221,7 @@ export function SettingsWorkspace({ initialData, mode }: SettingsWorkspaceProps)
   const pendingConsultation = initialData.consultation?.status === 'pending'
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.replace('/')
-    router.refresh()
+    await signOutToLanding(router)
   }
 
   const saveCommon = () => {

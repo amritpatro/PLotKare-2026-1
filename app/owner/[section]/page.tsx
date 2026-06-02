@@ -5,6 +5,8 @@ import { AmenityWorkflowTable } from '@/components/amenities/amenity-workflow-ta
 import { PropertyDocumentRecordTable } from '@/components/documents/property-document-record-table'
 import { PropertyDocumentUploadPanel } from '@/components/documents/property-document-upload-panel'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
+import { OwnerCoordinatePanel } from '@/components/owner/owner-coordinate-panel'
+import { OwnerPlotArchiveList } from '@/components/owner/owner-plot-archive-list'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
 import { SupportTicketThreadList } from '@/components/support/support-ticket-thread-list'
 import { readAmenityWorkflowRows } from '@/lib/amenity-operations'
@@ -28,6 +30,7 @@ const actionMessages = {
     service_requested: 'Service request sent to PlotKare operations.',
     support_ticket_created: 'Support ticket opened for operations follow-up.',
     amenity_requested: 'Amenity consultation request submitted.',
+    coordinates_saved: 'Plot coordinates saved for field inspection routing.',
   },
   error: {
     invalid_property_form: 'Complete the required property details and try again.',
@@ -38,6 +41,8 @@ const actionMessages = {
     service_request_failed: 'The service request could not be created.',
     support_ticket_failed: 'The support ticket could not be created.',
     amenity_request_failed: 'The amenity request could not be created.',
+    invalid_coordinates: 'Select a valid plot and confirmed map coordinates.',
+    coordinates_save_failed: 'The coordinates could not be saved. Please retry.',
   },
 } as const
 
@@ -90,9 +95,10 @@ export default async function OwnerSectionPage({ params, searchParams }: PagePro
     : { data: [] }
   const { data: ownerPlots } = await supabase
     .from('plots')
-    .select('id,property_id,plot_number,location')
+    .select('id,property_id,plot_number,location,sq_yards,facing,status,lifecycle_status,verification_status,target_latitude,target_longitude,created_at')
     .eq('owner_id', user.id)
     .order('created_at', { ascending: false })
+  const plotRows = ownerPlots ?? []
   const activeAmenities = (ownerPlots ?? []).length
     ? await readAmenityWorkflowRows(supabase, { plotIds: (ownerPlots ?? []).map((plot: any) => plot.id) })
     : []
@@ -125,7 +131,7 @@ export default async function OwnerSectionPage({ params, searchParams }: PagePro
     )
   } else {
     const rows = section === 'documents' ? documents ?? [] : section === 'services' ? [...(services ?? []), ...(inspections ?? [])] : propertyRows
-    content = <div className="space-y-6"><Title title={section === 'verification' ? 'Verification status' : section} body="Focused owner records with status, dates, and next operational state." />{section === 'documents' ? <><div className={`${cardClass} grid gap-4`}><p className="text-sm leading-6 text-[#6B7280]">Required owner documents: Aadhaar, PAN, EC, survey documents, tax receipts, and real property photos. Uploads are sent to admin/employee review.</p><PropertyDocumentUploadPanel role="owner" properties={propertyRows.map((property: any) => ({ id: property.id, label: property.title || property.city || property.id }))} documents={documents ?? []} /></div><PropertyDocumentRecordTable rows={(documents ?? []).map((row: any) => ({ ...row, linked_label: propertyRows.find((property: any) => property.id === row.property_id)?.title || row.property_id || 'Owner property' }))} empty="No documents uploaded yet." /></> : <RecordTable rows={rows} />}</div>
+    content = <div className="space-y-6"><Title title={section === 'verification' ? 'Verification status' : section} body="Focused owner records with status, dates, and next operational state." />{section === 'documents' ? <><div className={`${cardClass} grid gap-4`}><p className="text-sm leading-6 text-[#6B7280]">Required owner documents: Aadhaar, PAN, EC, survey documents, tax receipts, and real property photos. Uploads are sent to admin/employee review.</p><PropertyDocumentUploadPanel role="owner" properties={propertyRows.map((property: any) => ({ id: property.id, label: property.title || property.city || property.id }))} documents={documents ?? []} /></div><PropertyDocumentRecordTable rows={(documents ?? []).map((row: any) => ({ ...row, linked_label: propertyRows.find((property: any) => property.id === row.property_id)?.title || row.property_id || 'Owner property' }))} empty="No documents uploaded yet." /></> : <>{section === 'properties' || section === 'verification' ? <><OwnerPlotArchiveList plots={plotRows} /><OwnerCoordinatePanel plots={plotRows} /></> : null}<RecordTable rows={rows} /></>}</div>
   }
 
   return <RoleDashboardShell role="owner" title="Property care workspace" subtitle="Register properties, track verification, and manage service activity tied to your account." userLabel={profile.full_name || profile.email} avatarUrl={profile.avatar_path} userId={user.id}>{successMessage ? <div role="status" className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{successMessage}</div> : null}{errorMessage ? <div role="alert" className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorMessage}</div> : null}{content}</RoleDashboardShell>

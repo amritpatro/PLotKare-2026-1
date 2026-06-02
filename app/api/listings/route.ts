@@ -4,6 +4,42 @@ import { requireAdminContext } from '@/lib/api/auth'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 import { recordAuditLog } from '@/lib/audit'
 
+type ListingVisibilityRow = {
+  id: string
+  property_id: string | null
+  plot_id: string | null
+}
+
+function archivedState(value: string | null | undefined) {
+  return ['archived', 'sold', 'reserved'].includes(String(value ?? '').toLowerCase())
+}
+
+async function filterVisibleListings<T extends ListingVisibilityRow>(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  rows: T[],
+) {
+  const propertyIds = Array.from(new Set(rows.map((row) => row.property_id).filter(Boolean))) as string[]
+  const plotIds = Array.from(new Set(rows.map((row) => row.plot_id).filter(Boolean))) as string[]
+
+  const [{ data: properties }, { data: plots }] = await Promise.all([
+    propertyIds.length
+      ? supabase.from('properties').select('id,lifecycle_status').in('id', propertyIds)
+      : Promise.resolve({ data: [] }),
+    plotIds.length
+      ? supabase.from('plots').select('id,lifecycle_status,status').in('id', plotIds)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const propertyById = new Map(((properties ?? []) as Array<{ id: string; lifecycle_status: string | null }>).map((row) => [row.id, row]))
+  const plotById = new Map(((plots ?? []) as Array<{ id: string; lifecycle_status: string | null; status: string | null }>).map((row) => [row.id, row]))
+
+  return rows.filter((row) => {
+    const property = row.property_id ? propertyById.get(row.property_id) : null
+    const plot = row.plot_id ? plotById.get(row.plot_id) : null
+    return !archivedState(property?.lifecycle_status) && !archivedState(plot?.lifecycle_status) && !archivedState(plot?.status)
+  })
+}
+
 export async function GET() {
   const supabase = await createSupabaseServerClient()
   const { data, error } = await supabase
@@ -15,7 +51,8 @@ export async function GET() {
     .order('created_at', { ascending: false })
 
   if (error) return apiError(error.message, 400, 'LISTINGS_FETCH_FAILED')
-  const listings = (data ?? []).map(({ price_lakhs, ...listing }) => ({
+  const visibleRows = await filterVisibleListings(supabase, data ?? [])
+  const listings = visibleRows.map(({ price_lakhs, ...listing }) => ({
     ...listing,
     price_display: listing.price_display || 'Consult after verification',
   }))

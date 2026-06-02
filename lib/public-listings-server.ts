@@ -41,6 +41,15 @@ type PropertyRow = {
   title: string | null
   city: string | null
   address: string | null
+  lifecycle_status: string | null
+  verification_status: string | null
+}
+
+type PlotStateRow = {
+  id: string
+  lifecycle_status: string | null
+  status: string | null
+  verification_status: string | null
 }
 
 type DocumentRow = {
@@ -132,19 +141,38 @@ export async function getVerifiedPublicListings(limit?: number): Promise<PublicP
 
   const rows = (data ?? []) as ListingRow[]
   // Filter client-side to avoid passing enum labels that might not exist
-  const filteredRows = rows.filter((r) => ['active', 'featured'].includes((r.status ?? '').toString().toLowerCase()))
-  const sellerIds = Array.from(new Set(filteredRows.map((row) => row.seller_id).filter(Boolean))) as string[]
-  const propertyIds = Array.from(new Set(filteredRows.map((row) => row.property_id).filter(Boolean))) as string[]
-  const plotIds = Array.from(new Set(filteredRows.map((row) => row.plot_id).filter(Boolean))) as string[]
+  const statusFilteredRows = rows.filter((r) => ['active', 'featured'].includes((r.status ?? '').toString().toLowerCase()))
+  const propertyIds = Array.from(new Set(statusFilteredRows.map((row) => row.property_id).filter(Boolean))) as string[]
+  const plotIds = Array.from(new Set(statusFilteredRows.map((row) => row.plot_id).filter(Boolean))) as string[]
 
-  const [{ data: sellers }, { data: properties }] = await Promise.all([
-    sellerIds.length
-      ? admin.from('sellers').select('id,profile_id,company_name').in('id', sellerIds)
-      : Promise.resolve({ data: [] }),
+  const [{ data: properties }, { data: plots }] = await Promise.all([
     propertyIds.length
-      ? admin.from('properties').select('id,title,city,address').in('id', propertyIds)
+      ? admin.from('properties').select('id,title,city,address,lifecycle_status,verification_status').in('id', propertyIds)
+      : Promise.resolve({ data: [] }),
+    plotIds.length
+      ? admin.from('plots').select('id,lifecycle_status,status,verification_status').in('id', plotIds)
       : Promise.resolve({ data: [] }),
   ])
+
+  const propertyById = new Map(((properties ?? []) as PropertyRow[]).map((row) => [row.id, row]))
+  const plotById = new Map(((plots ?? []) as PlotStateRow[]).map((row) => [row.id, row]))
+  const filteredRows = statusFilteredRows.filter((row) => {
+    const property = row.property_id ? propertyById.get(row.property_id) : null
+    const plot = row.plot_id ? plotById.get(row.plot_id) : null
+    const propertyLifecycle = property?.lifecycle_status?.toLowerCase() ?? ''
+    const plotLifecycle = plot?.lifecycle_status?.toLowerCase() ?? ''
+    const plotStatus = plot?.status?.toLowerCase() ?? ''
+
+    if (['archived', 'sold', 'reserved'].includes(propertyLifecycle)) return false
+    if (['archived', 'sold', 'reserved'].includes(plotLifecycle)) return false
+    if (['archived', 'sold', 'reserved'].includes(plotStatus)) return false
+    return true
+  })
+  const sellerIds = Array.from(new Set(filteredRows.map((row) => row.seller_id).filter(Boolean))) as string[]
+
+  const { data: sellers } = sellerIds.length
+    ? await admin.from('sellers').select('id,profile_id,company_name').in('id', sellerIds)
+    : { data: [] }
 
   const sellerRows = (sellers ?? []) as SellerRow[]
   const sellerProfileIds = Array.from(new Set(sellerRows.map((row) => row.profile_id)))
@@ -154,7 +182,6 @@ export async function getVerifiedPublicListings(limit?: number): Promise<PublicP
 
   const sellerById = new Map(sellerRows.map((row) => [row.id, row]))
   const profileById = new Map(((profiles ?? []) as ProfileRow[]).map((row) => [row.id, row]))
-  const propertyById = new Map(((properties ?? []) as PropertyRow[]).map((row) => [row.id, row]))
 
   const documentRows: DocumentRow[] = []
   if (propertyIds.length) {

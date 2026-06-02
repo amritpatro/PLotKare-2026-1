@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { LogOut } from 'lucide-react'
+import { signOutToLanding } from '@/lib/auth/client-logout'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 
 interface DashboardTopBarProps {
@@ -42,10 +43,7 @@ export function DashboardTopBar({ title }: DashboardTopBarProps) {
   }, [])
 
   const handleLogout = async () => {
-    const supabase = createSupabaseBrowserClient()
-    await supabase.auth.signOut()
-    router.replace('/')
-    router.refresh()
+    await signOutToLanding(router)
   }
 
   return (

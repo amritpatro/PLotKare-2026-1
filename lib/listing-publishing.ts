@@ -63,7 +63,7 @@ function isPublishable(property: PropertyRow, plot: PlotRow | null, seller: Sell
   if (seller && seller.verification_status !== 'approved') return 'seller_not_approved'
   if (plot && plot.verification_status !== 'approved') return 'plot_not_approved'
   if (plot && ['sold', 'reserved', 'archived'].includes(plot.lifecycle_status ?? '')) return 'plot_not_available'
-  if (plot && ['sold', 'reserved'].includes(plot.status ?? '')) return 'plot_not_available'
+  if (plot && ['sold', 'reserved', 'archived'].includes(plot.status ?? '')) return 'plot_not_available'
   return null
 }
 
