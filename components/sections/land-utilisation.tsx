@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import { ArrowRight, Fence, Leaf, Scale, Sprout, SunMedium, Warehouse } from 'lucide-react'
 import {
   Dialog,
@@ -86,20 +85,14 @@ export function LandUtilisationSection({
   return (
     <section className="premium-section bg-white py-20 lg:py-28">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.55 }}
-          className="premium-reveal mb-10"
-        >
+        <div className="premium-reveal mb-10">
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
             {heading} <span className="text-primary">{accentedHeading}</span>
           </h2>
           <p className="mt-4 max-w-2xl font-sans text-lg text-muted-foreground">
             {description}
           </p>
-        </motion.div>
+        </div>
 
         <div className="mb-8 flex flex-wrap gap-4">
           {categories.map((category) => (
@@ -112,18 +105,17 @@ export function LandUtilisationSection({
             >
               {category}
               {activeCategory === category && (
-                <motion.div layoutId="activeCategory" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
               )}
             </button>
           ))}
         </div>
 
-        <motion.div layout className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {filteredServices.map((service) => {
             const Icon = service.icon
             return (
-              <motion.button
-                layout
+              <button
                 key={service.title}
                 type="button"
                 onClick={() => setActiveService(service)}
@@ -142,10 +134,10 @@ export function LandUtilisationSection({
                   <span className="font-sans text-sm font-semibold">Open details</span>
                   <ArrowRight className="h-4 w-4" />
                 </div>
-              </motion.button>
+              </button>
             )
           })}
-        </motion.div>
+        </div>
       </div>
 
       <Dialog open={!!activeService} onOpenChange={(open) => !open && setActiveService(null)}>

@@ -4,30 +4,32 @@ import { revalidatePath } from 'next/cache'
 import { requireAdminContext } from '@/lib/api/auth'
 import { recordAuditLog } from '@/lib/audit'
 
-export async function archiveListing(formData: FormData) {
-  const listingId = String(formData.get('listingId') || '').trim()
-  if (!listingId) throw new Error('Missing listing ID.')
+export async function archiveListing(listingId: string) {
+  const id = listingId.trim()
+  if (!id) return { ok: false, message: 'Missing listing ID.' }
 
   const context = await requireAdminContext()
-  if ('response' in context) throw new Error('Admin access required.')
+  if ('response' in context) return { ok: false, message: 'Admin access required.' }
 
   const { error } = await context.supabase
     .from('listings')
     .update({ status: 'archived', is_published: false, archived_at: new Date().toISOString(), archived_by: context.user.id })
-    .eq('id', listingId)
+    .eq('id', id)
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error('Admin listing archive failed:', error)
+    return { ok: false, message: 'Listing could not be archived. Please try again.' }
+  }
 
   await recordAuditLog({
     actorId: context.user.id,
     action: 'admin.listing_archived',
     entityType: 'listing',
-    entityId: listingId,
+    entityId: id,
   })
 
   revalidatePath('/admin/dashboard/listings')
   revalidatePath('/listings')
   revalidatePath('/')
-  // server actions should return void; throwing on error surfaces failures
-  return
+  return { ok: true, message: 'Listing archived and removed from the public marketplace.' }
 }

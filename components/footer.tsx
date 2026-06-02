@@ -84,7 +84,7 @@ export function Footer() {
         <div className="grid gap-12 pb-12 md:grid-cols-2 lg:grid-cols-5">
           {/* Logo & Info Column */}
           <div className="lg:col-span-1">
-            <Link href="/">
+            <Link href="/" prefetch={false}>
               <LogoMark />
             </Link>
             <p className="mt-4 font-sans text-sm leading-relaxed text-white/60">
@@ -131,6 +131,7 @@ export function Footer() {
                 <li key={link.label}>
                   <Link
                     href={link.href}
+                    prefetch={false}
                     className="premium-nav-link font-sans text-sm text-white/60 transition-colors hover:text-white"
                   >
                     {link.label}
@@ -150,6 +151,7 @@ export function Footer() {
                 <li key={link.label}>
                   <Link
                     href={link.href}
+                    prefetch={false}
                     className="premium-nav-link font-sans text-sm text-white/60 transition-colors hover:text-white"
                   >
                     {link.label}
@@ -169,6 +171,7 @@ export function Footer() {
                 <li key={link.label}>
                   <Link
                     href={link.href}
+                    prefetch={false}
                     className="premium-nav-link font-sans text-sm text-white/60 transition-colors hover:text-white"
                   >
                     {link.label}
@@ -188,6 +191,7 @@ export function Footer() {
                 <li key={link.label}>
                   <Link
                     href={link.href}
+                    prefetch={false}
                     className="premium-nav-link font-sans text-sm text-white/60 transition-colors hover:text-white"
                   >
                     {link.label}

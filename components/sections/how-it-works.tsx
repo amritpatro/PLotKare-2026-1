@@ -1,8 +1,3 @@
-'use client'
-
-import { useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-
 const steps = [
   {
     number: '01',
@@ -39,77 +34,29 @@ export function HowItWorksSection({
   heading?: string
   highlightedHeading?: string
 }) {
-  const sectionRef = useRef<HTMLElement>(null)
-  const [highlightedSteps, setHighlightedSteps] = useState<Set<number>>(new Set())
-
-  useEffect(() => {
-    if (!sectionRef.current) return
-
-    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const stepIndex = parseInt(entry.target.getAttribute('data-step-index') || '-1', 10)
-          if (stepIndex >= 0) {
-            setHighlightedSteps((prev) => new Set([...prev, stepIndex]))
-          }
-        }
-      })
-    }
-
-    const observer = new IntersectionObserver(handleIntersection, {
-      threshold: 0.3,
-      rootMargin: '0px',
-    })
-
-    // Observe all step boxes
-    const stepBoxes = sectionRef.current.querySelectorAll('[data-step-index]')
-    stepBoxes.forEach((box) => {
-      observer.observe(box)
-    })
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [])
-
   return (
-    <section id="how-it-works" ref={sectionRef} className="premium-section-dark bg-charcoal py-24 lg:py-32">
+    <section id="how-it-works" className="premium-section-dark bg-charcoal py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="premium-reveal mb-12 text-center"
-        >
+        <div className="premium-reveal mb-12 text-center">
           <h2 className="font-serif text-4xl font-bold text-white md:text-5xl">
             {heading} <span className="text-primary">{highlightedHeading}</span>
           </h2>
-        </motion.div>
+        </div>
 
         {/* Responsive Grid */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
           {steps.map((step, index) => (
-            <motion.div
+            <div
               key={step.number}
-              data-step-index={index}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`premium-surface-dark group relative rounded-lg p-6 transition-all duration-500 ${
-                highlightedSteps.has(index)
-                  ? 'bg-white/10 shadow-[0_0_20px_rgba(139,21,56,0.6)]'
-                  : 'bg-white/5 hover:bg-white/10'
-              }`}
+              className="premium-surface-dark group relative rounded-lg bg-white/5 p-6 transition-all duration-500 hover:bg-white/10"
             >
               {/* Connector Line */}
               {index < steps.length - 1 && (
                 <div className="absolute -right-3 top-1/2 hidden h-px w-6 bg-white/20 lg:block" />
               )}
 
-              <span className={`font-mono text-3xl font-bold transition-all duration-500 ${highlightedSteps.has(index) ? 'drop-shadow-[0_0_8px_rgba(139,21,56,0.8)]' : 'text-primary'}`} style={{color: highlightedSteps.has(index) ? '#8B1538' : undefined}}>
+              <span className="font-mono text-3xl font-bold text-primary transition-all duration-500">
                 {step.number}
               </span>
               <h3 className="mt-4 font-serif text-xl font-semibold text-white">
@@ -118,7 +65,7 @@ export function HowItWorksSection({
               <p className="mt-3 font-sans text-sm leading-relaxed text-white/60">
                 {step.description}
               </p>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

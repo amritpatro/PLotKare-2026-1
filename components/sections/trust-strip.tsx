@@ -1,5 +1,3 @@
-'use client'
-
 /** Service-oriented copy only — no third-party certifications or headcounts we cannot cite. */
 const trustItems = [
   'Scheduled field visits with geotagged photos',

@@ -2,6 +2,7 @@
 // Dynamic Next.js runtime for Supabase Auth, middleware, route handlers, and Hostinger Node hosting.
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { withSentryConfig } from '@sentry/nextjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH?.trim() || ''
@@ -20,7 +21,7 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline' https:",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://checkout.razorpay.com https://app.posthog.com https://*.posthog.com https://router.project-osrm.org https://nominatim.openstreetmap.org",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://checkout.razorpay.com https://app.posthog.com https://*.posthog.com https://*.ingest.sentry.io https://router.project-osrm.org https://nominatim.openstreetmap.org",
   "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
   "object-src 'none'",
   "base-uri 'self'",
@@ -50,7 +51,7 @@ const nextConfig = {
     root: __dirname,
   },
   images: {
-    unoptimized: true,
+    unoptimized: false,
     remotePatterns: [
       {
         protocol: 'https',
@@ -72,4 +73,6 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+export default withSentryConfig(nextConfig, {
+  silent: true,
+})

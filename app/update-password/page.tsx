@@ -1,19 +1,64 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { LogoMark } from '@/components/logo'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 import { resolvePostLoginRedirect } from '@/lib/onboarding/redirect'
-import { updatePasswordSchema } from '@/lib/validation/auth'
+import { getPasswordRequirementChecks, updatePasswordSchema } from '@/lib/validation/auth'
 
 export default function UpdatePasswordPage() {
   const router = useRouter()
-  const supabase = createSupabaseBrowserClient()
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
+  const [sessionReady, setSessionReady] = useState(false)
+  const [linkExpired, setLinkExpired] = useState(false)
   const [loading, setLoading] = useState(false)
+  const passwordChecks = useMemo(() => getPasswordRequirementChecks(password), [password])
+
+  useEffect(() => {
+    let mounted = true
+
+    async function establishRecoverySession() {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+      const search = new URLSearchParams(window.location.search)
+      const accessToken = hash.get('access_token')
+      const refreshToken = hash.get('refresh_token')
+      const code = search.get('code')
+
+      let recoveryError: Error | null = null
+      if (accessToken && refreshToken) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+        recoveryError = sessionError
+      } else if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+        recoveryError = exchangeError
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!mounted) return
+      setLinkExpired(Boolean(recoveryError) || !session)
+      setSessionReady(true)
+
+      if (session && (window.location.hash || window.location.search)) {
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
+
+    void establishRecoverySession()
+    return () => {
+      mounted = false
+    }
+  }, [supabase])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,7 +111,21 @@ export default function UpdatePasswordPage() {
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#0D1A0F] px-6 py-12">
         <div className="w-full max-w-[400px] space-y-8">
           <h1 className="font-serif text-4xl italic text-[#D4AF94]">New Password.</h1>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {!sessionReady ? <p className="font-sans text-sm text-white/70">Checking your reset link...</p> : null}
+          {sessionReady && linkExpired ? (
+            <div className="space-y-4">
+              <p className="font-sans text-sm leading-6 text-red-500">
+                This reset link has expired. Request a new password reset email and try again.
+              </p>
+              <Link
+                href="/forgot-password"
+                className="block w-full rounded-sm bg-[#C0392B] py-3 text-center font-sans text-base font-medium text-white transition-colors hover:bg-[#A93225]"
+              >
+                Request a new reset link
+              </Link>
+            </div>
+          ) : null}
+          {sessionReady && !linkExpired ? <form onSubmit={handleSubmit} className="space-y-6">
             <input
               type="password"
               value={password}
@@ -74,6 +133,13 @@ export default function UpdatePasswordPage() {
               placeholder="New password"
               className="w-full border-b border-white/20 bg-transparent px-0 py-3 font-sans text-white placeholder-white/40 focus:border-b-2 focus:border-[#C0392B] focus:outline-none"
             />
+            <div className="space-y-1.5">
+              {passwordChecks.map((item) => (
+                <p key={item.label} className={`font-sans text-xs ${item.valid ? 'text-emerald-400' : 'text-white/50'}`}>
+                  {item.valid ? '✓' : '○'} {item.label}
+                </p>
+              ))}
+            </div>
             <input
               type="password"
               value={confirmPassword}
@@ -89,7 +155,7 @@ export default function UpdatePasswordPage() {
             >
               {loading ? 'Updating...' : 'Update Password'}
             </button>
-          </form>
+          </form> : null}
         </div>
       </div>
     </div>

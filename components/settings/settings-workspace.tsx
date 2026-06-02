@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { signOutToLanding } from '@/lib/auth/client-logout'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 import type { EmployeeRole, UserRole } from '@/lib/supabase/types'
+import { getPasswordRequirementChecks, updatePasswordSchema } from '@/lib/validation/auth'
 
 type SettingsData = {
   profile: Record<string, unknown> & {
@@ -207,6 +208,7 @@ export function SettingsWorkspace({ initialData, mode }: SettingsWorkspaceProps)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const passwordChecks = useMemo(() => getPasswordRequirementChecks(newPassword), [newPassword])
   const [securitySaving, setSecuritySaving] = useState(false)
 
   const avatarUrl = useMemo(() => {
@@ -332,6 +334,13 @@ export function SettingsWorkspace({ initialData, mode }: SettingsWorkspaceProps)
       toast.error('New passwords do not match.')
       return
     }
+    if (newPassword) {
+      const parsed = updatePasswordSchema.safeParse({ password: newPassword, confirmPassword })
+      if (!parsed.success) {
+        toast.error(parsed.error.issues[0]?.message ?? 'Choose a stronger password.')
+        return
+      }
+    }
 
     setSecuritySaving(true)
     try {
@@ -411,6 +420,16 @@ export function SettingsWorkspace({ initialData, mode }: SettingsWorkspaceProps)
                   </p>
                 </div>
               </div>
+              {newPassword ? (
+                <div className="mt-4 grid gap-2 md:grid-cols-2">
+                  {passwordChecks.map((item) => (
+                    <p key={item.label} className={`flex items-center gap-2 text-xs ${item.valid ? 'text-[#16A34A]' : 'text-[#6B7280]'}`}>
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      {item.label}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}

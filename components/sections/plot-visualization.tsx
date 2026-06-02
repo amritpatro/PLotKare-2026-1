@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import { Compass, Route, Ruler, ShieldCheck, UserRound } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -35,12 +34,7 @@ export function PlotVisualizationSection({
     <section id="plot-layout" className="premium-section bg-secondary py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(520px,1.15fr)] lg:gap-16">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.55 }}
-          >
+          <div>
             <h2 className="font-serif text-4xl font-bold leading-tight text-foreground md:text-5xl">
               {heading}
               <br />
@@ -116,15 +110,9 @@ export function PlotVisualizationSection({
                 ))}
               </div>
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.65 }}
-            className="space-y-6"
-          >
+          <div className="space-y-6">
             <div className="relative">
               <div className="absolute inset-x-8 -bottom-5 h-10 rounded-full bg-black/15 blur-xl" />
               <div className="premium-surface-dark relative h-[560px] overflow-hidden rounded-xl border border-foreground/10 bg-[#151515] p-3 shadow-2xl">
@@ -133,6 +121,7 @@ export function PlotVisualizationSection({
                   alt="Source-mapped Boduvalasa layout preview with real plot geometry and roads"
                   fill
                   sizes="(max-width: 1024px) 100vw, 52vw"
+                  loading="lazy"
                   className="object-cover"
                 />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-6 pb-6 pt-20">
@@ -157,7 +146,7 @@ export function PlotVisualizationSection({
                 </div>
               ))}
             </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

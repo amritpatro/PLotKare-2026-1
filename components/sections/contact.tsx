@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 import Link from 'next/link'
 
@@ -59,13 +58,7 @@ export function ContactSection({
   return (
     <section id="contact" className="premium-section bg-secondary py-16 lg:py-24">
       <div className="mx-auto max-w-[720px] px-6 lg:px-12">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.55 }}
-          className="premium-reveal text-center"
-        >
+        <div className="premium-reveal text-center">
           <h2 className="font-serif text-4xl font-bold leading-tight text-foreground md:text-5xl">
             {heading}
           </h2>
@@ -80,15 +73,9 @@ export function ContactSection({
               {supportingLink.label}
             </Link>
           ) : null}
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.08 }}
-          className="premium-surface mt-10 grid gap-8 rounded-xl border border-border bg-card p-8 md:grid-cols-[1fr_minmax(0,1fr)] md:gap-10 md:p-10"
-        >
+        <div className="premium-surface mt-10 grid gap-8 rounded-xl border border-border bg-card p-8 md:grid-cols-[1fr_minmax(0,1fr)] md:gap-10 md:p-10">
           <div className="space-y-5 text-left">
             <div className="flex items-start gap-3">
               <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
@@ -121,12 +108,14 @@ export function ContactSection({
             <div className="flex flex-wrap gap-3 pt-2">
               <Link
                 href="/listings/"
+                prefetch={false}
                 className="premium-button inline-flex rounded-sm bg-primary px-6 py-3 font-sans text-sm font-medium text-white transition-colors hover:bg-primary/90"
               >
                 Browse Verified Listings
               </Link>
               <Link
                 href="/demo/plot-3d/"
+                prefetch={false}
                 className="premium-button-outline inline-flex rounded-sm border border-foreground px-6 py-3 font-sans text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background"
               >
                 Open 3D demo
@@ -226,7 +215,7 @@ export function ContactSection({
               </form>
             )}
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   )

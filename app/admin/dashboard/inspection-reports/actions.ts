@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { recordAuditLog } from '@/lib/audit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { requirePageRole } from '@/lib/supabase/role-guard'
+import { reverseGeocodeLabel } from '@/lib/maps/reverse-geocode'
 
 const assignmentSchema = z.object({
   reportId: z.string().uuid(),
@@ -56,6 +57,7 @@ export async function updateInspectionReportCoordinates(formData: FormData) {
   }
 
   const now = new Date().toISOString()
+  const targetPlaceLabel = await reverseGeocodeLabel(parsed.data.latitude, parsed.data.longitude)
   const { error: plotUpdateError } = await supabase
     .from('plots')
     .update({
@@ -63,6 +65,7 @@ export async function updateInspectionReportCoordinates(formData: FormData) {
       target_longitude: parsed.data.longitude,
       coordinates_confirmed_at: now,
       coordinates_confirmed_by: user.id,
+      target_place_label: targetPlaceLabel,
     })
     .eq('id', plot.id)
 
@@ -77,6 +80,7 @@ export async function updateInspectionReportCoordinates(formData: FormData) {
       .update({
         latitude: parsed.data.latitude,
         longitude: parsed.data.longitude,
+        target_place_label: targetPlaceLabel,
       })
       .eq('id', plot.property_id)
 
@@ -91,6 +95,7 @@ export async function updateInspectionReportCoordinates(formData: FormData) {
     .update({
       target_latitude: parsed.data.latitude,
       target_longitude: parsed.data.longitude,
+      target_place_label: targetPlaceLabel,
     })
     .eq('plot_id', plot.id)
     .in('status', ['requested', 'scheduled', 'in_progress', 'needs_followup'])
@@ -149,7 +154,7 @@ export async function assignInspectionReport(formData: FormData) {
 
   const { data: plot, error: plotError } = await supabase
     .from('plots')
-    .select('id,property_id,plot_number,location')
+    .select('id,property_id,plot_number,location,target_place_label')
     .eq('id', report.plot_id)
     .maybeSingle()
 
@@ -176,6 +181,7 @@ export async function assignInspectionReport(formData: FormData) {
   }
 
   const scheduledFor = parsed.data.scheduledFor ? new Date(parsed.data.scheduledFor).toISOString() : null
+  const targetPlaceLabel = plot.target_place_label || (await reverseGeocodeLabel(targetLatitude, targetLongitude))
 
   const { data: existingInspection, error: existingError } = await supabase
     .from('inspections')
@@ -200,6 +206,7 @@ export async function assignInspectionReport(formData: FormData) {
     scheduled_for: scheduledFor,
     target_latitude: targetLatitude,
     target_longitude: targetLongitude,
+    target_place_label: targetPlaceLabel,
     proximity_radius_meters: 150,
     workflow_step: 'briefing',
     sync_status: 'server',
@@ -207,7 +214,7 @@ export async function assignInspectionReport(formData: FormData) {
   }
 
   let inspectionId = existingInspection?.id ?? null
-  let previousAssignee = existingInspection?.assigned_employee_id ?? null
+  const previousAssignee = existingInspection?.assigned_employee_id ?? null
 
   if (existingInspection?.id) {
     const { error: updateError } = await supabase

@@ -31,6 +31,7 @@ type PlotRow = {
   location: string
   target_latitude: number | null
   target_longitude: number | null
+  target_place_label: string | null
 }
 
 type PropertyRow = {
@@ -66,6 +67,7 @@ type InspectionRow = {
   completed_at: string | null
   summary: string | null
   photos: unknown
+  target_place_label: string | null
 }
 
 function getParam(params: Record<string, string | string[] | undefined>, key: string) {
@@ -121,7 +123,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
       ? supabase.from('profiles').select('id,full_name,email').in('id', ownerIds)
       : Promise.resolve({ data: [] }),
     plotIds.length
-      ? supabase.from('plots').select('id,property_id,plot_number,location,target_latitude,target_longitude').in('id', plotIds)
+      ? supabase.from('plots').select('id,property_id,plot_number,location,target_latitude,target_longitude,target_place_label').in('id', plotIds)
       : Promise.resolve({ data: [] }),
     supabase
       .from('employees')
@@ -132,7 +134,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
     plotIds.length
       ? supabase
           .from('inspections')
-          .select('id,plot_id,assigned_employee_id,status,scheduled_for,created_at,completed_at,summary,photos')
+          .select('id,plot_id,assigned_employee_id,status,scheduled_for,created_at,completed_at,summary,photos,target_place_label')
           .in('plot_id', plotIds)
           .in('status', ['requested', 'scheduled', 'in_progress', 'needs_followup'])
           .order('created_at', { ascending: false })
@@ -256,6 +258,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                 targetLatitude != null && targetLongitude != null
                   ? `${Number(targetLatitude).toFixed(5)}, ${Number(targetLongitude).toFixed(5)}`
                   : 'Coordinates pending'
+              const targetPlaceLabel = assignedInspection?.target_place_label || plot?.target_place_label || coordinateLabel
               const assignedAtLabel = assignedInspection?.scheduled_for
                 ? new Date(assignedInspection.scheduled_for).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
                 : assignedInspection?.created_at
@@ -268,7 +271,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                   <td className="px-3 py-3">
                     <span className="font-mono text-[#C0392B]">{plot?.plot_number || 'Unlinked'}</span>
                     {plot?.location ? <span className="block text-xs text-[#9CA3AF]">{plot.location}</span> : null}
-                    <span className="mt-1 block text-[10px] uppercase tracking-[0.12em] text-[#C9A962]">{coordinateLabel}</span>
+                    <span className="mt-1 block text-[10px] uppercase tracking-[0.12em] text-[#C9A962]">{targetPlaceLabel}</span>
                   </td>
                   <td className="px-3 py-3">{owner?.full_name || owner?.email || 'Owner pending'}</td>
                   <td className="px-3 py-3 text-[#6B7280]">{row.agent_name || 'Unassigned'}</td>
@@ -283,7 +286,12 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                           {assignedInspection.status.replaceAll('_', ' ')}
                           {assignedInspection.scheduled_for ? ` · ${new Date(assignedInspection.scheduled_for).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` : ''}
                         </p>
-                        <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#C9A962]">{coordinateLabel}</p>
+                        <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#C9A962]">{targetPlaceLabel}</p>
+                        {targetLatitude != null && targetLongitude != null ? (
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${targetLatitude},${targetLongitude}`} target="_blank" rel="noreferrer" className="mt-2 block text-xs font-semibold text-[#C0392B]">
+                            View plot location on Google Maps
+                          </a>
+                        ) : null}
                         <Link href={`/admin/dashboard/inspections/${assignedInspection.id}/review`} className="mt-2 inline-flex rounded-md border border-[#C0392B] px-2.5 py-1 text-xs font-semibold text-[#C0392B]">
                           Review evidence
                         </Link>

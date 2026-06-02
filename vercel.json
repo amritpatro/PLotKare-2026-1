@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/storage-check",
+      "schedule": "17 2 * * *"
+    }
+  ]
+}

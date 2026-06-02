@@ -17,7 +17,7 @@ import {
   resolvePostLoginRedirect,
 } from '@/lib/onboarding/redirect'
 import { slugFromCustomerType, type CustomerType } from '@/lib/onboarding/types'
-import { signupSchema } from '@/lib/validation/auth'
+import { getPasswordRequirementChecks, signupSchema } from '@/lib/validation/auth'
 
 type SignupFormData = {
   customerType: CustomerType | ''
@@ -63,15 +63,6 @@ function normalizeFieldValue(name: string, value: string) {
   return value
 }
 
-function passwordChecks(password: string) {
-  return [
-    { label: '10 or more characters', valid: password.length >= 10 },
-    { label: 'Uppercase and lowercase letters', valid: /[A-Z]/.test(password) && /[a-z]/.test(password) },
-    { label: 'At least one number', valid: /[0-9]/.test(password) },
-    { label: 'At least one special character', valid: /[^A-Za-z0-9]/.test(password) },
-  ]
-}
-
 export default function SignupPage() {
   const router = useRouter()
   const supabase = createSupabaseBrowserClient()
@@ -86,7 +77,7 @@ export default function SignupPage() {
   const [error, setError] = useState('')
   const [emailDeliveryFailed, setEmailDeliveryFailed] = useState(false)
 
-  const checks = useMemo(() => passwordChecks(formData.password), [formData.password])
+  const checks = useMemo(() => getPasswordRequirementChecks(formData.password), [formData.password])
   const strength = checks.filter((item) => item.valid).length
 
   useEffect(() => {

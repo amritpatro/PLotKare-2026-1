@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { distanceMeters, inspectionJsonArray } from '@/lib/agent/server'
 import { recordAuditLog } from '@/lib/audit'
 import { getArrivalStatus } from '@/lib/utils/haversine'
+import { reverseGeocodeLabel } from '@/lib/maps/reverse-geocode'
 
 const bodySchema = z.object({
   latitude: z.coerce.number().min(-90).max(90),
@@ -81,6 +82,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }, { status: 409 })
   }
 
+  const placeLabel = await reverseGeocodeLabel(parsed.data.latitude, parsed.data.longitude)
   const event = {
     type: 'arrival',
     latitude: parsed.data.latitude,
@@ -93,6 +95,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     target_latitude: targetLatitude,
     target_longitude: targetLongitude,
     submitted_by: context.user.id,
+    place_label: placeLabel,
   }
 
   const { error: updateError } = await admin
@@ -107,6 +110,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       arrival_distance_meters: distance,
       arrival_captured_at: parsed.data.capturedAt,
       arrival_verified: verified,
+      arrival_outside_radius: outsideRadius,
+      arrival_place_label: placeLabel,
       target_latitude: targetLatitude,
       target_longitude: targetLongitude,
       photos: [...inspectionJsonArray(inspection.photos), event],
@@ -117,6 +122,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (updateError) {
     return NextResponse.json({ ok: false, error: { code: 'ARRIVAL_SAVE_FAILED', message: updateError.message } }, { status: 400 })
   }
+
+  await admin.from('agent_locations').insert({
+    inspection_id: inspection.id,
+    agent_id: employee.id,
+    profile_id: context.user.id,
+    latitude: parsed.data.latitude,
+    longitude: parsed.data.longitude,
+    accuracy_meters: parsed.data.accuracy,
+    source: 'gps',
+    captured_at: parsed.data.capturedAt,
+    place_label: placeLabel,
+  })
 
   await recordAuditLog({
     actorId: context.user.id,

@@ -10,7 +10,7 @@ export function FaqSection({
   items: FaqItem[]
 }) {
   return (
-    <section className="premium-section bg-white py-24 lg:py-32">
+    <section className="premium-section [content-visibility:auto] bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1100px] px-6 lg:px-12">
         <div className="premium-reveal mb-12 text-center">
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">{heading}</h2>

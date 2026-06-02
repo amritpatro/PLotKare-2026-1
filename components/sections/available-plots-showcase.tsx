@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   Dialog,
   DialogContent,
@@ -17,7 +16,6 @@ import {
   type PublicPlotListing,
 } from '@/lib/public-listings'
 import { withBasePath } from '@/lib/site-config'
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 
 const CRIMSON = '#C0392B'
 const GOLD = '#F59E0B'
@@ -149,9 +147,7 @@ function PlotCard({
 }) {
   const gallery = (plot.imageUrls?.length ? plot.imageUrls : [plot.imageUrl]).slice(0, 4)
   return (
-    <motion.article
-      whileHover={{ scale: 1.03 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+    <article
       className="premium-interactive group relative h-[420px] overflow-hidden rounded-2xl border border-white/10 shadow-xl"
     >
       {gallery.length > 1 ? (
@@ -164,7 +160,7 @@ function PlotCard({
                 fill
                 className="object-cover transition-[filter,transform] duration-300 group-hover:brightness-[1.08]"
                 sizes="(max-width:768px) 50vw, 20vw"
-                priority={index === 0}
+                loading="lazy"
               />
             </div>
           ))}
@@ -176,7 +172,7 @@ function PlotCard({
           fill
           className="object-cover transition-[filter,transform] duration-300 group-hover:brightness-[1.08]"
           sizes="(max-width:768px) 100vw, 33vw"
-          priority
+          loading="lazy"
         />
       )}
       <div
@@ -248,7 +244,7 @@ function PlotCard({
           </button>
         </div>
       </div>
-    </motion.article>
+    </article>
   )
 }
 
@@ -270,69 +266,85 @@ export function AvailablePlotsShowcaseSection({
   const [inquiryPlot, setInquiryPlot] = useState<PublicPlotListing | null>(null)
   const [inquirySuccess, setInquirySuccess] = useState(false)
   const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sectionRef = useRef<HTMLElement | null>(null)
+  const [realtimeEnabled, setRealtimeEnabled] = useState(false)
 
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient()
-    const refreshListings = () => {
-      if (refreshTimeout.current) return
-      refreshTimeout.current = setTimeout(async () => {
-        refreshTimeout.current = null
-        try {
-          const response = await fetch('/api/public-listings', { cache: 'no-store' })
-          if (!response.ok) return
-          const result = (await response.json()) as { listings?: PublicPlotListing[] }
-          if (result.listings) setListings(result.listings)
-        } catch {
-          // No-op: keep last known listings.
-        }
-      }, 250)
-    }
+    if (!sectionRef.current || realtimeEnabled) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        setRealtimeEnabled(true)
+        observer.disconnect()
+      },
+      { rootMargin: '320px 0px' },
+    )
+    observer.observe(sectionRef.current)
+    return () => observer.disconnect()
+  }, [realtimeEnabled])
 
-    const channel = supabase
-      .channel('public-listings')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'listings' },
-        refreshListings,
-      )
-      .subscribe()
+  useEffect(() => {
+    if (!realtimeEnabled) return
+    let disposed = false
+    let cleanup: (() => void) | undefined
+
+    void import('@/lib/supabase/browser').then(({ createSupabaseBrowserClient }) => {
+      if (disposed) return
+      const supabase = createSupabaseBrowserClient()
+      const refreshListings = () => {
+        if (refreshTimeout.current) return
+        refreshTimeout.current = setTimeout(async () => {
+          refreshTimeout.current = null
+          try {
+            const response = await fetch('/api/public-listings', { cache: 'no-store' })
+            if (!response.ok) return
+            const result = (await response.json()) as { listings?: PublicPlotListing[] }
+            if (result.listings) setListings(result.listings)
+          } catch {
+            // No-op: keep last known listings.
+          }
+        }, 250)
+      }
+
+      const channel = supabase
+        .channel('public-listings')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'listings' },
+          refreshListings,
+        )
+        .subscribe()
+
+      cleanup = () => {
+        if (refreshTimeout.current) clearTimeout(refreshTimeout.current)
+        void supabase.removeChannel(channel)
+      }
+    })
 
     return () => {
-      if (refreshTimeout.current) clearTimeout(refreshTimeout.current)
-      supabase.removeChannel(channel)
+      disposed = true
+      cleanup?.()
     }
-  }, [])
+  }, [realtimeEnabled])
 
   const showcase = getLandingShowcaseListings(listings)
 
   return (
-    <section className="premium-section-dark bg-charcoal py-24 lg:py-32">
+    <section ref={sectionRef} className="premium-section-dark bg-charcoal py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.55 }}
-          className="premium-reveal mb-12 text-center"
-        >
+        <div className="premium-reveal mb-12 text-center">
           <h2 className="font-serif text-4xl font-bold text-white md:text-5xl">
             {heading}
           </h2>
           <p className="mt-4 font-sans text-lg text-white/55">
             {description}
           </p>
-        </motion.div>
+        </div>
 
         {showcase.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-3 md:gap-8">
             {showcase.map((plot) => (
-            <motion.div
-              key={plot.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-            >
+            <div key={plot.id}>
               <PlotCard
                 plot={plot}
                 onViewDetails={() => setDetailPlot(plot)}
@@ -341,7 +353,7 @@ export function AvailablePlotsShowcaseSection({
                   setInquiryPlot(plot)
                 }}
               />
-            </motion.div>
+            </div>
             ))}
           </div>
         ) : (
@@ -353,6 +365,7 @@ export function AvailablePlotsShowcaseSection({
             </p>
             <Link
               href="/#contact"
+              prefetch={false}
               className="premium-button mt-6 inline-flex rounded-xl px-8 py-3 font-sans text-sm font-semibold text-white"
               style={{ backgroundColor: CRIMSON }}
             >
@@ -361,13 +374,7 @@ export function AvailablePlotsShowcaseSection({
           </div>
         )}
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.55, delay: 0.1 }}
-          className="premium-surface-dark relative mt-14 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] px-6 py-10 text-center backdrop-blur-xl md:px-12"
-        >
+        <div className="premium-surface-dark relative mt-14 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] px-6 py-10 text-center backdrop-blur-xl md:px-12">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
           <p className="relative mx-auto max-w-2xl font-sans text-base text-white/75 md:text-lg">
             Explore the public listings hub for every verified plot and apartment card, then sign in when you are ready to
@@ -376,19 +383,21 @@ export function AvailablePlotsShowcaseSection({
           <div className="relative mt-6 flex flex-wrap justify-center gap-4">
             <Link
               href="/listings/"
+              prefetch={false}
               className="premium-button-outline inline-flex rounded-xl border border-white/30 bg-transparent px-8 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-white/10"
             >
               {browseLabel}
             </Link>
             <Link
               href="/login"
+              prefetch={false}
               className="premium-button inline-flex rounded-xl px-10 py-3.5 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: CRIMSON }}
             >
               {accountLabel}
             </Link>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       <Dialog open={!!detailPlot} onOpenChange={(o) => !o && setDetailPlot(null)}>
@@ -530,16 +539,10 @@ export function AvailablePlotsShowcaseSection({
               {inquirySuccess ? 'Thank you' : 'Contact us'}
             </DialogTitle>
           </DialogHeader>
-          <AnimatePresence mode="wait">
-            {inquirySuccess ? (
-              <motion.p
-                key="ok"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="font-sans text-sm leading-relaxed text-white/80"
-              >
+          {inquirySuccess ? (
+              <p className="font-sans text-sm leading-relaxed text-white/80">
                 Your inquiry has been received. Our advisor will contact you within 24 hours.
-              </motion.p>
+              </p>
             ) : (
               <ListingInquiryForm
                 key="form"
@@ -547,7 +550,6 @@ export function AvailablePlotsShowcaseSection({
                 onSuccess={() => setInquirySuccess(true)}
               />
             )}
-          </AnimatePresence>
         </DialogContent>
       </Dialog>
     </section>

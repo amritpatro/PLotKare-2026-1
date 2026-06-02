@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import { AlertTriangle, Eye, FileWarning, TrendingDown } from 'lucide-react'
 import {
   Dialog,
@@ -59,27 +58,16 @@ export function ProblemSection({
     <section id="about" className="premium-section-dark bg-charcoal py-16 lg:py-20">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,0.86fr)_minmax(520px,1.14fr)] lg:items-center lg:gap-14">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.55 }}
-          >
+          <div>
             <h2 className="font-serif text-4xl font-bold leading-tight text-white md:text-5xl">
               {heading}
             </h2>
             <p className="mt-6 max-w-lg font-sans text-lg leading-relaxed text-white/60">
               {introduction}
             </p>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.55, delay: 0.08 }}
-            className="premium-reveal grid gap-4 sm:grid-cols-2"
-          >
+          <div className="premium-reveal grid gap-4 sm:grid-cols-2">
             {painPoints.map((point) => {
               const Icon = point.icon
               return (
@@ -103,7 +91,7 @@ export function ProblemSection({
                 </button>
               )
             })}
-          </motion.div>
+          </div>
         </div>
       </div>
 

@@ -72,6 +72,10 @@ export async function InspectionReview({ inspectionId, readonly = false, backHre
   const targetLongitude = inspection.target_longitude ?? property?.longitude ?? null
   const arrivalLatitude = inspection.arrival_latitude ?? null
   const arrivalLongitude = inspection.arrival_longitude ?? null
+  const coordinates =
+    arrivalLatitude != null && arrivalLongitude != null
+      ? `${Number(arrivalLatitude).toFixed(5)}, ${Number(arrivalLongitude).toFixed(5)}`
+      : 'Coordinates pending'
 
   return (
     <div className="space-y-6">
@@ -114,6 +118,17 @@ export async function InspectionReview({ inspectionId, readonly = false, backHre
             <div className="absolute bottom-3 left-3 rounded-lg bg-white/90 px-3 py-2 text-xs text-[#4B5563]">
               Plot pin to agent GPS · {inspection.arrival_distance_meters == null ? 'distance pending' : `${Math.round(Number(inspection.arrival_distance_meters))} meters`}
             </div>
+          </div>
+          <div className="mt-4 grid gap-1 text-sm text-[#6B7280]">
+            <p><span className="font-semibold text-[#1F2937]">Arrived at:</span> {formatDate(inspection.arrival_captured_at)}</p>
+            <p><span className="font-semibold text-[#1F2937]">Location:</span> {inspection.arrival_place_label || coordinates}</p>
+            <p><span className="font-semibold text-[#1F2937]">Coordinates:</span> {coordinates}</p>
+            <p><span className="font-semibold text-[#1F2937]">GPS accuracy:</span> {inspection.arrival_accuracy_meters == null ? 'Pending' : `${Math.round(Number(inspection.arrival_accuracy_meters))} meters`}</p>
+            {arrivalLatitude != null && arrivalLongitude != null ? (
+              <a href={`https://www.google.com/maps/search/?api=1&query=${arrivalLatitude},${arrivalLongitude}`} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-sm font-semibold text-[#C0392B]">
+                View arrival location on Google Maps
+              </a>
+            ) : null}
           </div>
         </div>
       </section>

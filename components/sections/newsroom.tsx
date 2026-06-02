@@ -39,7 +39,7 @@ export function NewsroomSection({
   items?: NewsItem[]
 }) {
   return (
-    <section className="premium-section bg-white py-24 lg:py-32">
+    <section className="premium-section [content-visibility:auto] bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <div className="premium-reveal mb-16">
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
@@ -47,7 +47,7 @@ export function NewsroomSection({
           </h2>
           <p className="mt-3 max-w-2xl font-sans text-sm text-muted-foreground">
             Longer reads live on the{' '}
-            <Link href="/blog/" className="font-medium text-primary hover:underline">
+            <Link href="/blog/" prefetch={false} className="font-medium text-primary hover:underline">
               blog index
             </Link>
             .
@@ -62,11 +62,12 @@ export function NewsroomSection({
             >
               <p className="font-mono text-sm text-muted-foreground">{item.date}</p>
               <h3 className="mt-3 font-serif text-xl font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">
-                <Link href={item.href}>{item.headline}</Link>
+                <Link href={item.href} prefetch={false}>{item.headline}</Link>
               </h3>
               <p className="mt-3 font-sans text-sm leading-relaxed text-muted-foreground">{item.excerpt}</p>
               <Link
                 href={item.href}
+                prefetch={false}
                 className="mt-4 inline-flex items-center gap-2 text-primary transition-transform group-hover:translate-x-1"
               >
                 <span className="font-sans text-sm font-medium">{`Read: ${item.headline}`}</span>

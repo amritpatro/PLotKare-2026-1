@@ -1,7 +1,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import escapeSearchTerm from '@/lib/search'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
-import { archiveListing } from './actions'
+import { ArchiveListingButton } from './archive-listing-button'
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass =
@@ -216,16 +216,7 @@ export default async function AdminListingsPage({ searchParams }: AdminListingsP
                   <td className="px-3 py-3">{badge(row.status)}</td>
                   <td className="px-3 py-3 text-[#6B7280]">{new Date(row.created_at).toLocaleDateString('en-IN')}</td>
                   <td className="px-3 py-3">
-                    <form action={archiveListing}>
-                      <input type="hidden" name="listingId" value={row.id} />
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-[#E5E7EB] px-3 py-1 text-xs font-semibold text-[#6B7280] hover:border-[#C0392B] hover:text-[#C0392B]"
-                        disabled={isArchived}
-                      >
-                        {isArchived ? 'Archived' : 'Archive'}
-                      </button>
-                    </form>
+                    <ArchiveListingButton listingId={row.id} archived={isArchived} />
                   </td>
                 </tr>
               )

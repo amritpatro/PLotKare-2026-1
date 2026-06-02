@@ -9,6 +9,10 @@ type InspectionRow = {
   target_latitude: number | null
   target_longitude: number | null
   assigned_employee_id: string | null
+  arrival_latitude: number | null
+  arrival_longitude: number | null
+  arrival_captured_at: string | null
+  arrival_place_label: string | null
   properties?: { title: string | null; city: string | null; latitude: number | null; longitude: number | null } | Array<{ title: string | null; city: string | null; latitude: number | null; longitude: number | null }> | null
   plots?: { plot_number: string | null; location: string | null; target_latitude: number | null; target_longitude: number | null } | Array<{ plot_number: string | null; location: string | null; target_latitude: number | null; target_longitude: number | null }> | null
   employees?: { profiles?: { full_name: string | null; email: string | null } | Array<{ full_name: string | null; email: string | null }> | null } | Array<{ profiles?: { full_name: string | null; email: string | null } | Array<{ full_name: string | null; email: string | null }> | null }> | null
@@ -27,7 +31,7 @@ export default async function AdminTrackingPage() {
   const supabase = await createSupabaseServerClient()
   const { data: inspections } = await supabase
     .from('inspections')
-    .select('id,status,workflow_step,target_latitude,target_longitude,assigned_employee_id,properties(title,city,latitude,longitude),plots(plot_number,location,target_latitude,target_longitude),employees(profiles(full_name,email))')
+    .select('id,status,workflow_step,target_latitude,target_longitude,assigned_employee_id,arrival_latitude,arrival_longitude,arrival_captured_at,arrival_place_label,properties(title,city,latitude,longitude),plots(plot_number,location,target_latitude,target_longitude),employees(profiles(full_name,email))')
     .in('status', ['requested', 'scheduled', 'in_progress', 'needs_followup'])
     .order('created_at', { ascending: false })
     .limit(30)
@@ -54,8 +58,8 @@ export default async function AdminTrackingPage() {
     <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-[#1F2937]">Live Tracking</h1>
-          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">Active field agent GPS from real inspection assignments.</p>
+          <h1 className="font-serif text-2xl font-bold text-[#1F2937]">Field Locations</h1>
+          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">Confirmed arrivals and recent GPS pings from real inspection assignments.</p>
         </div>
         <Link href="/admin/dashboard/inspection-reports" className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[#C0392B] px-4 text-sm font-semibold text-[#C0392B]">
           Assign inspections
@@ -65,7 +69,7 @@ export default async function AdminTrackingPage() {
       <section className="mt-8 grid gap-4 sm:grid-cols-4">
         {[
           ['Active inspections', rows.length],
-          ['Moving agents', latestLocationByInspection.size],
+          ['Recent GPS pings', latestLocationByInspection.size],
           ['In progress', rows.filter((row) => row.status === 'in_progress').length],
           ['GPS pending', rows.length - latestLocationByInspection.size],
         ].map(([label, value]) => (
@@ -103,6 +107,16 @@ export default async function AdminTrackingPage() {
                   <p className="font-semibold text-[#1F2937]">{profile?.full_name || profile?.email || 'Agent pending'}</p>
                   <p>{formatTime(location?.captured_at)}</p>
                 </div>
+              </div>
+              <div className="mb-4 text-sm text-[#6B7280]">
+                <p className="font-semibold text-[#1F2937]">Last confirmed location (from GPS arrival)</p>
+                <p>{inspection.arrival_place_label || (inspection.arrival_latitude != null && inspection.arrival_longitude != null ? `${Number(inspection.arrival_latitude).toFixed(5)}, ${Number(inspection.arrival_longitude).toFixed(5)}` : 'Waiting for confirmed arrival')}</p>
+                <p>{formatTime(inspection.arrival_captured_at)}</p>
+                {inspection.arrival_latitude != null && inspection.arrival_longitude != null ? (
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${inspection.arrival_latitude},${inspection.arrival_longitude}`} target="_blank" rel="noreferrer" className="mt-1 inline-flex font-semibold text-[#C0392B]">
+                    View on map
+                  </a>
+                ) : null}
               </div>
               <LivePlotMap
                 target={{ latitude: targetLatitude, longitude: targetLongitude }}

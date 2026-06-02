@@ -518,6 +518,18 @@ export function AgentInspectionFlow({ inspectionId, title, location, plotLabel, 
                   : 'Move near the plot pin, wait for GPS to lock, then confirm arrival.'
               : 'Location not set for this plot. Contact your admin to add the plot location.'}
           </p>
+          {target.latitude != null && target.longitude != null ? (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <a className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#C0392B] bg-white px-3 text-sm font-semibold text-[#C0392B]" href={`https://www.google.com/maps/dir/?api=1&destination=${target.latitude},${target.longitude}`} target="_blank" rel="noreferrer">
+                <Navigation className="h-4 w-4" />
+                Navigate with Google Maps
+              </a>
+              <a className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#C0392B] bg-white px-3 text-sm font-semibold text-[#C0392B]" href={`https://maps.apple.com/?daddr=${target.latitude},${target.longitude}`} target="_blank" rel="noreferrer">
+                <Navigation className="h-4 w-4" />
+                Navigate with Apple Maps
+              </a>
+            </div>
+          ) : null}
         </div>
         {confirmOutsideRadius ? (
           <div className="mt-4 grid gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">

@@ -31,7 +31,7 @@ const items = [
   { href: '/admin/dashboard/support', label: 'Support', icon: Headphones, section: 'Operations' },
   { href: '/admin/dashboard/employees', label: 'Employees', icon: BriefcaseBusiness, section: 'Operations' },
   { href: '/admin/dashboard/inspection-reports', label: 'Inspection Reports', icon: FileText, section: 'Operations' },
-  { href: '/admin/dashboard/tracking', label: 'Live Tracking', icon: Navigation, section: 'Operations' },
+  { href: '/admin/dashboard/tracking', label: 'Field Locations', icon: Navigation, section: 'Operations' },
   { href: '/admin/dashboard/audit', label: 'Audit Logs', icon: ScrollText, section: 'Operations' },
   { href: '/admin/dashboard/amenities', label: 'Amenities', icon: Zap, section: 'Operations' },
   { href: '/admin/dashboard/settings', label: 'Settings', icon: Settings, section: 'System' },

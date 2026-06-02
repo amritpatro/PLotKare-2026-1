@@ -3,12 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { LogoMark } from '@/components/logo'
-import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
-import { buildAuthCallbackUrl, formatAuthError } from '@/lib/supabase/auth-redirect'
 import { resetPasswordSchema } from '@/lib/validation/auth'
 
 export default function ForgotPasswordPage() {
-  const supabase = createSupabaseBrowserClient()
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -26,17 +23,20 @@ export default function ForgotPasswordPage() {
     }
 
     setLoading(true)
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-      redirectTo: buildAuthCallbackUrl('/update-password'),
+    const response = await fetch('/api/auth/password-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: parsed.data.email }),
     })
+    const result = (await response.json().catch(() => null)) as { error?: string; message?: string } | null
     setLoading(false)
 
-    if (resetError) {
-      setError(formatAuthError(resetError))
+    if (!response.ok) {
+      setError(result?.error || 'Unable to send a reset link. Please wait and try again.')
       return
     }
 
-    setMessage('If an account exists for that email, a reset link has been sent.')
+    setMessage(result?.message || 'If an account exists for that email, a reset link has been sent.')
   }
 
   return (
