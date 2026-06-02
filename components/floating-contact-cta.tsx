@@ -1,21 +1,21 @@
 import Link from 'next/link'
 import { MessageCircle } from 'lucide-react'
-
-const MAIL_ENQUIRY = 'mailto:hello@plotkare.in?subject=PlotKare%20enquiry'
+import { publicBusinessConfig } from '@/lib/business-config'
 
 export function FloatingContactCta() {
-  const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL?.trim()
-  const canUseWhatsapp = !!whatsappUrl?.match(/^https:\/\/wa\.me\/\d+$/)
+  const whatsappUrl = publicBusinessConfig.whatsappUrl
 
   return (
     <div className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-3 print:hidden">
-      <Link
-        href={MAIL_ENQUIRY}
-        className="premium-interactive rounded-full border border-border bg-background/95 px-4 py-2 text-xs font-medium text-foreground shadow-lg backdrop-blur-md transition-colors hover:bg-secondary"
-      >
-        Email us
-      </Link>
-      {canUseWhatsapp && whatsappUrl ? (
+      {publicBusinessConfig.generalEmail ? (
+        <Link
+          href={`mailto:${publicBusinessConfig.generalEmail}?subject=PlotKare%20enquiry`}
+          className="premium-interactive rounded-full border border-border bg-background/95 px-4 py-2 text-xs font-medium text-foreground shadow-lg backdrop-blur-md transition-colors hover:bg-secondary"
+        >
+          Email us
+        </Link>
+      ) : null}
+      {whatsappUrl ? (
         <Link
           href={whatsappUrl}
           target="_blank"

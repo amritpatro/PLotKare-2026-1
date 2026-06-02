@@ -1,16 +1,30 @@
+import { logger } from '@/lib/monitoring/logger'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { isRateLimited } from '@/lib/api/rate-limit'
+
+const contactSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.string().trim().email().max(180),
+  phone: z.string().trim().max(30).optional().default(''),
+  message: z.string().trim().min(10).max(4000),
+})
 
 export async function POST(request: NextRequest) {
-  try {
-    const { name, email, phone, message } = await request.json()
+  if (await isRateLimited(request)) {
+    return NextResponse.json({ error: 'Too many requests. Please wait and try again.' }, { status: 429 })
+  }
 
-    if (!name || !email || !message) {
+  try {
+    const parsed = contactSchema.safeParse(await request.json())
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Name, email and message are required' },
+        { error: 'Please check the form fields and try again.' },
         { status: 400 }
       )
     }
+    const { name, email, phone, message } = parsed.data
 
     const supabase = createSupabaseAdminClient()
     const normalizedMessage = String(message ?? '').trim()
@@ -32,14 +46,14 @@ export async function POST(request: NextRequest) {
     })
 
     if (error) {
-      console.error('Contact form persistence error')
+      logger.error('Contact form persistence error')
       return NextResponse.json(
         { error: 'Could not submit your request right now. Please try again.' },
         { status: 500 }
       )
     }
 
-    console.info('Contact form submission stored', {
+    logger.info('Contact form submission stored', {
       source: hasListingRef ? 'landing_listing_inquiry' : 'website_contact',
       hasPhone: Boolean(phone),
     })
@@ -52,7 +66,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Contact form error')
+    logger.error('Contact form error')
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

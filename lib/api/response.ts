@@ -8,16 +8,27 @@ export function apiOk<T>(data: T, init?: ResponseInit) {
   return NextResponse.json({ ok: true, data }, { ...init, headers })
 }
 
+const publicMessageCodes = new Set([
+  'BAD_REQUEST',
+  'VALIDATION_ERROR',
+  'AUTH_REQUIRED',
+  'FORBIDDEN',
+  'NOT_FOUND',
+  'INVALID_SIGNATURE',
+  'PAYMENTS_DISABLED',
+])
+
 export function apiError(message: string, status = 400, code = 'BAD_REQUEST', details?: unknown) {
   const requestId = crypto.randomUUID()
+  const publicMessage = publicMessageCodes.has(code) ? message : 'Something went wrong. Please try again.'
   return NextResponse.json(
     {
       ok: false,
       requestId,
       error: {
         code,
-        message,
-        details,
+        message: publicMessage,
+        ...(code === 'VALIDATION_ERROR' ? { details } : {}),
       },
     },
     { status, headers: { 'X-Request-ID': requestId } },

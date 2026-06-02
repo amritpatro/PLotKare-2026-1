@@ -11,7 +11,6 @@ const scriptSources = [
   "'self'",
   "'unsafe-inline'",
   ...(isProduction ? [] : ["'unsafe-eval'"]),
-  'https://checkout.razorpay.com',
   'https://*.posthog.com',
 ].join(' ')
 
@@ -21,8 +20,8 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline' https:",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://checkout.razorpay.com https://app.posthog.com https://*.posthog.com https://*.ingest.sentry.io https://router.project-osrm.org https://nominatim.openstreetmap.org",
-  "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://app.posthog.com https://*.posthog.com https://*.ingest.sentry.io https://router.project-osrm.org https://nominatim.openstreetmap.org",
+  "frame-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -35,9 +34,10 @@ const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'X-DNS-Prefetch-Control', value: 'on' },
   {
     key: 'Permissions-Policy',
-    value: 'camera=(self), microphone=(), geolocation=(self), payment=(self "https://checkout.razorpay.com")',
+    value: 'camera=(self), microphone=(), geolocation=(self), payment=()',
   },
   ...(isProduction
     ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]

@@ -1,5 +1,6 @@
 'use server'
 
+import { logger } from '@/lib/monitoring/logger'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -147,7 +148,7 @@ export async function createSellerPlot(formData: FormData) {
       },
     })
   } catch (error) {
-    console.error('Seller plot creation failed:', error)
+    logger.error('Seller plot creation failed:', error)
     failure = error instanceof Error && error.message === 'Seller profile is not ready yet.'
       ? 'seller_profile_missing'
       : 'plot_save_failed'
@@ -203,7 +204,7 @@ export async function requestSellerAmenity(formData: FormData) {
 
     if (error) throw error
   } catch (error) {
-    console.error('Seller amenity request failed:', error)
+    logger.error('Seller amenity request failed:', error)
     failure = 'amenity_request_failed'
   }
 
@@ -284,7 +285,7 @@ export async function addSoldCustomer(formData: FormData) {
 
     if (plotUpdateError) throw plotUpdateError
   } catch (error) {
-    console.error('Seller customer link failed:', error)
+    logger.error('Seller customer link failed:', error)
     failure = error instanceof Error && error.message === 'Seller profile is not ready yet.'
       ? 'seller_profile_missing'
       : 'customer_link_failed'
@@ -348,7 +349,7 @@ export async function createSellerServiceRequest(formData: FormData) {
     if (error) throw error
     requestId = request.id
   } catch (error) {
-    console.error('Seller service request failed:', error)
+    logger.error('Seller service request failed:', error)
     failure = error instanceof Error && error.message === 'Seller profile is not ready yet.'
       ? 'seller_profile_missing'
       : 'service_request_failed'
@@ -422,7 +423,7 @@ export async function createSellerSupportTicket(formData: FormData) {
       priority: parsed.data.priority,
     })
   } catch (error) {
-    console.error('Seller support ticket failed:', error)
+    logger.error('Seller support ticket failed:', error)
     failure = error instanceof Error && error.message === 'Seller profile is not ready yet.'
       ? 'seller_profile_missing'
       : 'support_ticket_failed'

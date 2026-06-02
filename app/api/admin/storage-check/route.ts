@@ -1,3 +1,4 @@
+import { logger } from '@/lib/monitoring/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminContext } from '@/lib/api/auth'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
@@ -135,7 +136,7 @@ export async function GET(request: NextRequest) {
         : Promise.resolve(),
     ])
 
-    console.info('Storage integrity check completed', {
+    logger.info('Storage integrity check completed', {
       requestId,
       referenceCount: references.length,
       objectCount: objects.size,
@@ -156,7 +157,9 @@ export async function GET(request: NextRequest) {
       orphanObjects,
     })
   } catch (error) {
-    console.error('Storage integrity check failed', { requestId, error })
+    logger.error('Storage integrity check failed', { requestId, error })
     return json(requestId, { error: 'An error occurred. Please try again.' }, 500)
   }
 }
+
+export const POST = GET

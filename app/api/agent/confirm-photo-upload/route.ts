@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     .eq('object_path', parsed.data.storagePath)
 
   if (error) {
-    return NextResponse.json({ ok: false, error: { code: 'PHOTO_CONFIRM_FAILED', message: error.message } }, { status: 400 })
+    return NextResponse.json({ ok: false, error: { code: 'PHOTO_CONFIRM_FAILED', message: 'Could not confirm photo upload.' } }, { status: 400 })
   }
 
   return NextResponse.json({ ok: true, success: true })

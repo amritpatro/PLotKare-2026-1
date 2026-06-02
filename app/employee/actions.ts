@@ -1,5 +1,6 @@
 'use server'
 
+import { logger } from '@/lib/monitoring/logger'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -246,7 +247,7 @@ export async function updateMyAdminTask(formData: FormData) {
       },
     })
   } catch (error) {
-    console.error('Employee task update failed:', error)
+    logger.error('Employee task update failed:', error)
     failure = 'task_update_failed'
   }
 
@@ -344,7 +345,7 @@ export async function updateAssignedWorkItem(formData: FormData) {
       },
     })
   } catch (error) {
-    console.error('Employee work update failed:', error)
+    logger.error('Employee work update failed:', error)
     failure = 'work_update_failed'
   }
 
@@ -405,7 +406,7 @@ export async function replyToAssignedSupportTicket(formData: FormData) {
       entityId: ticket.id,
     })
   } catch (error) {
-    console.error('Employee support reply failed:', error)
+    logger.error('Employee support reply failed:', error)
     employeeRedirect('error', 'support_reply_failed', 'support')
   }
 
@@ -528,7 +529,7 @@ export async function reviewAssignedPropertyLinkRequest(formData: FormData) {
       metadata: { assigned_employee_id: employee.id, linked_property_id: linkedPropertyId, note: parsed.data.note ?? null },
     })
   } catch (error) {
-    console.error('Employee property link review failed:', error)
+    logger.error('Employee property link review failed:', error)
     employeeRedirect('error', 'verification_update_failed', 'verification')
   }
 
@@ -692,7 +693,7 @@ export async function updateAssignedVerificationStatus(formData: FormData) {
 
     requestId = request.id
   } catch (error) {
-    console.error('Employee verification update failed:', error)
+    logger.error('Employee verification update failed:', error)
     failure = 'verification_update_failed'
   }
 
@@ -828,7 +829,7 @@ export async function updateAssignedAmenityReview(formData: FormData) {
 
     requestId = parsed.data.amenityRequestId
   } catch (error) {
-    console.error('Employee amenity review update failed:', error)
+    logger.error('Employee amenity review update failed:', error)
     failure = 'amenity_update_failed'
   }
 
@@ -954,7 +955,7 @@ export async function submitInspectionReport(formData: FormData) {
       },
     })
   } catch (error) {
-    console.error('Employee inspection report failed:', error)
+    logger.error('Employee inspection report failed:', error)
     failure = 'inspection_report_failed'
   }
 

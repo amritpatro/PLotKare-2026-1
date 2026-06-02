@@ -21,6 +21,7 @@ import { JsonLd } from '@/components/json-ld'
 import { SITE_NAME, canonicalPageUrl } from '@/lib/site-config'
 import { getVerifiedPublicListings } from '@/lib/public-listings-server'
 import { VISAKHAPATNAM_FAQS, buildFaqSchema } from '@/lib/marketing-seo'
+import { publicBusinessConfig, publicOfficeAddress } from '@/lib/business-config'
 
 const CITY_TITLE = `Plot Management Services in Visakhapatnam | ${SITE_NAME}`
 const CITY_DESCRIPTION =
@@ -69,6 +70,7 @@ const cityNews = [
 
 export default async function VisakhapatnamPage() {
   const verifiedListings = await getVerifiedPublicListings(3)
+  const officeAddress = publicOfficeAddress()
   const localBusinessSchema = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
@@ -76,21 +78,18 @@ export default async function VisakhapatnamPage() {
     name: SITE_NAME,
     description: CITY_DESCRIPTION,
     url: canonicalPageUrl('/visakhapatnam/'),
-    email: 'hello@plotkare.in',
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: '2nd Floor, Krishna Towers, Siripuram',
-      addressLocality: 'Visakhapatnam',
-      addressRegion: 'Andhra Pradesh',
-      postalCode: '530003',
-      addressCountry: 'IN',
-    },
-    openingHoursSpecification: {
-      '@type': 'OpeningHoursSpecification',
-      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-      opens: '09:00',
-      closes: '19:00',
-    },
+    ...(publicBusinessConfig.generalEmail ? { email: publicBusinessConfig.generalEmail } : {}),
+    ...(officeAddress.length > 0
+      ? {
+          address: {
+            '@type': 'PostalAddress',
+            streetAddress: officeAddress.join(', '),
+            addressLocality: 'Visakhapatnam',
+            addressRegion: 'Andhra Pradesh',
+            addressCountry: 'IN',
+          },
+        }
+      : {}),
     areaServed: {
       '@type': 'City',
       name: 'Visakhapatnam',

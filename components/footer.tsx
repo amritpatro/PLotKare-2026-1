@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { LogoMark } from '@/components/logo'
+import { publicBusinessConfig, publicOfficeAddress } from '@/lib/business-config'
 
 const footerLinks = {
   company: [
@@ -72,9 +73,9 @@ const socialLinks = [
 ]
 
 export function Footer() {
-  const whatsappUrl = process.env.NEXT_PUBLIC_WHATSAPP_URL?.trim()
-  const resolvedSocialLinks = whatsappUrl?.match(/^https:\/\/wa\.me\/\d+$/)
-    ? socialLinks.filter((social) => social.name === 'WhatsApp').map((social) => ({ ...social, href: whatsappUrl }))
+  const address = publicOfficeAddress()
+  const resolvedSocialLinks = publicBusinessConfig.whatsappUrl
+    ? socialLinks.filter((social) => social.name === 'WhatsApp').map((social) => ({ ...social, href: publicBusinessConfig.whatsappUrl! }))
     : []
 
   return (
@@ -90,19 +91,19 @@ export function Footer() {
             <p className="mt-4 font-sans text-sm leading-relaxed text-white/70">
               Trusted Plot Management for NRI Landowners
             </p>
-            <div className="mt-6 space-y-2">
-              <p className="font-sans text-sm text-white/70">
-                2nd Floor, Krishna Towers
-                <br />
-                Siripuram, Visakhapatnam 530003
-              </p>
-              <p className="font-sans text-sm text-white/70">
-                <a href="mailto:hello@plotkare.in" className="hover:text-white">
-                  hello@plotkare.in
-                </a>{' '}
-                · callback on request
-              </p>
-            </div>
+            {address.length > 0 || publicBusinessConfig.generalEmail ? (
+              <div className="mt-6 space-y-2">
+                {address.length > 0 ? <p className="font-sans text-sm text-white/70">{address.map((line) => <span key={line} className="block">{line}</span>)}</p> : null}
+                {publicBusinessConfig.generalEmail ? (
+                  <p className="font-sans text-sm text-white/70">
+                    <a href={`mailto:${publicBusinessConfig.generalEmail}`} className="hover:text-white">
+                      {publicBusinessConfig.generalEmail}
+                    </a>{' '}
+                    · callback on request
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             
             {/* Social Icons */}
             {resolvedSocialLinks.length > 0 ? (

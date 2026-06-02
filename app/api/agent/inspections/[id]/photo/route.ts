@@ -78,7 +78,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     })
 
   if (uploadError) {
-    return NextResponse.json({ ok: false, error: { code: 'PHOTO_UPLOAD_FAILED', message: uploadError.message } }, { status: 400 })
+    return NextResponse.json({ ok: false, error: { code: 'PHOTO_UPLOAD_FAILED', message: 'Could not upload the inspection photo.' } }, { status: 400 })
   }
 
   const { data: photo, error: photoError } = await admin
@@ -107,7 +107,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .single()
 
   if (photoError) {
-    return NextResponse.json({ ok: false, error: { code: 'PHOTO_METADATA_FAILED', message: photoError.message } }, { status: 400 })
+    return NextResponse.json({ ok: false, error: { code: 'PHOTO_METADATA_FAILED', message: 'Could not save photo metadata.' } }, { status: 400 })
   }
 
   await recordAuditLog({

@@ -1,5 +1,6 @@
 'use server'
 
+import { logger } from '@/lib/monitoring/logger'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -71,7 +72,7 @@ export async function toggleAmenityAvailability(formData: FormData) {
   )
 
   if (error) {
-    console.error('Admin amenity toggle failed:', error)
+    logger.error('Admin amenity toggle failed:', error)
     return
   }
 
@@ -103,7 +104,7 @@ export async function updateAmenityRequest(formData: FormData) {
     .maybeSingle()
 
   if (requestError || !request) {
-    console.error('Amenity request lookup failed:', requestError)
+    logger.error('Amenity request lookup failed:', requestError)
     amenitiesRedirect('error', 'amenity_update_failed')
   }
 
@@ -124,7 +125,7 @@ export async function updateAmenityRequest(formData: FormData) {
       .neq('status', 'cancelled')
 
     if (cancelExistingError) {
-      console.error('Amenity reassignment cancellation failed:', cancelExistingError)
+      logger.error('Amenity reassignment cancellation failed:', cancelExistingError)
       amenitiesRedirect('error', 'amenity_update_failed')
     }
 
@@ -151,7 +152,7 @@ export async function updateAmenityRequest(formData: FormData) {
     )
 
     if (taskError) {
-      console.error('Amenity assignment failed:', taskError)
+      logger.error('Amenity assignment failed:', taskError)
       amenitiesRedirect('error', 'amenity_update_failed')
     }
   }
@@ -171,7 +172,7 @@ export async function updateAmenityRequest(formData: FormData) {
     })
 
     if (noteError) {
-      console.error('Amenity note failed:', noteError)
+      logger.error('Amenity note failed:', noteError)
       amenitiesRedirect('error', 'amenity_update_failed')
     }
   }
@@ -193,7 +194,7 @@ export async function updateAmenityRequest(formData: FormData) {
     })
 
     if (notificationError) {
-      console.error('Amenity notification failed:', notificationError)
+      logger.error('Amenity notification failed:', notificationError)
       amenitiesRedirect('error', 'amenity_update_failed')
     }
   }

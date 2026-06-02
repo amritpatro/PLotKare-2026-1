@@ -1,5 +1,6 @@
 'use server'
 
+import { logger } from '@/lib/monitoring/logger'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -41,7 +42,7 @@ export async function updateEmployeeTask(formData: FormData) {
     .maybeSingle()
 
   if (existingError || !existing) {
-    console.error('Admin task lookup failed:', existingError)
+    logger.error('Admin task lookup failed:', existingError)
     employeesRedirect('error', 'task_update_failed')
   }
 
@@ -51,7 +52,7 @@ export async function updateEmployeeTask(formData: FormData) {
     .eq('id', taskId)
 
   if (error) {
-    console.error('Admin task update failed:', error)
+    logger.error('Admin task update failed:', error)
     employeesRedirect('error', 'task_update_failed')
   }
 

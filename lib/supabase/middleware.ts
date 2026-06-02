@@ -68,7 +68,7 @@ export async function updateSession(request: NextRequest) {
     '/update-password',
     '/admin/login',
     '/api/contact',
-    '/api/support/contact',
+    '/api/auth/signup',
     '/api/webhook',
     '/api/webhooks',
   ]

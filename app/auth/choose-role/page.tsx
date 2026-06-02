@@ -1,5 +1,6 @@
 'use client'
 
+import { logger } from '@/lib/monitoring/logger'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BriefcaseBusiness, Building2, Check, Home } from 'lucide-react'
@@ -83,7 +84,7 @@ export default function ChooseRolePage() {
           router.push(`/onboarding/${slug}`)
         }
       } catch (err) {
-        console.error('Error checking role:', err)
+        logger.error('Error checking role:', err)
       }
     }
 

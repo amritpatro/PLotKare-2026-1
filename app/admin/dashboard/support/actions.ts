@@ -1,5 +1,6 @@
 'use server'
 
+import { logger } from '@/lib/monitoring/logger'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -44,7 +45,7 @@ export async function updateSupportTicket(formData: FormData) {
     .maybeSingle()
 
   if (existingError || !existing) {
-    console.error('Support ticket lookup failed:', existingError)
+    logger.error('Support ticket lookup failed:', existingError)
     supportRedirect('error', 'support_update_failed')
   }
 
@@ -60,7 +61,7 @@ export async function updateSupportTicket(formData: FormData) {
     .eq('id', existing.id)
 
   if (updateError) {
-    console.error('Support ticket update failed:', updateError)
+    logger.error('Support ticket update failed:', updateError)
     supportRedirect('error', 'support_update_failed')
   }
 
@@ -83,7 +84,7 @@ export async function updateSupportTicket(formData: FormData) {
     )
 
     if (taskError) {
-      console.error('Support assignment task failed:', taskError)
+      logger.error('Support assignment task failed:', taskError)
       supportRedirect('error', 'support_update_failed')
     }
   }
@@ -102,7 +103,7 @@ export async function updateSupportTicket(formData: FormData) {
     })
 
     if (noteError) {
-      console.error('Support note write failed:', noteError)
+      logger.error('Support note write failed:', noteError)
       supportRedirect('error', 'support_update_failed')
     }
   }
@@ -122,7 +123,7 @@ export async function updateSupportTicket(formData: FormData) {
     })
 
     if (notificationError) {
-      console.error('Support notification failed:', notificationError)
+      logger.error('Support notification failed:', notificationError)
       supportRedirect('error', 'support_update_failed')
     }
   }
@@ -168,7 +169,7 @@ export async function replyToSupportTicket(formData: FormData) {
     .maybeSingle()
 
   if (ticketError || !ticket) {
-    console.error('Support ticket reply lookup failed:', ticketError)
+    logger.error('Support ticket reply lookup failed:', ticketError)
     supportRedirect('error', 'support_reply_failed')
   }
 
@@ -180,7 +181,7 @@ export async function replyToSupportTicket(formData: FormData) {
   })
 
   if (replyError) {
-    console.error('Support reply insert failed:', replyError)
+    logger.error('Support reply insert failed:', replyError)
     supportRedirect('error', 'support_reply_failed')
   }
 
@@ -198,7 +199,7 @@ export async function replyToSupportTicket(formData: FormData) {
     })
 
     if (notificationError) {
-      console.error('Support reply notification failed:', notificationError)
+      logger.error('Support reply notification failed:', notificationError)
       supportRedirect('error', 'support_reply_failed')
     }
   }

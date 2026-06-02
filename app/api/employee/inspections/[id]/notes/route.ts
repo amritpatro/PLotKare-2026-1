@@ -34,7 +34,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { error } = await admin.from('inspections').update({ review_notes: parsed.data.note }).eq('id', id)
   if (error) {
-    return NextResponse.json({ ok: false, error: { code: 'NOTE_SAVE_FAILED', message: error.message } }, { status: 400 })
+    return NextResponse.json({ ok: false, error: { code: 'NOTE_SAVE_FAILED', message: 'Could not save the inspection note.' } }, { status: 400 })
   }
 
   await recordAuditLog({

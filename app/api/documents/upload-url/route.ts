@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
-import { documentUploadSchema } from '@/lib/validation/pilot'
+import { documentUploadSchema } from '@/lib/validation/app'
 import { requireUserContext } from '@/lib/api/auth'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 

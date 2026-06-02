@@ -1,4 +1,4 @@
-import { activeAmenitySchema } from '@/lib/validation/pilot'
+import { activeAmenitySchema } from '@/lib/validation/app'
 import { requireUserContext } from '@/lib/api/auth'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 

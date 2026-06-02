@@ -60,7 +60,7 @@ export async function GET(request: Request) {
 
   const { data, error: signedError } = await admin.storage.from('inspection-photos').createSignedUrl(filePath, 3600)
   if (signedError || !data?.signedUrl) {
-    return NextResponse.json({ ok: false, error: { code: 'SIGNED_URL_FAILED', message: signedError?.message || 'Could not prepare photo access.' } }, { status: 400 })
+    return NextResponse.json({ ok: false, error: { code: 'SIGNED_URL_FAILED', message: 'Could not prepare photo access.' } }, { status: 400 })
   }
 
   await recordAuditLog({

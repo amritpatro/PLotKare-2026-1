@@ -670,7 +670,7 @@ export function SettingsWorkspace({ initialData, mode }: SettingsWorkspaceProps)
                 <Metric label="Consultation" value={pendingConsultation ? 'Pending' : 'Not pending'} />
               </div>
               <p className="mt-6 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3 text-sm text-[#6B7280]">
-                PlotKare is still consultation-led in this pilot. Plan status is shown here from Supabase, and live checkout will be enabled in a later billing release.
+                PlotKare service plans are consultation-led. Your workspace shows the current plan status and recorded billing history.
               </p>
             </TabsContent>
           </Tabs>

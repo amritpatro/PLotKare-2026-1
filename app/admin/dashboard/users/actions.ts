@@ -1,5 +1,6 @@
 'use server'
 
+import { logger } from '@/lib/monitoring/logger'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -58,7 +59,7 @@ async function writeInternalNote(input: {
   })
 
   if (error) {
-    console.error('Admin internal note write failed:', error)
+    logger.error('Admin internal note write failed:', error)
     return false
   }
 
@@ -90,7 +91,7 @@ export async function assignUserRole(formData: FormData) {
     .maybeSingle()
 
   if (profileError || !currentProfile) {
-    console.error('Admin role assignment lookup failed:', profileError)
+    logger.error('Admin role assignment lookup failed:', profileError)
     usersRedirect('error', 'profile_not_found')
   }
 
@@ -108,7 +109,7 @@ export async function assignUserRole(formData: FormData) {
     .eq('id', profileId)
 
   if (updateError) {
-    console.error('Admin role assignment failed:', updateError)
+    logger.error('Admin role assignment failed:', updateError)
     usersRedirect('error', 'role_assignment_failed')
   }
 
@@ -123,7 +124,7 @@ export async function assignUserRole(formData: FormData) {
     )
 
     if (employeeError) {
-      console.error('Admin employee activation failed:', employeeError)
+      logger.error('Admin employee activation failed:', employeeError)
       usersRedirect('error', 'employee_activation_failed')
     }
   } else {
@@ -133,7 +134,7 @@ export async function assignUserRole(formData: FormData) {
       .eq('profile_id', profileId)
 
     if (employeeError) {
-      console.error('Admin employee deactivation failed:', employeeError)
+      logger.error('Admin employee deactivation failed:', employeeError)
       usersRedirect('error', 'employee_deactivation_failed')
     }
   }
@@ -220,7 +221,7 @@ async function setAccountStatus(profileId: string, accountStatus: string, note?:
     .maybeSingle()
 
   if (profileError || !currentProfile) {
-    console.error('Admin account status lookup failed:', profileError)
+    logger.error('Admin account status lookup failed:', profileError)
     usersRedirect('error', 'profile_not_found')
   }
 
@@ -234,7 +235,7 @@ async function setAccountStatus(profileId: string, accountStatus: string, note?:
     .eq('id', profileId)
 
   if (error) {
-    console.error('Admin account status update failed:', error)
+    logger.error('Admin account status update failed:', error)
     usersRedirect('error', 'account_status_failed')
   }
 

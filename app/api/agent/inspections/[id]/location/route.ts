@@ -68,7 +68,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   })
 
   if (error) {
-    return NextResponse.json({ ok: false, error: { code: 'LOCATION_SAVE_FAILED', message: error.message } }, { status: 400 })
+    return NextResponse.json({ ok: false, error: { code: 'LOCATION_SAVE_FAILED', message: 'Could not save the location update.' } }, { status: 400 })
   }
 
   return NextResponse.json({ ok: true, location: { inspectionId: inspection.id, capturedAt: parsed.data.capturedAt } })

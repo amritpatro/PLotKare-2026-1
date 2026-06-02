@@ -1,5 +1,6 @@
 'use server'
 
+import { logger } from '@/lib/monitoring/logger'
 import { revalidatePath } from 'next/cache'
 import { requireAdminContext } from '@/lib/api/auth'
 import { recordAuditLog } from '@/lib/audit'
@@ -19,7 +20,7 @@ export async function archiveListing(listingId: string) {
     .maybeSingle()
 
   if (error || !updatedListing) {
-    console.error('Admin listing archive failed:', error)
+    logger.error('Admin listing archive failed:', error)
     return { ok: false, message: 'Listing could not be archived. Please try again.' }
   }
 

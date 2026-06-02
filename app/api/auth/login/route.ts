@@ -3,8 +3,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resolvePostLoginRedirect } from '@/lib/onboarding/redirect'
 import { requireSupabaseBrowserEnv } from '@/lib/supabase/env'
 import { loginSchema } from '@/lib/validation/auth'
+import { isRateLimited } from '@/lib/api/rate-limit'
 
 export async function POST(request: NextRequest) {
+  if (await isRateLimited(request)) {
+    return NextResponse.json({ error: 'Too many requests. Please wait and try again.' }, { status: 429 })
+  }
+
   const body = await request.json().catch(() => null)
   const parsed = loginSchema.safeParse({
     email: body?.email,

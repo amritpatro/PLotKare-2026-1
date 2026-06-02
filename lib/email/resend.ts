@@ -8,9 +8,9 @@ type EmailInput = {
 
 export async function sendTransactionalEmail(input: EmailInput) {
   const apiKey = process.env.RESEND_API_KEY
-  const from = process.env.RESEND_FROM_EMAIL || 'PlotKare <support@plotkare.in>'
+  const from = process.env.RESEND_FROM_EMAIL
 
-  if (!apiKey) return { skipped: true as const, reason: 'RESEND_API_KEY is not configured' }
+  if (!apiKey || !from) return { skipped: true as const, reason: 'Transactional email is not configured' }
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',

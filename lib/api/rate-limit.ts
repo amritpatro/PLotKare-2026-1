@@ -1,3 +1,4 @@
+import { logger } from '@/lib/monitoring/logger'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 import type { NextRequest } from 'next/server'
@@ -11,17 +12,25 @@ type LimitRule = {
   windowMs: number
 }
 
-const localWindows = new Map<string, { count: number; expiresAt: number }>()
+const globalForRateLimit = globalThis as typeof globalThis & {
+  plotKareLocalRateLimitWindows?: Map<string, { count: number; expiresAt: number }>
+}
+const localWindows =
+  globalForRateLimit.plotKareLocalRateLimitWindows ??
+  (globalForRateLimit.plotKareLocalRateLimitWindows = new Map())
 const remoteLimiters = new Map<string, Ratelimit>()
 
 function ruleFor(request: NextRequest): LimitRule | null {
   if (request.method !== 'POST') return null
 
-  if (request.nextUrl.pathname === '/api/contact' || request.nextUrl.pathname === '/api/support/contact') {
+  if (request.nextUrl.pathname === '/api/contact') {
     return { prefix: 'contact', requests: 5, window: '10 m', windowMs: 10 * 60_000 }
   }
   if (request.nextUrl.pathname === '/api/auth/login') {
     return { prefix: 'login', requests: 5, window: '15 m', windowMs: 15 * 60_000 }
+  }
+  if (request.nextUrl.pathname === '/api/auth/signup') {
+    return { prefix: 'signup', requests: 3, window: '1 h', windowMs: 60 * 60_000 }
   }
   if (request.nextUrl.pathname === '/api/auth/password-reset') {
     return { prefix: 'password-reset', requests: 3, window: '1 h', windowMs: 60 * 60_000 }
@@ -78,7 +87,7 @@ export async function isRateLimited(request: NextRequest) {
     const result = await limiter.limit(identifier)
     return !result.success
   } catch (error) {
-    console.error('Rate limit backend failed; using local fallback.', error)
+    logger.error('Rate limit backend failed; using local fallback.', error)
     return !localLimit(rule, identifier)
   }
 }

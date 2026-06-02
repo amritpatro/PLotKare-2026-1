@@ -122,7 +122,7 @@ export default async function AdminListingsPage({ searchParams }: AdminListingsP
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="font-serif text-2xl font-bold text-[#1F2937]">Listings</h1>
-          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">Real marketplace listings from Supabase.</p>
+          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">Marketplace listings and publication status.</p>
         </div>
         <form className="flex flex-wrap gap-2">
           <input name="q" defaultValue={q} placeholder="Search listing, location, size" className={`${inputClass} w-64`} />

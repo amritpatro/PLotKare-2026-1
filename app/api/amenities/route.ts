@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { amenitySchema } from '@/lib/validation/pilot'
+import { amenitySchema } from '@/lib/validation/app'
 import { requireAdminContext } from '@/lib/api/auth'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 

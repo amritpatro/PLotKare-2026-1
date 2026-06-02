@@ -256,7 +256,7 @@ function BrowseListingsSection({ data }: { data: CustomerWorkspaceData }) {
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
         {data.listings.length === 0 ? (
           <div className="xl:col-span-2">
-            <EmptyState title="No active listings available" body="When sellers publish active listings in Supabase, they will appear here for browsing and follow-up." />
+            <EmptyState title="No active listings available" body="When sellers publish active listings, they will appear here for browsing and follow-up." />
           </div>
         ) : null}
         {data.listings.map((listing) => (

@@ -270,7 +270,7 @@ function InspectionReportForm({ inspection }: { inspection: InspectionRow }) {
         name="photoEvidence"
         rows={3}
         className={inputClass}
-        placeholder="Optional: one signed photo URL or storage path per line. Full upload system comes in Day 5."
+        placeholder="Optional: one signed photo URL or storage path per line."
       />
       <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <label className="space-y-1">

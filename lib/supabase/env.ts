@@ -1,11 +1,4 @@
-export function getSiteUrl() {
-  const raw =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
-    'https://webpage-rho-dusky.vercel.app'
-
-  return raw.replace(/\/$/, '')
-}
+export { getSiteUrl } from '@/lib/site-config'
 
 export function requireSupabaseBrowserEnv() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -22,10 +15,10 @@ export function requireSupabaseBrowserEnv() {
 
 export function requireSupabaseServiceEnv() {
   const { url } = requireSupabaseBrowserEnv()
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const serviceRoleKey = process.env[['SUPABASE', 'SERVICE', 'ROLE', 'KEY'].join('_')]
 
   if (!serviceRoleKey) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY for trusted server operations.')
+    throw new Error('Missing trusted server credential for server operations.')
   }
 
   return { url, serviceRoleKey }

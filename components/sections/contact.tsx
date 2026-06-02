@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 import Link from 'next/link'
+import { publicBusinessConfig, publicOfficeAddress } from '@/lib/business-config'
 
 export function ContactSection({
   heading = 'Talk to PlotKare',
@@ -13,6 +14,7 @@ export function ContactSection({
   description?: string
   supportingLink?: { href: string; label: string }
 }) {
+  const address = publicOfficeAddress()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -77,34 +79,36 @@ export function ContactSection({
 
         <div className="premium-surface mt-10 grid gap-8 rounded-xl border border-border bg-card p-8 md:grid-cols-[1fr_minmax(0,1fr)] md:gap-10 md:p-10">
           <div className="space-y-5 text-left">
-            <div className="flex items-start gap-3">
-              <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-              <div>
-                <p className="font-sans text-sm font-medium text-foreground">2nd Floor, Krishna Towers</p>
-                <p className="font-sans text-sm text-muted-foreground">Siripuram, Visakhapatnam 530003</p>
+            {address.length > 0 ? (
+              <div className="flex items-start gap-3">
+                <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <div>
+                  {address.map((line) => <p key={line} className="font-sans text-sm text-foreground">{line}</p>)}
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-              <a href="mailto:hello@plotkare.in" className="font-sans text-sm text-foreground underline-offset-4 hover:underline">
-                hello@plotkare.in
-              </a>
-            </div>
-            <div className="flex items-start gap-3">
-              <Phone className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-              <p className="font-sans text-sm text-foreground">
-                <a href="mailto:hello@plotkare.in?subject=Call%20back%20request" className="underline-offset-4 hover:underline">
+            ) : null}
+            {publicBusinessConfig.generalEmail ? (
+              <div className="flex items-start gap-3">
+                <Mail className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <a href={`mailto:${publicBusinessConfig.generalEmail}`} className="font-sans text-sm text-foreground underline-offset-4 hover:underline">
+                  {publicBusinessConfig.generalEmail}
+                </a>
+              </div>
+            ) : null}
+            {publicBusinessConfig.generalEmail ? (
+              <div className="flex items-start gap-3">
+                <Phone className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <a href={`mailto:${publicBusinessConfig.generalEmail}?subject=Call%20back%20request`} className="font-sans text-sm text-foreground underline-offset-4 hover:underline">
                   Request a callback by email
                 </a>
-                <span className="mt-1 block text-xs text-muted-foreground">
-                  We publish a phone line only when it is staffed for inbound calls.
-                </span>
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <Clock className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-              <p className="font-sans text-sm text-foreground">Mon - Sat, 9:00 AM - 7:00 PM IST</p>
-            </div>
+              </div>
+            ) : null}
+            {publicBusinessConfig.supportHours ? (
+              <div className="flex items-start gap-3">
+                <Clock className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                <p className="font-sans text-sm text-foreground">{publicBusinessConfig.supportHours}</p>
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-3 pt-2">
               <Link
                 href="/listings/"

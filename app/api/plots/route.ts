@@ -1,4 +1,4 @@
-import { plotCreateSchema } from '@/lib/validation/pilot'
+import { plotCreateSchema } from '@/lib/validation/app'
 import { requireUserContext } from '@/lib/api/auth'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 import { recordAuditLog } from '@/lib/audit'

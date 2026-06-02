@@ -70,7 +70,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq('inspection_id', inspection.id)
 
   if (photoReadError) {
-    return NextResponse.json({ ok: false, error: { code: 'PHOTO_CHECK_FAILED', message: photoReadError.message } }, { status: 400 })
+    return NextResponse.json({ ok: false, error: { code: 'PHOTO_CHECK_FAILED', message: 'Could not verify inspection photos.' } }, { status: 400 })
   }
 
   const requiredDirections = new Set(['north', 'south', 'east', 'west'])
@@ -121,7 +121,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq('assigned_employee_id', employee.id)
 
   if (updateError) {
-    return NextResponse.json({ ok: false, error: { code: 'INSPECTION_SUBMIT_FAILED', message: updateError.message } }, { status: 400 })
+    return NextResponse.json({ ok: false, error: { code: 'INSPECTION_SUBMIT_FAILED', message: 'Could not submit the inspection.' } }, { status: 400 })
   }
 
   const property = Array.isArray(inspection.properties) ? inspection.properties[0] : inspection.properties

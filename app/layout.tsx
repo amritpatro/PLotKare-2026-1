@@ -6,6 +6,7 @@ import { JsonLd } from '@/components/json-ld'
 import { PostHogPageview } from '@/components/posthog-pageview'
 import { ThreeConsoleSanitizer } from '@/components/three-console-sanitizer'
 import { SITE_NAME, canonicalPageUrl, absoluteUrl, getSiteUrl, withBasePath } from '@/lib/site-config'
+import { publicBusinessConfig, publicOfficeAddress } from '@/lib/business-config'
 import './globals.css'
 
 const cormorant = Cormorant_Garamond({
@@ -30,7 +31,7 @@ const dmMono = DM_Mono({
 })
 
 const siteUrl = getSiteUrl()
-const defaultOgImage = absoluteUrl('/opengraph-default.svg')
+const defaultOgImage = absoluteUrl('/og-image.png')
 const shouldLoadVercelAnalytics = process.env.NODE_ENV === 'production' && process.env.VERCEL === '1'
 
 export const metadata: Metadata = {
@@ -93,24 +94,28 @@ export const metadata: Metadata = {
         type: 'image/svg+xml',
       },
     ],
-    apple: withBasePath('/apple-icon.png'),
+    apple: withBasePath('/apple-touch-icon.png'),
   },
 }
 
+const officeAddress = publicOfficeAddress()
 const organizationJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Organization',
   name: SITE_NAME,
   url: canonicalPageUrl('/'),
-  email: 'hello@plotkare.in',
-  address: {
-    '@type': 'PostalAddress',
-    streetAddress: '2nd Floor, Krishna Towers, Siripuram',
-    addressLocality: 'Visakhapatnam',
-    postalCode: '530003',
-    addressRegion: 'Andhra Pradesh',
-    addressCountry: 'IN',
-  },
+  ...(publicBusinessConfig.generalEmail ? { email: publicBusinessConfig.generalEmail } : {}),
+  ...(officeAddress.length > 0
+    ? {
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: officeAddress.join(', '),
+          addressLocality: 'Visakhapatnam',
+          addressRegion: 'Andhra Pradesh',
+          addressCountry: 'IN',
+        },
+      }
+    : {}),
 }
 
 const websiteJsonLd = {

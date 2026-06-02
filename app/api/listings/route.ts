@@ -1,5 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { listingSchema } from '@/lib/validation/pilot'
+import { listingSchema } from '@/lib/validation/app'
 import { requireAdminContext } from '@/lib/api/auth'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 import { recordAuditLog } from '@/lib/audit'

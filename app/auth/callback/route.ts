@@ -1,3 +1,4 @@
+import { logger } from '@/lib/monitoring/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { resolvePostLoginRedirect } from '@/lib/onboarding/redirect'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
-    console.error('Auth callback error:', error)
+    logger.error('Auth callback error:', error)
     return redirectTo(origin, '/auth/login?error=auth_failed')
   }
 

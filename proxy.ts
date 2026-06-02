@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isRateLimited } from '@/lib/api/rate-limit'
 import { updateSession } from '@/lib/supabase/middleware'
 
 export async function proxy(request: NextRequest) {
@@ -17,12 +16,6 @@ export async function proxy(request: NextRequest) {
       )
     }
 
-    if (await isRateLimited(request)) {
-      return NextResponse.json(
-        { error: 'Too many requests. Please wait and try again.', requestId },
-        { status: 429, headers: { 'X-Request-ID': requestId } },
-      )
-    }
   }
 
   const headers = new Headers(request.headers)

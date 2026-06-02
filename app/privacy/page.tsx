@@ -4,7 +4,7 @@ import { Navigation } from '@/components/navigation'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
-  description: 'How PlotKare handles customer, property, inspection, and support data during the pilot.',
+  description: 'How PlotKare handles customer, property, inspection, and support data.',
 }
 
 export default function PrivacyPage() {
@@ -20,17 +20,15 @@ export default function PrivacyPage() {
             payment status, and usage analytics only to operate property monitoring and customer support workflows.
           </p>
           <p>
-            Private customer documents and inspection files are stored in access-controlled Supabase buckets. Access is
-            limited to the signed-in owner and authorized PlotKare administrators required to deliver service.
+            Private customer documents and inspection files are stored with access controls. Access is limited to the
+            signed-in owner and authorized PlotKare personnel required to deliver service.
           </p>
           <p>
-            We use service providers such as Supabase, Razorpay, Resend, PostHog, and Sentry for hosting, auth,
-            payments, transactional email, analytics, and reliability monitoring. Production data access is reviewed and
-            limited by role.
+            PlotKare uses service providers for hosting, authentication, transactional email, analytics, and reliability
+            monitoring. Production data access is reviewed and limited by role.
           </p>
           <p>
-            For correction, export, or deletion requests, contact support@plotkare.in from the email linked to your
-            PlotKare account.
+            For correction, export, or deletion requests, contact PlotKare support from the email linked to your account.
           </p>
         </div>
       </main>

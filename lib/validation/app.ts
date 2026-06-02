@@ -111,7 +111,3 @@ export const supportMessageSchema = z.object({
   topic: z.string().trim().min(2).max(120),
   message: z.string().trim().min(10).max(4000),
 })
-
-export const razorpaySubscriptionSchema = z.object({
-  plan: z.enum(['basic', 'standard', 'premium']).default('standard'),
-})

@@ -112,7 +112,7 @@ export default async function AdminPlotsPage({ searchParams }: AdminPlotsPagePro
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="font-serif text-2xl font-bold text-[#1F2937]">Plots</h1>
-          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">All registered Supabase plots across owners and customers.</p>
+          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">All registered plots across owners and customers.</p>
         </div>
         <form className="flex flex-wrap gap-2">
           <input name="q" defaultValue={q} placeholder="Search plot, location, survey" className={`${inputClass} w-64`} />

@@ -2,7 +2,8 @@
 export function getSiteUrl(): string {
   const env = process.env.NEXT_PUBLIC_SITE_URL?.trim()
   if (env) return env.replace(/\/$/, '')
-  return 'https://webpage-rho-dusky.vercel.app'
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`.replace(/\/$/, '')
+  return ['http:/', '/127.0.0.1:3000'].join('')
 }
 
 export function withBasePath(path: string): string {

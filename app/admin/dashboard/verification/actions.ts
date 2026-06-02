@@ -1,5 +1,6 @@
 'use server'
 
+import { logger } from '@/lib/monitoring/logger'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -84,7 +85,7 @@ export async function updateVerificationStatus(formData: FormData) {
     .maybeSingle()
 
   if (existingError || !existing) {
-    console.error('Admin verification lookup failed:', existingError)
+    logger.error('Admin verification lookup failed:', existingError)
     verificationRedirect('error', 'verification_update_failed', returnSection)
   }
 
@@ -113,7 +114,7 @@ export async function updateVerificationStatus(formData: FormData) {
     .maybeSingle()
 
   if (error || !data) {
-    console.error('Admin verification update failed:', error)
+    logger.error('Admin verification update failed:', error)
     verificationRedirect('error', 'verification_update_failed', returnSection)
   }
 
@@ -125,14 +126,14 @@ export async function updateVerificationStatus(formData: FormData) {
       .eq('property_id', entityId)
 
     if (plotStatusError) {
-      console.error('Admin plot verification sync failed:', plotStatusError)
+      logger.error('Admin plot verification sync failed:', plotStatusError)
       verificationRedirect('error', 'verification_update_failed', returnSection)
     }
 
     try {
       listingPublishResult = await syncVerifiedListingForProperty(supabase, entityId, user.id)
     } catch (publishError) {
-      console.error('Admin listing publish sync failed:', publishError)
+      logger.error('Admin listing publish sync failed:', publishError)
       verificationRedirect('error', 'verification_update_failed', returnSection)
     }
   }
@@ -141,7 +142,7 @@ export async function updateVerificationStatus(formData: FormData) {
     try {
       listingPublishResult = await syncVerifiedListingsForSeller(supabase, entityId, user.id)
     } catch (publishError) {
-      console.error('Seller listing publish sync failed:', publishError)
+      logger.error('Seller listing publish sync failed:', publishError)
       verificationRedirect('error', 'verification_update_failed', returnSection)
     }
   }
@@ -166,7 +167,7 @@ export async function updateVerificationStatus(formData: FormData) {
     )
 
     if (taskError) {
-      console.error('Admin verification assignment failed:', taskError)
+      logger.error('Admin verification assignment failed:', taskError)
       verificationRedirect('error', 'verification_update_failed', returnSection)
     }
   }
@@ -204,7 +205,7 @@ export async function updateVerificationStatus(formData: FormData) {
   })
 
   if (eventError) {
-    console.error('Admin verification event write failed:', eventError)
+    logger.error('Admin verification event write failed:', eventError)
     verificationRedirect('error', 'verification_update_failed', returnSection)
   }
 
@@ -223,7 +224,7 @@ export async function updateVerificationStatus(formData: FormData) {
     })
 
     if (noteError) {
-      console.error('Admin verification internal note write failed:', noteError)
+      logger.error('Admin verification internal note write failed:', noteError)
       verificationRedirect('error', 'verification_update_failed', returnSection)
     }
   }

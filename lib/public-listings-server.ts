@@ -1,3 +1,4 @@
+import { logger } from '@/lib/monitoring/logger'
 import { getLocalListingImage, type PublicPlotListing } from '@/lib/public-listings'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import type { Facing } from '@/lib/plotkare-storage'
@@ -137,7 +138,7 @@ export async function getVerifiedPublicListings(limit?: number): Promise<PublicP
 
   const { data, error } = await query
   if (error) {
-    console.error('Verified public listings fetch failed:', error)
+    logger.error('Verified public listings fetch failed:', error)
     return []
   }
 

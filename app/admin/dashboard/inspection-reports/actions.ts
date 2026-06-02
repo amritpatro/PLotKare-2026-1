@@ -1,5 +1,6 @@
 'use server'
 
+import { logger } from '@/lib/monitoring/logger'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -41,7 +42,7 @@ export async function updateInspectionReportCoordinates(formData: FormData) {
     .maybeSingle()
 
   if (reportError || !report?.plot_id) {
-    console.error('Inspection report coordinate lookup failed:', reportError)
+    logger.error('Inspection report coordinate lookup failed:', reportError)
     inspectionRedirect('error', 'coordinates_save_failed')
   }
 
@@ -52,7 +53,7 @@ export async function updateInspectionReportCoordinates(formData: FormData) {
     .maybeSingle()
 
   if (plotError || !plot) {
-    console.error('Plot coordinate lookup failed:', plotError)
+    logger.error('Plot coordinate lookup failed:', plotError)
     inspectionRedirect('error', 'coordinates_save_failed')
   }
 
@@ -70,7 +71,7 @@ export async function updateInspectionReportCoordinates(formData: FormData) {
     .eq('id', plot.id)
 
   if (plotUpdateError) {
-    console.error('Plot coordinate update failed:', plotUpdateError)
+    logger.error('Plot coordinate update failed:', plotUpdateError)
     inspectionRedirect('error', 'coordinates_save_failed')
   }
 
@@ -85,7 +86,7 @@ export async function updateInspectionReportCoordinates(formData: FormData) {
       .eq('id', plot.property_id)
 
     if (propertyUpdateError) {
-      console.error('Property coordinate update failed:', propertyUpdateError)
+      logger.error('Property coordinate update failed:', propertyUpdateError)
       inspectionRedirect('error', 'coordinates_save_failed')
     }
   }
@@ -133,7 +134,7 @@ export async function assignInspectionReport(formData: FormData) {
     .maybeSingle()
 
   if (employeeError || !employee || employee.active === false) {
-    console.error('Field agent lookup failed:', employeeError)
+    logger.error('Field agent lookup failed:', employeeError)
     inspectionRedirect('error', 'invalid_field_agent')
   }
 
@@ -144,7 +145,7 @@ export async function assignInspectionReport(formData: FormData) {
     .maybeSingle()
 
   if (reportError || !report) {
-    console.error('Inspection report lookup failed:', reportError)
+    logger.error('Inspection report lookup failed:', reportError)
     inspectionRedirect('error', 'assignment_failed')
   }
 
@@ -159,7 +160,7 @@ export async function assignInspectionReport(formData: FormData) {
     .maybeSingle()
 
   if (plotError || !plot?.property_id) {
-    console.error('Plot property lookup failed:', plotError)
+    logger.error('Plot property lookup failed:', plotError)
     inspectionRedirect('error', 'property_required')
   }
 
@@ -170,7 +171,7 @@ export async function assignInspectionReport(formData: FormData) {
     .maybeSingle()
 
   if (propertyError || !property) {
-    console.error('Inspection property lookup failed:', propertyError)
+    logger.error('Inspection property lookup failed:', propertyError)
     inspectionRedirect('error', 'property_required')
   }
 
@@ -193,7 +194,7 @@ export async function assignInspectionReport(formData: FormData) {
     .maybeSingle()
 
   if (existingError) {
-    console.error('Inspection lookup failed:', existingError)
+    logger.error('Inspection lookup failed:', existingError)
     inspectionRedirect('error', 'assignment_failed')
   }
 
@@ -223,7 +224,7 @@ export async function assignInspectionReport(formData: FormData) {
       .eq('id', existingInspection.id)
 
     if (updateError) {
-      console.error('Inspection assignment update failed:', updateError)
+      logger.error('Inspection assignment update failed:', updateError)
       inspectionRedirect('error', 'assignment_failed')
     }
   } else {
@@ -234,7 +235,7 @@ export async function assignInspectionReport(formData: FormData) {
       .single()
 
     if (createError || !created) {
-      console.error('Inspection assignment create failed:', createError)
+      logger.error('Inspection assignment create failed:', createError)
       inspectionRedirect('error', 'assignment_failed')
     }
     inspectionId = created.id
@@ -255,7 +256,7 @@ export async function assignInspectionReport(formData: FormData) {
     .eq('id', report.id)
 
   if (reportUpdateError) {
-    console.error('Inspection report assignment marker failed:', reportUpdateError)
+    logger.error('Inspection report assignment marker failed:', reportUpdateError)
     inspectionRedirect('error', 'assignment_failed')
   }
 

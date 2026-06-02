@@ -1,5 +1,6 @@
 'use server'
 
+import { logger } from '@/lib/monitoring/logger'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -132,7 +133,7 @@ export async function registerOwnerProperty(formData: FormData) {
       },
     })
   } catch (error) {
-    console.error('Owner property registration failed:', error)
+    logger.error('Owner property registration failed:', error)
     failure = 'property_save_failed'
   }
 
@@ -184,7 +185,7 @@ export async function requestOwnerAmenity(formData: FormData) {
 
     if (error) throw error
   } catch (error) {
-    console.error('Owner amenity request failed:', error)
+    logger.error('Owner amenity request failed:', error)
     failure = 'amenity_request_failed'
   }
 
@@ -265,7 +266,7 @@ export async function updateOwnerPlotCoordinates(formData: FormData) {
       },
     })
   } catch (error) {
-    console.error('Owner coordinate update failed:', error)
+    logger.error('Owner coordinate update failed:', error)
     failure = 'coordinates_save_failed'
   }
 
@@ -322,7 +323,7 @@ export async function createOwnerServiceRequest(formData: FormData) {
     if (error) throw error
     requestId = request.id
   } catch (error) {
-    console.error('Owner service request failed:', error)
+    logger.error('Owner service request failed:', error)
     failure = 'service_request_failed'
   }
 
@@ -382,7 +383,7 @@ export async function createOwnerSupportTicket(formData: FormData) {
       priority: parsed.data.priority,
     })
   } catch (error) {
-    console.error('Owner support ticket failed:', error)
+    logger.error('Owner support ticket failed:', error)
     failure = 'support_ticket_failed'
   }
 

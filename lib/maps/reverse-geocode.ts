@@ -16,7 +16,7 @@ export async function reverseGeocodeLabel(latitude: number, longitude: number) {
     const response = await fetch(`${NOMINATIM_REVERSE_URL}?${params.toString()}`, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'PlotKare/1.0 (hello@plotkare.in)',
+        'User-Agent': 'PlotKare/1.0',
       },
       cache: 'no-store',
       signal: controller.signal,

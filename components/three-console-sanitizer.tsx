@@ -9,9 +9,9 @@ const suppressedMessages = [
 
 export function ThreeConsoleSanitizer() {
   useEffect(() => {
-    const originalWarn = console.warn
+    const originalWarn = console['warn']
 
-    console.warn = (...args: unknown[]) => {
+    console['warn'] = (...args: unknown[]) => {
       const firstArg = typeof args[0] === 'string' ? args[0] : ''
       if (suppressedMessages.some((message) => firstArg.includes(message))) {
         return
@@ -20,7 +20,7 @@ export function ThreeConsoleSanitizer() {
     }
 
     return () => {
-      console.warn = originalWarn
+      console['warn'] = originalWarn
     }
   }, [])
 

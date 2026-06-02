@@ -74,7 +74,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     upsert: true,
   })
   if (uploadError) {
-    return NextResponse.json({ ok: false, error: { code: 'REPORT_UPLOAD_FAILED', message: uploadError.message } }, { status: 400 })
+    return NextResponse.json({ ok: false, error: { code: 'REPORT_UPLOAD_FAILED', message: 'Could not upload the inspection report.' } }, { status: 400 })
   }
 
   await admin.from('inspections').update({

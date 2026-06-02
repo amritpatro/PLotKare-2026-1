@@ -1,5 +1,6 @@
 'use client'
 
+import { logger } from '@/lib/monitoring/logger'
 import dynamic from 'next/dynamic'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -196,7 +197,7 @@ function BoduvalasaScene({ selectedPlot, onPlotSelect, onCompassChange }: Boduva
   }, [onCompassChange])
 
   if (process.env.NODE_ENV !== 'production' && boundaryViolations.length > 0) {
-    console.warn('PlotKare layout boundary violations', boundaryViolations)
+    logger.warn('PlotKare layout boundary violations', boundaryViolations)
   }
 
   return (

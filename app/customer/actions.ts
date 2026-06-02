@@ -1,5 +1,6 @@
 'use server'
 
+import { logger } from '@/lib/monitoring/logger'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -137,7 +138,7 @@ export async function saveListing(formData: FormData) {
     failure = isMarketplaceSchemaMissing(error as { code?: string; message?: string })
       ? 'marketplace_schema_pending'
       : 'save_failed'
-    console.error('Customer save listing failed:', error)
+    logger.error('Customer save listing failed:', error)
   }
 
   if (failure) {
@@ -169,7 +170,7 @@ export async function unsaveListing(formData: FormData) {
     failure = isMarketplaceSchemaMissing(error as { code?: string; message?: string })
       ? 'marketplace_schema_pending'
       : 'unsave_failed'
-    console.error('Customer unsave listing failed:', error)
+    logger.error('Customer unsave listing failed:', error)
   }
 
   if (failure) {
@@ -205,7 +206,7 @@ export async function createListingInquiry(formData: FormData) {
     failure = isMarketplaceSchemaMissing(error as { code?: string; message?: string })
       ? 'marketplace_schema_pending'
       : 'inquiry_failed'
-    console.error('Customer inquiry creation failed:', error)
+    logger.error('Customer inquiry creation failed:', error)
   }
 
   if (failure) {
@@ -250,7 +251,7 @@ export async function createSiteVisitRequest(formData: FormData) {
     failure = isMarketplaceSchemaMissing(error as { code?: string; message?: string })
       ? 'marketplace_schema_pending'
       : 'site_visit_failed'
-    console.error('Customer site visit request failed:', error)
+    logger.error('Customer site visit request failed:', error)
   }
 
   if (failure) {
@@ -319,7 +320,7 @@ export async function createCustomerSupportTicket(formData: FormData) {
       metadata: { propertyId, customerId },
     })
   } catch (error) {
-    console.error('Customer support ticket failed:', error)
+    logger.error('Customer support ticket failed:', error)
     failure = 'support_ticket_failed'
   }
 
@@ -380,7 +381,7 @@ export async function requestCustomerAmenity(formData: FormData) {
       metadata: { propertyId: parsed.data.propertyId, amenityId: parsed.data.amenityId, customerId },
     })
   } catch (error) {
-    console.error('Customer amenity request failed:', error)
+    logger.error('Customer amenity request failed:', error)
     failure = 'amenity_request_failed'
   }
 
@@ -434,7 +435,7 @@ export async function requestAdditionalPropertyLink(formData: FormData) {
       entityId: request.id,
     })
   } catch (error) {
-    console.error('Customer property link request failed:', error)
+    logger.error('Customer property link request failed:', error)
     redirect(actionUrl('error', 'property_request_failed', 'properties'))
   }
 

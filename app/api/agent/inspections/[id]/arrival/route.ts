@@ -120,7 +120,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq('assigned_employee_id', employee.id)
 
   if (updateError) {
-    return NextResponse.json({ ok: false, error: { code: 'ARRIVAL_SAVE_FAILED', message: updateError.message } }, { status: 400 })
+    return NextResponse.json({ ok: false, error: { code: 'ARRIVAL_SAVE_FAILED', message: 'Could not confirm arrival.' } }, { status: 400 })
   }
 
   await admin.from('agent_locations').insert({

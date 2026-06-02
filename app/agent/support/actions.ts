@@ -1,5 +1,6 @@
 'use server'
 
+import { logger } from '@/lib/monitoring/logger'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
@@ -45,7 +46,7 @@ export async function createAgentSupportTicket(formData: FormData) {
     .single()
 
   if (error || !ticket) {
-    console.error('Agent support ticket failed:', error)
+    logger.error('Agent support ticket failed:', error)
     supportRedirect('error', 'ticket_failed')
   }
 
@@ -82,7 +83,7 @@ export async function replyToAgentSupportTicket(formData: FormData) {
     .maybeSingle()
 
   if (ticketError || !ticket) {
-    console.error('Agent support reply lookup failed:', ticketError)
+    logger.error('Agent support reply lookup failed:', ticketError)
     supportRedirect('error', 'reply_failed')
   }
 
@@ -95,7 +96,7 @@ export async function replyToAgentSupportTicket(formData: FormData) {
   })
 
   if (error) {
-    console.error('Agent support reply failed:', error)
+    logger.error('Agent support reply failed:', error)
     supportRedirect('error', 'reply_failed')
   }
 

@@ -21,6 +21,7 @@ yarn-error.log*
 /local-save/
 /test-results/
 /.codex-screenshots/
+/.codex-logs/
 
 # env files
 .env*

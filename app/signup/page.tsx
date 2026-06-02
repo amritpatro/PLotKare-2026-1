@@ -7,11 +7,6 @@ import { Check, Eye, EyeOff, Sparkles } from 'lucide-react'
 import { LogoMark } from '@/components/logo'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 import {
-  buildAuthCallbackUrl,
-  formatAuthError,
-  signupAwaitingEmailConfirmation,
-} from '@/lib/supabase/auth-redirect'
-import {
   rememberPendingOnboardingPath,
   resolvePostLoginRedirect,
 } from '@/lib/onboarding/redirect'
@@ -121,32 +116,31 @@ export default function SignupPage() {
     rememberPendingOnboardingPath(onboardingPath)
 
     setSubmitting(true)
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: parsed.data.email.toLowerCase(),
-      password: parsed.data.password,
-      options: {
-        emailRedirectTo: buildAuthCallbackUrl(onboardingPath),
-        data: {
-          full_name: parsed.data.fullName,
-          customer_type: parsed.data.customerType,
-          onboarding_status: 'in_progress',
-        },
-      },
+    const response = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(parsed.data),
     })
+    const result = (await response.json()) as {
+      error?: string
+      sessionCreated?: boolean
+      awaitingEmailConfirmation?: boolean
+      destination?: string
+    }
     setSubmitting(false)
 
-    if (signUpError) {
-      setError(formatAuthError(signUpError))
+    if (!response.ok) {
+      setError(result.error ?? 'We could not create the account right now. Please try again later.')
       return
     }
 
-    if (data.session && data.user) {
-      router.replace(onboardingPath)
+    if (result.sessionCreated) {
+      router.replace(result.destination ?? onboardingPath)
       router.refresh()
       return
     }
 
-    if (signupAwaitingEmailConfirmation(data)) {
+    if (result.awaitingEmailConfirmation) {
       setAwaitingEmailConfirmation(true)
     }
 

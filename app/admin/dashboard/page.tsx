@@ -253,7 +253,7 @@ export default async function AdminOverviewPage() {
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#C9A962]">Admin control center</p>
           <h1 className="mt-3 font-serif text-3xl font-bold text-[#1F2937]">Operations Overview</h1>
           <p className="mt-2 max-w-3xl font-sans text-sm leading-6 text-[#6B7280]">
-            Live platform counts, review queues, team workload, and operational alerts from Supabase.
+            Live platform counts, review queues, team workload, and operational alerts.
           </p>
         </div>
         <Link

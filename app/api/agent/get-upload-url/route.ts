@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   const storagePath = `inspections/${parsed.data.inspectionId}/${safeSegment(parsed.data.direction)}_${Date.now()}.${extension}`
   const { data: upload, error: uploadError } = await admin.storage.from('inspection-photos').createSignedUploadUrl(storagePath)
   if (uploadError || !upload?.signedUrl) {
-    return NextResponse.json({ ok: false, error: { code: 'SIGNED_UPLOAD_FAILED', message: uploadError?.message || 'Could not prepare upload.' } }, { status: 400 })
+    return NextResponse.json({ ok: false, error: { code: 'SIGNED_UPLOAD_FAILED', message: 'Could not prepare upload.' } }, { status: 400 })
   }
 
   const photoPayload = {
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
   const { data: photo, error: photoError } = await write
 
   if (photoError) {
-    return NextResponse.json({ ok: false, error: { code: 'PHOTO_METADATA_FAILED', message: photoError.message } }, { status: 400 })
+    return NextResponse.json({ ok: false, error: { code: 'PHOTO_METADATA_FAILED', message: 'Could not save photo metadata.' } }, { status: 400 })
   }
 
   return NextResponse.json({ ok: true, uploadUrl: upload.signedUrl, token: upload.token, storagePath, photoId: photo.id })

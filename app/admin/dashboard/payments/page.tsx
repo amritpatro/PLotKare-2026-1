@@ -121,7 +121,7 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="font-serif text-2xl font-bold text-[#1F2937]">Billing records</h1>
-          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">Internal pilot visibility only. Live checkout is coming later; current records are read-only consultation and payment history from Supabase.</p>
+          <p className="mt-1 font-sans text-sm text-[#9CA3AF]">Read-only consultation and payment history for operations review.</p>
         </div>
         <form className="flex flex-wrap gap-2">
           <input name="q" defaultValue={q} placeholder="Search description, provider" className={`${inputClass} w-64`} />

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/monitoring/logger'
 type SupabaseAdminLike = {
   from: (table: string) => any
 }
@@ -97,7 +98,7 @@ async function notifyListingPublication(
   })
 
   if (error) {
-    console.error('Listing publication notification failed:', error)
+    logger.error('Listing publication notification failed:', error)
   }
 }
 

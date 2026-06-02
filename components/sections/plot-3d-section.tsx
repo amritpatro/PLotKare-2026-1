@@ -22,7 +22,7 @@ export function Plot3DSection() {
             3D Land Viewer Built for Real Property Files
           </h2>
           <p className="mt-5 max-w-3xl font-sans text-base leading-relaxed text-white/62 md:text-lg">
-            The placeholder plot has been replaced with real layout geometry: plot extents, road linework, 173 plot
+            Review the real layout geometry: plot extents, road linework, 173 plot
             labels, total area, road area, and plotted area. This is the product direction: any verified property file
             can become an interactive digital asset before it is protected, grown, bought, or sold.
           </p>
