@@ -23,34 +23,40 @@ export default function UpdatePasswordPage() {
     let mounted = true
 
     async function establishRecoverySession() {
-      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
-      const search = new URLSearchParams(window.location.search)
-      const accessToken = hash.get('access_token')
-      const refreshToken = hash.get('refresh_token')
-      const code = search.get('code')
+      try {
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+        const search = new URLSearchParams(window.location.search)
+        const accessToken = hash.get('access_token')
+        const refreshToken = hash.get('refresh_token')
+        const code = search.get('code')
 
-      let recoveryError: Error | null = null
-      if (accessToken && refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        })
-        recoveryError = sessionError
-      } else if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-        recoveryError = exchangeError
-      }
+        let recoveryError: Error | null = null
+        if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
+          recoveryError = sessionError
+        } else if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+          recoveryError = exchangeError
+        }
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
 
-      if (!mounted) return
-      setLinkExpired(Boolean(recoveryError) || !session)
-      setSessionReady(true)
+        if (!mounted) return
+        setLinkExpired(Boolean(recoveryError) || !session)
+        setSessionReady(true)
 
-      if (session && (window.location.hash || window.location.search)) {
-        window.history.replaceState({}, '', window.location.pathname)
+        if (session && (window.location.hash || window.location.search)) {
+          window.history.replaceState({}, '', window.location.pathname)
+        }
+      } catch {
+        if (!mounted) return
+        setLinkExpired(true)
+        setSessionReady(true)
       }
     }
 
@@ -76,11 +82,9 @@ export default function UpdatePasswordPage() {
 
     if (updateError) {
       const message = updateError.message.toLowerCase()
-      setError(
-        message.includes('session') || message.includes('expired') || message.includes('invalid')
-          ? 'This reset link is no longer valid. Request a new password reset email and try again.'
-          : updateError.message,
-      )
+      setError(message.includes('session') || message.includes('expired') || message.includes('invalid')
+        ? 'This reset link is no longer valid. Request a new password reset email and try again.'
+        : 'We could not update your password right now. Please try again later.')
       return
     }
 
@@ -106,7 +110,7 @@ export default function UpdatePasswordPage() {
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
       <div className="hidden lg:flex flex-col items-center justify-center bg-[#0A1F12] p-8">
-        <LogoMark />
+        <LogoMark variant="light" />
       </div>
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#0D1A0F] px-6 py-12">
         <div className="w-full max-w-[400px] space-y-8">

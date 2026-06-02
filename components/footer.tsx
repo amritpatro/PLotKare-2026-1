@@ -85,18 +85,18 @@ export function Footer() {
           {/* Logo & Info Column */}
           <div className="lg:col-span-1">
             <Link href="/" prefetch={false}>
-              <LogoMark />
+              <LogoMark variant="light" />
             </Link>
-            <p className="mt-4 font-sans text-sm leading-relaxed text-white/60">
+            <p className="mt-4 font-sans text-sm leading-relaxed text-white/70">
               Trusted Plot Management for NRI Landowners
             </p>
             <div className="mt-6 space-y-2">
-              <p className="font-sans text-sm text-white/60">
+              <p className="font-sans text-sm text-white/70">
                 2nd Floor, Krishna Towers
                 <br />
                 Siripuram, Visakhapatnam 530003
               </p>
-              <p className="font-sans text-sm text-white/60">
+              <p className="font-sans text-sm text-white/70">
                 <a href="mailto:hello@plotkare.in" className="hover:text-white">
                   hello@plotkare.in
                 </a>{' '}
@@ -132,7 +132,7 @@ export function Footer() {
                   <Link
                     href={link.href}
                     prefetch={false}
-                    className="premium-nav-link font-sans text-sm text-white/60 transition-colors hover:text-white"
+                    className="premium-nav-link font-sans text-sm text-white/70 transition-colors hover:text-white"
                   >
                     {link.label}
                   </Link>
@@ -152,7 +152,7 @@ export function Footer() {
                   <Link
                     href={link.href}
                     prefetch={false}
-                    className="premium-nav-link font-sans text-sm text-white/60 transition-colors hover:text-white"
+                    className="premium-nav-link font-sans text-sm text-white/70 transition-colors hover:text-white"
                   >
                     {link.label}
                   </Link>
@@ -172,7 +172,7 @@ export function Footer() {
                   <Link
                     href={link.href}
                     prefetch={false}
-                    className="premium-nav-link font-sans text-sm text-white/60 transition-colors hover:text-white"
+                    className="premium-nav-link font-sans text-sm text-white/70 transition-colors hover:text-white"
                   >
                     {link.label}
                   </Link>
@@ -192,7 +192,7 @@ export function Footer() {
                   <Link
                     href={link.href}
                     prefetch={false}
-                    className="premium-nav-link font-sans text-sm text-white/60 transition-colors hover:text-white"
+                    className="premium-nav-link font-sans text-sm text-white/70 transition-colors hover:text-white"
                   >
                     {link.label}
                   </Link>
@@ -204,11 +204,11 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="border-t border-white/10 pt-8">
-          <p className="text-center font-sans text-sm text-white/40">
+          <p className="text-center font-sans text-sm text-white/65">
             PlotKare 2026. All rights reserved. Property monitoring for owners across{' '}
             <span className="text-primary">India</span>.
           </p>
-          <p className="mt-2 text-center font-sans text-sm text-white/40">
+          <p className="mt-2 text-center font-sans text-sm text-white/65">
             PlotKare&apos;s field operations are managed by a local team based in Visakhapatnam, Andhra Pradesh.
           </p>
         </div>

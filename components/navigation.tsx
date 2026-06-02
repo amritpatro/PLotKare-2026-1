@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { Menu, X } from 'lucide-react'
 import { LogoMark } from '@/components/logo'
 
 const navLinks = [
@@ -86,19 +87,19 @@ export function Navigation() {
         className="premium-nav fixed top-0 left-0 right-0 z-50 border-b border-border bg-white/95"
       >
         <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
-          <div className="flex h-20 items-center justify-between">
+          <div className="flex h-20 items-center gap-5">
             {/* Logo */}
-            <Link href="/">
+            <Link href="/" className="shrink-0">
               <LogoMark />
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden items-center gap-5 xl:gap-6 2xl:gap-9 lg:flex">
+            <div className="hidden flex-1 items-center justify-center gap-4 xl:gap-5 2xl:gap-7 lg:flex">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="premium-nav-link font-sans text-sm font-medium text-foreground/80 transition-colors hover:text-primary"
+                  className="premium-nav-link whitespace-nowrap font-sans text-[13px] font-medium text-foreground/80 transition-colors hover:text-primary xl:text-sm"
                 >
                   {link.label}
                 </Link>
@@ -106,7 +107,7 @@ export function Navigation() {
             </div>
 
             {/* CTA */}
-            <div className="hidden items-center gap-4 xl:gap-6 lg:flex">
+            <div className="hidden shrink-0 items-center gap-4 xl:gap-6 lg:flex">
               <Link
                 href="/signup"
                 className="premium-nav-link font-sans text-sm font-medium text-primary transition-colors hover:text-primary/90"
@@ -127,19 +128,7 @@ export function Navigation() {
               className="premium-interactive flex h-10 w-10 items-center justify-center rounded-sm lg:hidden"
               aria-label="Open menu"
             >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
+              <Menu className="h-6 w-6" strokeWidth={1.5} aria-hidden />
             </button>
           </div>
         </div>
@@ -154,26 +143,14 @@ export function Navigation() {
                   href="/"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  <LogoMark />
+                  <LogoMark variant="light" />
                 </Link>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex h-10 w-10 items-center justify-center text-white"
                   aria-label="Close menu"
                 >
-                  <svg
-                    className="h-6 w-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                  <X className="h-6 w-6" strokeWidth={1.5} aria-hidden />
                 </button>
               </div>
 

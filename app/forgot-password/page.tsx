@@ -23,26 +23,31 @@ export default function ForgotPasswordPage() {
     }
 
     setLoading(true)
-    const response = await fetch('/api/auth/password-reset', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: parsed.data.email }),
-    })
-    const result = (await response.json().catch(() => null)) as { error?: string; message?: string } | null
-    setLoading(false)
+    try {
+      const response = await fetch('/api/auth/password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: parsed.data.email }),
+      })
+      const result = (await response.json().catch(() => null)) as { error?: string; message?: string } | null
 
-    if (!response.ok) {
-      setError(result?.error || 'Unable to send a reset link. Please wait and try again.')
-      return
+      if (!response.ok) {
+        setError(result?.error || 'We could not send the reset email right now. Please try again later.')
+        return
+      }
+
+      setMessage(result?.message || 'If an account exists for that email, a reset link has been sent.')
+    } catch {
+      setError('We could not send the reset email right now. Please try again later.')
+    } finally {
+      setLoading(false)
     }
-
-    setMessage(result?.message || 'If an account exists for that email, a reset link has been sent.')
   }
 
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
       <div className="hidden lg:flex flex-col items-center justify-center bg-[#0A1F12] p-8">
-        <LogoMark />
+        <LogoMark variant="light" />
       </div>
       <div className="flex min-h-screen flex-col items-center justify-center bg-[#0D1A0F] px-6 py-12">
         <div className="w-full max-w-[400px] space-y-8">

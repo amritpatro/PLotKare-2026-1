@@ -315,6 +315,8 @@ export function AvailablePlotsShowcaseSection({
         )
         .subscribe()
 
+      refreshListings()
+
       cleanup = () => {
         if (refreshTimeout.current) clearTimeout(refreshTimeout.current)
         void supabase.removeChannel(channel)

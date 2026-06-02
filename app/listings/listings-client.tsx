@@ -134,6 +134,8 @@ export default function ListingsPageClient({
       )
       .subscribe()
 
+    refreshListings()
+
     return () => {
       if (refreshTimeout.current) clearTimeout(refreshTimeout.current)
       supabase.removeChannel(channel)

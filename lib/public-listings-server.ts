@@ -22,6 +22,7 @@ type ListingRow = {
   property_kind: string | null
   bhk: number | null
   floor_label: string | null
+  archived_at: string | null
 }
 
 type SellerRow = {
@@ -126,9 +127,10 @@ export async function getVerifiedPublicListings(limit?: number): Promise<PublicP
   const admin = createSupabaseAdminClient()
   let query = admin
     .from('listings')
-    .select('id,property_id,seller_id,plot_id,plot_number,location,size_sq_yards,size_label,facing,corner_plot,premium,price_lakhs,price_display,image_path,status,inquiries_count,property_kind,bhk,floor_label')
+    .select('id,property_id,seller_id,plot_id,plot_number,location,size_sq_yards,size_label,facing,corner_plot,premium,price_lakhs,price_display,image_path,status,inquiries_count,property_kind,bhk,floor_label,archived_at')
     .eq('approval_status', 'approved')
     .eq('is_published', true)
+    .is('archived_at', null)
     .order('created_at', { ascending: false })
 
   if (limit) query = query.limit(limit)
@@ -141,7 +143,7 @@ export async function getVerifiedPublicListings(limit?: number): Promise<PublicP
 
   const rows = (data ?? []) as ListingRow[]
   // Filter client-side to avoid passing enum labels that might not exist
-  const statusFilteredRows = rows.filter((r) => ['active', 'featured'].includes((r.status ?? '').toString().toLowerCase()))
+  const statusFilteredRows = rows.filter((r) => !r.archived_at && ['active', 'featured'].includes((r.status ?? '').toString().toLowerCase()))
   const propertyIds = Array.from(new Set(statusFilteredRows.map((row) => row.property_id).filter(Boolean))) as string[]
   const plotIds = Array.from(new Set(statusFilteredRows.map((row) => row.plot_id).filter(Boolean))) as string[]
 

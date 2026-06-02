@@ -1,6 +1,15 @@
-import Image from 'next/image'
+'use client'
+
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { withBasePath } from '@/lib/site-config'
+
+const IndiaHeroMap = dynamic(
+  () => import('@/components/sections/india-hero-map').then((module) => module.IndiaHeroMap),
+  {
+    ssr: false,
+    loading: () => <div className="min-h-[340px] w-full sm:min-h-[430px] lg:min-h-[640px]" aria-hidden />,
+  },
+)
 
 const pillars = [
   { title: 'Protect', label: 'Inspections and evidence' },
@@ -30,9 +39,9 @@ export function HeroSection({
       <div className="pointer-events-none absolute right-[-12%] top-24 -z-10 hidden h-[72%] w-[62%] rounded-full bg-[#8B1538]/[0.035] blur-3xl lg:block" />
       <div className="pointer-events-none absolute right-[3%] top-[16%] -z-10 hidden h-[68%] w-[54%] rounded-full bg-[radial-gradient(circle_at_center,rgba(248,246,243,0.92)_0%,rgba(248,246,243,0.58)_42%,rgba(255,255,255,0)_72%)] lg:block" />
 
-      <div className="mx-auto grid min-h-[calc(100svh-5rem)] max-w-[1500px] gap-10 px-6 py-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(460px,1.08fr)] lg:items-center lg:px-12 lg:py-16">
+      <div className="mx-auto grid min-h-[calc(100svh-5rem)] max-w-[1500px] gap-10 px-6 py-12 lg:grid-cols-[minmax(0,0.84fr)_minmax(520px,1.16fr)] lg:items-center lg:px-12 lg:py-16">
         <div className="min-w-0 text-[#1a1a1a]">
-          <h1 className="max-w-4xl font-serif text-5xl font-bold leading-[1.02] tracking-tight md:text-6xl xl:text-7xl">
+          <h1 className="max-w-4xl font-serif text-5xl font-bold leading-[1.02] tracking-tight md:text-6xl xl:text-[4.25rem]">
             {heading}
           </h1>
 
@@ -79,19 +88,11 @@ export function HeroSection({
           </div>
         </div>
 
-        <div className="premium-map-frame relative min-h-[340px] overflow-hidden rounded-sm bg-transparent sm:min-h-[430px] lg:min-h-[590px]">
+        <div className="premium-map-frame relative min-h-[340px] overflow-hidden rounded-sm bg-transparent sm:min-h-[430px] lg:min-h-[640px]">
           <div className="pointer-events-none absolute inset-[-8%] bg-[radial-gradient(circle_at_54%_45%,rgba(248,246,243,0.82)_0%,rgba(248,246,243,0.46)_44%,rgba(255,255,255,0)_76%)]" />
           <div className="pointer-events-none absolute inset-y-[8%] right-[-8%] w-1/2 bg-[radial-gradient(circle_at_center,rgba(139,21,56,0.045)_0%,rgba(255,255,255,0)_70%)]" />
           <div className="absolute inset-0 flex items-center justify-center opacity-100">
-            <Image
-              src={withBasePath('/geo/india-states-hero.svg')}
-              alt="India state boundary map highlighting PlotKare launch coordination from Visakhapatnam"
-              fill
-              priority
-              unoptimized
-              sizes="(max-width: 1024px) 100vw, 56vw"
-              className="object-contain drop-shadow-[0_30px_42px_rgba(26,26,26,0.14)]"
-            />
+            <IndiaHeroMap />
           </div>
         </div>
       </div>

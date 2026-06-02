@@ -6,13 +6,10 @@ export function isLocalDevHost(hostname: string): boolean {
   return LOCAL_HOSTS.has(hostname)
 }
 
-/** Origin used in auth email/OAuth redirect URLs (browser localhost wins over env). */
+/** Origin used in auth email/OAuth redirect URLs. Browser requests stay on the active deployment. */
 export function getAuthRedirectOrigin(): string {
   if (typeof window !== 'undefined') {
-    const { hostname, origin } = window.location
-    if (isLocalDevHost(hostname)) {
-      return origin.replace(/\/$/, '')
-    }
+    return window.location.origin.replace(/\/$/, '')
   }
 
   return getSiteUrl()
@@ -30,16 +27,11 @@ type AuthErrorLike = {
   name?: string
 }
 
-const SMTP_SETUP_HELP =
-  'PlotKare cannot fix this in app code — Supabase failed to send the confirmation email. ' +
-  'In Supabase: Authentication → Email → verify SMTP (or temporarily use the built-in sender). ' +
-  'Authentication → URL Configuration → add Redirect URLs for your dev origin + /auth/callback ' +
-  '(for example, your production callback URL or local development callback URL). ' +
-  'Check Authentication → Logs for the SMTP error detail.'
+const EMAIL_DELIVERY_MESSAGE =
+  'We could not send the email right now. Please try again later.'
 
-const REDIRECT_URL_HELP =
-  'This redirect URL is not allowed by Supabase. Add your exact callback under Authentication → URL Configuration → Redirect URLs ' +
-  '(for example, your production callback URL or local development callback URL for the same app).'
+const AUTH_RETRY_MESSAGE =
+  'We could not complete sign-in right now. Please try again later.'
 
 function isRedirectUrlError(message: string): boolean {
   const lower = message.toLowerCase()
@@ -70,11 +62,11 @@ export function formatAuthError(error: AuthErrorLike): string {
   const status = error.status
 
   if (isRedirectUrlError(message)) {
-    return REDIRECT_URL_HELP
+    return AUTH_RETRY_MESSAGE
   }
 
   if (isAuthEmailDeliveryError(error)) {
-    return SMTP_SETUP_HELP
+    return EMAIL_DELIVERY_MESSAGE
   }
 
   if (message) return message

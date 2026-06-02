@@ -11,12 +11,14 @@ export async function archiveListing(listingId: string) {
   const context = await requireAdminContext()
   if ('response' in context) return { ok: false, message: 'Admin access required.' }
 
-  const { error } = await context.supabase
+  const { data: updatedListing, error } = await context.supabase
     .from('listings')
     .update({ status: 'archived', is_published: false, archived_at: new Date().toISOString(), archived_by: context.user.id })
     .eq('id', id)
+    .select('id')
+    .maybeSingle()
 
-  if (error) {
+  if (error || !updatedListing) {
     console.error('Admin listing archive failed:', error)
     return { ok: false, message: 'Listing could not be archived. Please try again.' }
   }

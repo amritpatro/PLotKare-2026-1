@@ -28,7 +28,7 @@ export function OnboardingShell({
     <div className="grid min-h-screen grid-cols-1 bg-[#0D1A0F] lg:grid-cols-[0.85fr_1.15fr]">
       <aside className="hidden flex-col justify-between bg-[#0A1F12] p-10 lg:flex">
         <Link href="/" aria-label="PlotKare home">
-          <LogoMark />
+          <LogoMark variant="light" />
         </Link>
         <div className="max-w-md space-y-7">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#D4AF94]/80">{eyebrow}</p>

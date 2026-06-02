@@ -9,7 +9,6 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 import {
   buildAuthCallbackUrl,
   formatAuthError,
-  isAuthEmailDeliveryError,
   signupAwaitingEmailConfirmation,
 } from '@/lib/supabase/auth-redirect'
 import {
@@ -75,7 +74,6 @@ export default function SignupPage() {
   const [awaitingEmailConfirmation, setAwaitingEmailConfirmation] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [emailDeliveryFailed, setEmailDeliveryFailed] = useState(false)
 
   const checks = useMemo(() => getPasswordRequirementChecks(formData.password), [formData.password])
   const strength = checks.filter((item) => item.valid).length
@@ -111,7 +109,6 @@ export default function SignupPage() {
     e.preventDefault()
     if (submitting) return
     setError('')
-    setEmailDeliveryFailed(false)
 
     const parsed = signupSchema.safeParse(formData)
 
@@ -139,7 +136,6 @@ export default function SignupPage() {
     setSubmitting(false)
 
     if (signUpError) {
-      setEmailDeliveryFailed(isAuthEmailDeliveryError(signUpError))
       setError(formatAuthError(signUpError))
       return
     }
@@ -356,18 +352,9 @@ export default function SignupPage() {
               </div>
 
               {error && (
-                <div className="space-y-2">
-                  <p className="rounded-md border border-red-400/30 bg-red-950/30 px-4 py-3 text-sm leading-relaxed text-red-200">
-                    {error}
-                  </p>
-                  {emailDeliveryFailed ? (
-                    <p className="font-sans text-xs leading-relaxed text-white/50">
-                      Dev workaround: Supabase → Authentication → Providers → Email → turn off{' '}
-                      <span className="text-white/70">Confirm email</span> locally, or switch to the built-in email
-                      sender under Authentication → Email until custom SMTP is configured.
-                    </p>
-                  ) : null}
-                </div>
+                <p className="rounded-md border border-red-400/30 bg-red-950/30 px-4 py-3 text-sm leading-relaxed text-red-200">
+                  {error}
+                </p>
               )}
 
               <button
