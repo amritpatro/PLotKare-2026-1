@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Eye, EyeOff } from 'lucide-react'
 import { LogoMark } from '@/components/logo'
+import { PremiumButton } from '@/components/auth/PremiumButton'
+import { PremiumInput } from '@/components/auth/PremiumInput'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 import { resolvePostLoginRedirect } from '@/lib/onboarding/redirect'
 import { getPasswordRequirementChecks, updatePasswordSchema } from '@/lib/validation/auth'
@@ -17,6 +20,8 @@ export default function UpdatePasswordPage() {
   const [sessionReady, setSessionReady] = useState(false)
   const [linkExpired, setLinkExpired] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const passwordChecks = useMemo(() => getPasswordRequirementChecks(password), [password])
 
   useEffect(() => {
@@ -108,60 +113,87 @@ export default function UpdatePasswordPage() {
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
-      <div className="hidden lg:flex flex-col items-center justify-center bg-[#0A1F12] p-8">
-        <LogoMark variant="light" />
-      </div>
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#0D1A0F] px-6 py-12">
-        <div className="w-full max-w-[400px] space-y-8">
-          <h1 className="font-serif text-4xl italic text-[#D4AF94]">New Password.</h1>
-          {!sessionReady ? <p className="font-sans text-sm text-white/70">Checking your reset link...</p> : null}
+    <main className="min-h-screen bg-[#F8F6F3] px-6 py-10">
+      <div className="mx-auto w-full max-w-md">
+        <Link href="/" aria-label="PlotKare home" className="inline-flex">
+          <LogoMark />
+        </Link>
+
+        <section className="mt-14 rounded-2xl border border-[#1a1a1a]/10 bg-white p-8 shadow-2xl shadow-black/10">
+          <h1 className="text-4xl font-bold tracking-tight text-[#1a1a1a]">Create a new password.</h1>
+          <p className="mt-4 text-lg leading-relaxed text-[#5f5f5f]">
+            Use a strong password to keep your PlotKare workspace protected.
+          </p>
+
+          {!sessionReady ? <p role="status" aria-live="polite" className="mt-8 text-sm text-[#5f5f5f]">Checking your reset link...</p> : null}
           {sessionReady && linkExpired ? (
-            <div className="space-y-4">
-              <p className="font-sans text-sm leading-6 text-red-500">
+            <div className="mt-8 space-y-5">
+              <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-300">
                 This reset link has expired. Request a new password reset email and try again.
               </p>
               <Link
                 href="/forgot-password"
-                className="block w-full rounded-sm bg-[#C0392B] py-3 text-center font-sans text-base font-medium text-white transition-colors hover:bg-[#A93225]"
+                className="flex h-14 w-full items-center justify-center rounded-xl bg-[#8B1538] px-5 text-base font-semibold text-white transition-all duration-200 hover:bg-[#75112f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B1538] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F8F6F3]"
               >
                 Request a new reset link
               </Link>
             </div>
           ) : null}
-          {sessionReady && !linkExpired ? <form onSubmit={handleSubmit} className="space-y-6">
-            <input
-              type="password"
+          {sessionReady && !linkExpired ? <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+            <PremiumInput
+              id="new-password"
+              label="New password"
+              type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={setPassword}
               placeholder="New password"
-              className="w-full border-b border-white/20 bg-transparent px-0 py-3 font-sans text-white placeholder-white/40 focus:border-b-2 focus:border-[#C0392B] focus:outline-none"
+              autoComplete="new-password"
+              required
+              error={error}
+              suffix={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-[#5f5f5f] transition-colors hover:text-[#8B1538]"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              }
             />
-            <div className="space-y-1.5">
+            <div id="password-requirements" className="space-y-1.5 rounded-2xl border border-[#1a1a1a]/10 bg-white p-4">
               {passwordChecks.map((item) => (
-                <p key={item.label} className={`font-sans text-xs ${item.valid ? 'text-emerald-400' : 'text-white/50'}`}>
-                  {item.valid ? '✓' : '○'} {item.label}
+                <p key={item.label} className={`text-xs ${item.valid ? 'text-emerald-300' : 'text-[#6B7280]'}`}>
+                  {item.valid ? 'Pass' : 'Needed'} - {item.label}
                 </p>
               ))}
             </div>
-            <input
-              type="password"
+            <PremiumInput
+              id="confirm-new-password"
+              label="Confirm new password"
+              type={showConfirmPassword ? 'text' : 'password'}
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={setConfirmPassword}
               placeholder="Confirm new password"
-              className="w-full border-b border-white/20 bg-transparent px-0 py-3 font-sans text-white placeholder-white/40 focus:border-b-2 focus:border-[#C0392B] focus:outline-none"
+              autoComplete="new-password"
+              required
+              suffix={
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="text-[#5f5f5f] transition-colors hover:text-[#8B1538]"
+                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              }
             />
-            {error && <p className="font-sans text-sm text-red-500">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-sm bg-[#C0392B] py-3 font-sans text-base font-medium text-white transition-colors hover:bg-[#A93225] disabled:opacity-50"
-            >
-              {loading ? 'Updating...' : 'Update Password'}
-            </button>
+            <PremiumButton type="submit" disabled={loading} loading={loading} fullWidth>
+              Update password
+            </PremiumButton>
           </form> : null}
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   )
 }

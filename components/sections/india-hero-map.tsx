@@ -4,10 +4,9 @@
  * India admin-1 hero map using the clean generated Natural Earth state source.
  * Do not hand-patch geographic coordinates in the component; rebuild the GeoJSON source instead.
  */
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FeatureCollection } from 'geojson'
 import { geoMercator, geoPath } from 'd3-geo'
-import gsap from 'gsap'
 import {
   Dialog,
   DialogContent,
@@ -49,7 +48,6 @@ function isAndhraPradesh(name: string, iso: string) {
 type PathRow = { key: string; name: string; iso: string; d: string; ap: boolean }
 
 export function IndiaHeroMap() {
-  const rootRef = useRef<HTMLDivElement>(null)
   const [fc, setFc] = useState<FeatureCollection | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [selected, setSelected] = useState<PathRow | null>(null)
@@ -118,21 +116,12 @@ export function IndiaHeroMap() {
     return { w, h, paths, vizag }
   }, [fc])
 
-  useLayoutEffect(() => {
-    if (reduceMotion || !rootRef.current || !fc) return
-    const ctx = gsap.context(() => {
-      gsap.fromTo(rootRef.current, { opacity: 0.001 }, { opacity: 1, duration: 0.55, ease: 'power2.out' })
-    }, rootRef)
-    return () => ctx.revert()
-  }, [reduceMotion, fc])
-
   const openDialog = (row: PathRow) => setSelected(row)
   const normalPaths = layout.paths.filter((p) => !p.ap)
   const activePaths = layout.paths.filter((p) => p.ap)
 
   return (
     <div
-      ref={rootRef}
       className="relative flex h-full min-h-[320px] w-full items-center justify-center overflow-hidden [perspective:1200px] sm:min-h-[400px]"
     >
       <div

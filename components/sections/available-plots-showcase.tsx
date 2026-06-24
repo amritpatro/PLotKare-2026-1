@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -261,78 +261,20 @@ export function AvailablePlotsShowcaseSection({
   browseLabel?: string
   accountLabel?: string
 }) {
-  const [listings, setListings] = useState<PublicPlotListing[]>(initialListings)
   const [detailPlot, setDetailPlot] = useState<PublicPlotListing | null>(null)
   const [inquiryPlot, setInquiryPlot] = useState<PublicPlotListing | null>(null)
   const [inquirySuccess, setInquirySuccess] = useState(false)
-  const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const sectionRef = useRef<HTMLElement | null>(null)
-  const [realtimeEnabled, setRealtimeEnabled] = useState(false)
 
-  useEffect(() => {
-    if (!sectionRef.current || realtimeEnabled) return
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry?.isIntersecting) return
-        setRealtimeEnabled(true)
-        observer.disconnect()
-      },
-      { rootMargin: '320px 0px' },
-    )
-    observer.observe(sectionRef.current)
-    return () => observer.disconnect()
-  }, [realtimeEnabled])
-
-  useEffect(() => {
-    if (!realtimeEnabled) return
-    let disposed = false
-    let cleanup: (() => void) | undefined
-
-    void import('@/lib/supabase/browser').then(({ createSupabaseBrowserClient }) => {
-      if (disposed) return
-      const supabase = createSupabaseBrowserClient()
-      const refreshListings = () => {
-        if (refreshTimeout.current) return
-        refreshTimeout.current = setTimeout(async () => {
-          refreshTimeout.current = null
-          try {
-            const response = await fetch('/api/public-listings', { cache: 'no-store' })
-            if (!response.ok) return
-            const result = (await response.json()) as { listings?: PublicPlotListing[] }
-            if (result.listings) setListings(result.listings)
-          } catch {
-            // No-op: keep last known listings.
-          }
-        }, 250)
-      }
-
-      const channel = supabase
-        .channel('public-listings')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'listings' },
-          refreshListings,
-        )
-        .subscribe()
-
-      refreshListings()
-
-      cleanup = () => {
-        if (refreshTimeout.current) clearTimeout(refreshTimeout.current)
-        void supabase.removeChannel(channel)
-      }
-    })
-
-    return () => {
-      disposed = true
-      cleanup?.()
-    }
-  }, [realtimeEnabled])
-
-  const showcase = getLandingShowcaseListings(listings)
+  const showcase = getLandingShowcaseListings(initialListings)
+  const showcaseGridClass =
+    showcase.length === 1
+      ? 'mx-auto grid max-w-xl gap-6'
+      : showcase.length === 2
+        ? 'mx-auto grid max-w-5xl gap-6 md:grid-cols-2 md:gap-8'
+        : 'grid gap-6 md:grid-cols-3 md:gap-8'
 
   return (
-    <section ref={sectionRef} className="premium-section-dark bg-charcoal py-24 lg:py-32">
+    <section className="premium-section-dark bg-charcoal py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <div className="premium-reveal mb-12 text-center">
           <h2 className="font-serif text-4xl font-bold text-white md:text-5xl">
@@ -344,7 +286,7 @@ export function AvailablePlotsShowcaseSection({
         </div>
 
         {showcase.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-3 md:gap-8">
+          <div className={showcaseGridClass}>
             {showcase.map((plot) => (
             <div key={plot.id}>
               <PlotCard

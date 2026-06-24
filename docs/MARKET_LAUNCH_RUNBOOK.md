@@ -19,13 +19,19 @@ The application can be shown to invited owners and used for controlled field ope
 - [ ] Confirm a staffed WhatsApp number in international digits-only format and set `NEXT_PUBLIC_WHATSAPP_URL=https://wa.me/<number>`.
 - [ ] Remove internal implementation language from `/support/`. Customers should not see environment variable names or backend endpoint notes.
 - [ ] Repair Supabase custom SMTP credentials. Verify signup confirmation and forgot-password delivery end to end.
+- [ ] Enable Google Auth in Supabase only after a Google Web OAuth client is created with `https://neegwuhzphjmrmgrfycs.supabase.co/auth/v1/callback` as the redirect URI.
+- [ ] Rotate the invalid Resend key, verify the sending domain, and confirm `RESEND_API_KEY` plus `RESEND_FROM_EMAIL` work before using the fallback password-reset delivery path.
+- [ ] Add SPF, DKIM, and DMARC for the transactional email domain.
 - [ ] Enable Supabase leaked-password protection.
 - [ ] Add the real domain to the Vercel project and complete the required DNS records.
 - [ ] Set Vercel production `NEXT_PUBLIC_SITE_URL=https://<real-domain>`.
 - [ ] Redeploy after changing Vercel environment variables. Existing deployments do not receive new values.
 - [ ] In Supabase Auth URL Configuration:
   - [ ] Set Site URL to `https://<real-domain>`.
+  - [ ] Add local callback `http://127.0.0.1:3002/auth/callback**` while local smoke testing is needed.
+  - [ ] Add Vercel production callback `https://<vercel-production-host>/auth/callback**` until the custom domain is live.
   - [ ] Add production callback `https://<real-domain>/auth/callback**`. The narrow wildcard is needed for the callback `next` query parameter.
+  - [ ] Add `https://www.plotkare.in/auth/callback**` if `www` remains a supported host.
   - [ ] Add exact production password reset URL `https://<real-domain>/update-password/`.
   - [ ] Keep local and preview redirect patterns only where required for testing.
 - [ ] Configure `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` for shared serverless rate limiting.
@@ -84,7 +90,7 @@ Update the confirmed business details consistently:
 - [ ] Add uptime checks for homepage, health endpoint, auth failure spikes, and contact-form failures.
 - [ ] Define backup and restore testing cadence for production data.
 - [ ] Add a second SMTP provider or documented failover procedure.
-- [ ] Configure SPF, DKIM, and DMARC for the transactional email domain.
+- [ ] Document SMTP provider failover and test it quarterly.
 - [ ] Review all public claims, pricing language, refund wording, and service coverage with the business owner.
 - [ ] Replace placeholder social links only when real accounts are staffed.
 

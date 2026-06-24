@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 import { requireRoleContext } from '@/lib/api/auth'
+import { isRateLimited } from '@/lib/api/rate-limit'
 import { recordAuditLog } from '@/lib/audit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { upsertVerificationRequest } from '@/lib/verification-requests'
@@ -14,6 +15,9 @@ const actionSchema = z.object({
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const context = await requireRoleContext(['plot_seller', 'land_owner', 'customer', 'admin'])
   if ('response' in context) return context.response
+  if (await isRateLimited(request, { identifier: context.user.id })) {
+    return apiError('Too many document workflow requests. Please wait and try again.', 429, 'RATE_LIMITED')
+  }
 
   const parsedParams = paramsSchema.safeParse(await params)
   if (!parsedParams.success) return apiError('Document ID is invalid.', 400, 'INVALID_DOCUMENT_ID')
@@ -76,9 +80,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   return apiOk({ id: document.id, status: 'withdrawal_requested' })
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const context = await requireRoleContext(['plot_seller', 'land_owner', 'customer', 'admin'])
   if ('response' in context) return context.response
+  if (await isRateLimited(request, { identifier: context.user.id })) {
+    return apiError('Too many document workflow requests. Please wait and try again.', 429, 'RATE_LIMITED')
+  }
 
   const parsedParams = paramsSchema.safeParse(await params)
   if (!parsedParams.success) return apiError('Document ID is invalid.', 400, 'INVALID_DOCUMENT_ID')

@@ -12,19 +12,11 @@ type CustomerProfile = {
   full_name: string | null
   email: string | null
   phone: string | null
+  address_line?: string | null
+  city?: string | null
   role: string | null
   customer_type: string | null
   created_at: string | null
-}
-
-type VerificationRecord = {
-  verification_status?: string | null
-  kyc_status?: string | null
-  account_status?: string | null
-  company_name?: string | null
-  gst_number?: string | null
-  pan_number?: string | null
-  aadhaar_last4?: string | null
 }
 
 type CustomerContext = {
@@ -38,6 +30,7 @@ type CustomerContext = {
   supportOpen: number
   documentsTotal: number
   documentsPending: number
+  ownerPropertyTotal: number
   detailHref: string
   joinedLabel: string
   profileSummary: string
@@ -135,7 +128,7 @@ const loadCustomerContext = cache(async (userId: string): Promise<CustomerContex
   const [{ data: profile }, { data: seller }, { data: owner }, { data: customer }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id,full_name,email,phone,role,customer_type,created_at')
+      .select('id,full_name,email,phone,address_line,city,role,customer_type,created_at')
       .eq('id', userId)
       .maybeSingle(),
     supabase
@@ -170,7 +163,7 @@ const loadCustomerContext = cache(async (userId: string): Promise<CustomerContex
   const verificationTone = VERIFICATION_TONES[verificationStatus] ?? 'amber'
 
   const customerRecordId = customer?.id ?? null
-  const [supportCount, openSupportCount, documentsCount, pendingDocumentsCount, subscription] = await Promise.all([
+  const [supportCount, openSupportCount, documentsCount, pendingDocumentsCount, ownerPropertiesCount, subscription] = await Promise.all([
     supabase
       .from('support_tickets')
       .select('id', { count: 'exact', head: true })
@@ -197,6 +190,10 @@ const loadCustomerContext = cache(async (userId: string): Promise<CustomerContex
           .select('id', { count: 'exact', head: true })
           .eq('uploaded_by', userId)
           .in('verification_status', PENDING_DOCUMENT_STATUSES),
+    supabase
+      .from('properties')
+      .select('id', { count: 'exact', head: true })
+      .eq('owner_profile_id', userId),
     customerRecordId
       ? supabase
           .from('subscriptions')
@@ -236,6 +233,7 @@ const loadCustomerContext = cache(async (userId: string): Promise<CustomerContex
     supportOpen: openSupportCount.count ?? 0,
     documentsTotal: documentsCount.count ?? 0,
     documentsPending: pendingDocumentsCount.count ?? 0,
+    ownerPropertyTotal: ownerPropertiesCount.count ?? 0,
     detailHref: `/admin/dashboard/customers/${profile.id}`,
     joinedLabel: formatDate(profile.created_at),
     profileSummary: profileSummaryParts.join(' · '),
@@ -294,6 +292,10 @@ export async function CustomerContextPanel({ userId, className = '' }: CustomerC
           <p className="mt-1 text-sm font-semibold text-[#1F2937]">{context.profile.phone || 'Phone pending'}</p>
         </a>
         <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">Contact address</p>
+          <p className="mt-1 text-sm font-semibold text-[#1F2937]">{context.profile.address_line || context.profile.city || 'Address pending'}</p>
+        </div>
+        <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">Joined</p>
           <p className="mt-1 text-sm font-semibold text-[#1F2937]">{context.joinedLabel}</p>
           <p className="mt-1 text-xs text-[#6B7280]">{formatRelativeDays(context.profile.created_at)}</p>
@@ -302,6 +304,11 @@ export async function CustomerContextPanel({ userId, className = '' }: CustomerC
           <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">Support tickets</p>
           <p className="mt-1 text-sm font-semibold text-[#1F2937]">{context.supportTotal}</p>
           <p className="mt-1 text-xs text-[#6B7280]">{context.supportOpen} currently open</p>
+        </div>
+        <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">Owner properties</p>
+          <p className="mt-1 text-sm font-semibold text-[#1F2937]">{context.ownerPropertyTotal}</p>
+          <p className="mt-1 text-xs text-[#6B7280]">Registered from onboarding or owner dashboard</p>
         </div>
         <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">Documents</p>

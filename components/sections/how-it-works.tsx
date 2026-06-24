@@ -49,7 +49,7 @@ export function HowItWorksSection({
           {steps.map((step, index) => (
             <div
               key={step.number}
-              className="premium-surface-dark group relative rounded-lg bg-white/5 p-6 transition-all duration-500 hover:bg-white/10"
+              className="premium-surface-dark premium-interactive group relative rounded-lg bg-white/5 p-6 transition-colors hover:bg-white/10"
             >
               {/* Connector Line */}
               {index < steps.length - 1 && (

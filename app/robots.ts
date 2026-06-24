@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { absoluteUrl } from '@/lib/site-config'
+import { getCanonicalSiteUrl, withBasePath } from '@/lib/site-config'
 
 export const dynamic = 'force-static'
 
@@ -27,6 +27,6 @@ export default function robots(): MetadataRoute.Robots {
         '/agent/',
       ],
     },
-    sitemap: absoluteUrl('/sitemap.xml'),
+    sitemap: `${getCanonicalSiteUrl()}${withBasePath('/sitemap.xml')}`,
   }
 }

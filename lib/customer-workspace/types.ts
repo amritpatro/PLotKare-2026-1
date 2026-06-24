@@ -16,6 +16,8 @@ export type BuyerDetails = {
   preferred_plot_size_min: number | null
   preferred_plot_size_max: number | null
   preferred_property_types: string[] | null
+  buying_purpose: string | null
+  purchase_timeline: string | null
   loan_interested: boolean | null
   kyc_pan_submitted: boolean | null
   kyc_aadhaar_submitted: boolean | null

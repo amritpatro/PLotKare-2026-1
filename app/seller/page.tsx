@@ -75,7 +75,7 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
   ] = await Promise.all([
     supabase
       .from('plot_seller_details')
-      .select('company_name,gst_number,pan_number,address,commission_model,commission_rate,listing_fee_amount,bank_verified,verification_status,updated_at')
+      .select('company_name,seller_type,gst_number,pan_number,address,listing_property_kind,listing_location,expected_price_lakhs,listing_notes,commission_model,commission_rate,listing_fee_amount,bank_verified,verification_status,updated_at')
       .eq('user_id', user.id)
       .maybeSingle(),
     sellerId
@@ -246,6 +246,22 @@ export default async function PlotSellerDashboardPage({ searchParams }: SellerDa
                   </span>
                 </div>
                 <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-4">
+                  <div>
+                    <dt className="text-[#9CA3AF]">Seller type</dt>
+                    <dd className="mt-1 font-medium text-[#1F2937]">{statusLabel(sellerDetails.seller_type)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[#9CA3AF]">First listing type</dt>
+                    <dd className="mt-1 font-medium text-[#1F2937]">{statusLabel(sellerDetails.listing_property_kind)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[#9CA3AF]">Listing location</dt>
+                    <dd className="mt-1 font-medium text-[#1F2937]">{sellerDetails.listing_location || 'Pending'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[#9CA3AF]">Expected price</dt>
+                    <dd className="mt-1 font-medium text-[#1F2937]">{sellerDetails.expected_price_lakhs ? `₹${sellerDetails.expected_price_lakhs}L` : 'Pending'}</dd>
+                  </div>
                   <div>
                     <dt className="text-[#9CA3AF]">GST</dt>
                     <dd className="mt-1 font-medium text-[#1F2937]">{sellerDetails.gst_number || 'Pending'}</dd>

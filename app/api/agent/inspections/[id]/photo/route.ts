@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireUserContext } from '@/lib/api/auth'
+import { isRateLimited } from '@/lib/api/rate-limit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { recordAuditLog } from '@/lib/audit'
 
@@ -13,6 +14,9 @@ function safeFileName(name: string) {
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const context = await requireUserContext()
   if ('response' in context) return context.response
+  if (await isRateLimited(request, { identifier: context.user.id })) {
+    return NextResponse.json({ ok: false, error: { code: 'RATE_LIMITED', message: 'Too many photo uploads. Please wait and try again.' } }, { status: 429 })
+  }
 
   if (context.profile.role !== 'employee') {
     return NextResponse.json({ ok: false, error: { code: 'FIELD_AGENT_REQUIRED', message: 'Field agent access is required.' } }, { status: 403 })

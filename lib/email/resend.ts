@@ -6,6 +6,10 @@ type EmailInput = {
   replyTo?: string
 }
 
+export function hasTransactionalEmailConfiguration() {
+  return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL)
+}
+
 export async function sendTransactionalEmail(input: EmailInput) {
   const apiKey = process.env.RESEND_API_KEY
   const from = process.env.RESEND_FROM_EMAIL

@@ -1,21 +1,21 @@
 const steps = [
   {
-    title: 'Scheduled visit',
-    body: 'A coordinator routes to your plot or apartment on the agreed cadence — access paths, boundary markers, and visible structures are photographed with timestamps.',
+    title: 'Geotagged evidence',
+    body: 'Dated photographs preserve the visible condition of boundaries, access paths, nearby activity, and structures observed during the visit.',
   },
   {
-    title: 'Evidence package',
-    body: 'You receive dated imagery and notes in one thread — forwardable to family, counsel, or brokers without losing context.',
+    title: 'Inspection report',
+    body: 'Photographs, notes, timestamps, and the inspection status stay together in a report that authorized owners can review and share.',
   },
   {
-    title: 'Hygiene & reminders',
-    body: 'Tax, encumbrance, and registration checkpoints surface as reminders; filings remain with your qualified professionals.',
+    title: 'Issue alerts',
+    body: 'Material changes or follow-up needs are called out clearly so owners can decide whether to involve family, surveyors, counsel, or local support.',
   },
 ]
 
 export function MonitoringInsightsSection({
-  heading = 'How Each Inspection Cycle Works',
-  introduction = 'Each cycle is intended to create dated records an authorized owner can review later, without invented testimonials or unsourced performance claims.',
+  heading = 'What You Receive After Every Visit',
+  introduction = 'Each completed visit adds practical, dated evidence to the property file without invented testimonials or unsourced performance claims.',
 }: {
   heading?: string
   introduction?: string
@@ -34,9 +34,9 @@ export function MonitoringInsightsSection({
           {steps.map((step, index) => (
             <article
               key={step.title}
-              className="premium-surface rounded-lg border border-border bg-card p-7"
+              className="premium-surface premium-interactive rounded-lg border border-border bg-card p-7"
             >
-              <p className="font-mono text-xs font-semibold uppercase tracking-wide text-primary">{`Step ${index + 1}`}</p>
+              <p className="font-mono text-xs font-semibold uppercase tracking-wide text-primary">{`Included ${index + 1}`}</p>
               <h3 className="mt-2 font-serif text-xl font-semibold text-foreground">{step.title}</h3>
               <p className="mt-3 font-sans text-sm leading-relaxed text-muted-foreground">{step.body}</p>
             </article>

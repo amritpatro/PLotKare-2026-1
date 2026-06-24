@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 import { requireRoleContext } from '@/lib/api/auth'
+import { isRateLimited } from '@/lib/api/rate-limit'
 import { DOCUMENT_MAX_BYTES, findDocumentRequirement, type DocumentRole } from '@/lib/documents/catalog'
 import { recordAuditLog } from '@/lib/audit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
@@ -96,6 +97,9 @@ async function resolveAuthorizedScope(
 export async function POST(request: Request) {
   const context = await requireRoleContext(['plot_seller', 'land_owner', 'customer', 'admin'])
   if ('response' in context) return context.response
+  if (await isRateLimited(request, { identifier: context.user.id })) {
+    return apiError('Too many document submissions. Please wait and try again.', 429, 'RATE_LIMITED')
+  }
 
   const parsed = finalizeSchema.safeParse(await parseJson(request))
   if (!parsed.success) return validationError(parsed.error)

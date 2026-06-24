@@ -3,14 +3,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Check, Eye, EyeOff, Sparkles } from 'lucide-react'
-import { LogoMark } from '@/components/logo'
+import { Check, Eye, EyeOff } from 'lucide-react'
+import { AuthLayout } from '@/components/auth/AuthLayout'
+import { PremiumButton } from '@/components/auth/PremiumButton'
+import { PremiumInput } from '@/components/auth/PremiumInput'
+import { SelectionCard } from '@/components/auth/SelectionCard'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 import {
   rememberPendingOnboardingPath,
   resolvePostLoginRedirect,
 } from '@/lib/onboarding/redirect'
 import { slugFromCustomerType, type CustomerType } from '@/lib/onboarding/types'
+import { buildAuthCallbackUrl, formatAuthError } from '@/lib/supabase/auth-redirect'
 import { getPasswordRequirementChecks, signupSchema } from '@/lib/validation/auth'
 
 type SignupFormData = {
@@ -37,17 +41,17 @@ const roleOptions: Array<{
   {
     id: 'land_owner',
     title: 'Land Owner',
-    subtitle: 'Register and manage your own land or property.',
+    subtitle: 'Monitor and protect owned land.',
   },
   {
     id: 'plot_seller',
-    title: 'Plot Seller',
-    subtitle: 'Manage plots, sales, customers, and documents.',
+    title: 'Property Seller',
+    subtitle: 'List verified plots and properties.',
   },
   {
     id: 'plot_buyer',
-    title: 'Customer',
-    subtitle: 'Track purchased property, documents, services, and support.',
+    title: 'Property Buyer',
+    subtitle: 'Find verified properties to buy.',
   },
 ]
 
@@ -69,6 +73,7 @@ export default function SignupPage() {
   const [awaitingEmailConfirmation, setAwaitingEmailConfirmation] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null)
 
   const checks = useMemo(() => getPasswordRequirementChecks(formData.password), [formData.password])
   const strength = checks.filter((item) => item.valid).length
@@ -82,6 +87,23 @@ export default function SignupPage() {
 
   useEffect(() => {
     let mounted = true
+
+    fetch('/api/auth/providers')
+      .then(async (response) => {
+        const providers = (await response.json()) as { google?: boolean }
+        if (mounted) setGoogleEnabled(response.ok && providers.google === true)
+      })
+      .catch(() => {
+        if (mounted) setGoogleEnabled(false)
+      })
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let mounted = true
     supabase.auth.getUser().then(async ({ data }) => {
       if (!mounted || !data.user) return
       const destination = await resolvePostLoginRedirect(supabase, data.user.id, nextPath)
@@ -91,14 +113,6 @@ export default function SignupPage() {
       mounted = false
     }
   }, [nextPath, router, supabase])
-
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = event.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: normalizeFieldValue(name, value),
-    }))
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -147,46 +161,53 @@ export default function SignupPage() {
     setSubmitted(true)
   }
 
+  const handleOAuth = async () => {
+    setError('')
+    if (googleEnabled !== true) {
+      setError('Google sign-up is not enabled for this PlotKare environment yet.')
+      return
+    }
+
+    setSubmitting(true)
+    const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: buildAuthCallbackUrl('/auth/choose-role'),
+        skipBrowserRedirect: true,
+      },
+    })
+    if (oauthError) {
+      setError(formatAuthError(oauthError))
+      setSubmitting(false)
+      return
+    }
+
+    if (!data.url) {
+      setError('Google sign-up could not be started. Please try again.')
+      setSubmitting(false)
+      return
+    }
+
+    window.location.assign(data.url)
+  }
+
   return (
-    <div className="grid min-h-screen grid-cols-1 bg-[#0D1A0F] lg:grid-cols-[0.85fr_1.15fr]">
-      <div className="hidden flex-col justify-between bg-[#0A1F12] p-10 lg:flex">
-        <Link href="/" aria-label="PlotKare home">
-          <LogoMark variant="light" />
-        </Link>
-        <div className="max-w-md space-y-7">
-          <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#D4AF94]/80">
-            Role-based onboarding
-          </p>
-          <h1 className="font-serif text-5xl font-semibold leading-tight text-white">
-            Build your property command room.
-          </h1>
-          <p className="font-sans text-base leading-8 text-white/65">
-            Choose the right workspace first. PlotKare then opens the exact setup flow for sellers, land owners, or
-            customers.
+    <AuthLayout
+      headline="Build your property command room."
+      subtext="Choose the right workspace first. PlotKare then opens the exact setup flow for owners, sellers, or buyers."
+    >
+      <div className="rounded-2xl border border-[#1a1a1a]/10 bg-white p-8 shadow-2xl shadow-black/10 md:p-10 xl:p-12">
+        <div className="space-y-3">
+          <h1 className="text-3xl font-bold tracking-tight text-[#1a1a1a] md:text-4xl">Create your account</h1>
+          <p className="text-base leading-7 text-[#5f5f5f]">
+            Join property owners protecting their land the smart way.
           </p>
         </div>
-      </div>
 
-      <div className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-8">
-        <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/30 backdrop-blur-md sm:p-8 lg:p-10">
-          <div className="mb-8 flex items-start justify-between gap-4">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#D4AF94]/80">PlotKare access</p>
-              <h1 className="mt-3 font-serif text-4xl font-semibold italic text-[#D4AF94] sm:text-5xl">
-                Create Account.
-              </h1>
-              <p className="mt-3 max-w-xl font-sans text-sm leading-6 text-white/60">
-                A few details help us personalize your dashboard, verify service coverage, and guide the right property
-                workflow from day one.
-              </p>
-            </div>
-            <div className="hidden rounded-full border border-white/10 bg-white/5 p-3 text-[#D4AF94] sm:block">
-              <Sparkles className="h-6 w-6" />
-            </div>
-          </div>
+        <div className="my-8 border-b border-[#8B1538]/20" />
 
           {intent === 'add-property' ? (
-            <p className="mb-6 rounded-xl border border-[#D4AF94]/20 bg-[#D4AF94]/10 px-4 py-3 font-sans text-sm leading-relaxed text-white/70">
+            <p className="mb-6 rounded-xl border border-[#8B1538]/20 bg-[#8B1538]/10 px-4 py-3 text-sm leading-relaxed text-[#5f5f5f]">
               Create your owner account first. After signup, your dashboard will guide plot details, documents, and
               inspection setup.
             </p>
@@ -195,138 +216,116 @@ export default function SignupPage() {
           {submitted ? (
             <div className="space-y-6 text-center">
               <div className="flex justify-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#C0392B]">
-                  <Check size={32} className="text-white" />
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30">
+                  <Check size={36} />
                 </div>
               </div>
               <div>
-                <p className="font-sans text-lg font-medium text-white">
+                <p className="text-2xl font-semibold text-[#1a1a1a]">
                   {awaitingEmailConfirmation ? 'Confirm your email' : 'Account created'}
                 </p>
-                <p className="mt-2 font-sans text-sm text-white/60">
+                <p className="mt-3 text-sm leading-6 text-[#5f5f5f]">
                   {awaitingEmailConfirmation
                     ? `We sent a confirmation link to ${formData.email}. Open it on this device, then sign in to continue.`
                     : 'Your access has been created. Sign in to continue to the PlotKare dashboard.'}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => router.push('/login')}
-                  className="mt-6 w-full rounded-md bg-[#C0392B] py-3 font-sans text-base font-medium text-white transition-colors hover:bg-[#A93225]"
-                >
+                <PremiumButton onClick={() => router.push('/login')} fullWidth className="mt-6">
                   Go to Sign In
-                </button>
+                </PremiumButton>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-7">
-              <div>
-                <span className="font-mono text-xs uppercase tracking-[0.16em] text-white/45">I am joining as</span>
-                <div className="mt-3 grid gap-3 md:grid-cols-3">
-                  {roleOptions.map((role) => {
-                    const selected = formData.customerType === role.id
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {error && (
+                <div role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-relaxed text-red-300">
+                  {error}
+                </div>
+              )}
 
-                    return (
-                      <button
-                        key={role.id}
-                        type="button"
-                        onClick={() => setFormData((prev) => ({ ...prev, customerType: role.id }))}
-                        className={`rounded-xl border p-4 text-left transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF94] ${
-                          selected
-                            ? 'border-[#C0392B] bg-[#C0392B]/20 shadow-lg shadow-black/20'
-                            : 'border-white/10 bg-white/[0.025] hover:border-[#D4AF94]/40 hover:bg-white/[0.045]'
-                        }`}
-                        aria-pressed={selected}
-                      >
-                        <span className="font-sans text-sm font-semibold text-white">{role.title}</span>
-                        <span className="mt-2 block font-sans text-xs leading-5 text-white/55">{role.subtitle}</span>
-                      </button>
-                    )
-                  })}
+              <div className="space-y-4">
+                <span className="block text-sm font-medium uppercase tracking-widest text-[#5f5f5f]">I am a...</span>
+                <div className="grid gap-4 lg:grid-cols-3">
+                  {roleOptions.map((role) => (
+                    <SelectionCard
+                      key={role.id}
+                      id={`signup-role-${role.id}`}
+                      label={role.title}
+                      description={role.subtitle}
+                      selected={formData.customerType === role.id}
+                      onSelect={() => setFormData((prev) => ({ ...prev, customerType: role.id }))}
+                    />
+                  ))}
                 </div>
               </div>
 
-              <div className="grid gap-5 md:grid-cols-2">
-                <label className="block">
-                  <span className="font-mono text-xs uppercase tracking-[0.16em] text-white/45">Full name</span>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    autoComplete="name"
-                    placeholder="Aaditya Rao"
-                    className="mt-2 w-full rounded-md border border-white/10 bg-white/[0.035] px-4 py-3 font-sans text-white placeholder-white/30 outline-none transition-colors focus:border-[#D4AF94] focus:bg-white/[0.06]"
-                  />
-                </label>
+              <PremiumInput
+                id="signup-full-name"
+                label="Full name"
+                value={formData.fullName}
+                onChange={(value) => setFormData((prev) => ({ ...prev, fullName: normalizeFieldValue('fullName', value) }))}
+                autoComplete="name"
+                placeholder="Your full name"
+                required
+              />
 
-                <label className="block">
-                  <span className="font-mono text-xs uppercase tracking-[0.16em] text-white/45">Email</span>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    autoComplete="email"
-                    placeholder="you@example.com"
-                    className="mt-2 w-full rounded-md border border-white/10 bg-white/[0.035] px-4 py-3 font-sans text-white placeholder-white/30 outline-none transition-colors focus:border-[#D4AF94] focus:bg-white/[0.06]"
-                  />
-                </label>
-              </div>
+              <PremiumInput
+                id="signup-email"
+                label="Email address"
+                type="email"
+                value={formData.email}
+                onChange={(value) => setFormData((prev) => ({ ...prev, email: normalizeFieldValue('email', value) }))}
+                autoComplete="email"
+                placeholder="you@example.com"
+                required
+              />
 
-              <div className="grid gap-5 md:grid-cols-2">
-                <label className="block">
-                  <span className="font-mono text-xs uppercase tracking-[0.16em] text-white/45">Password</span>
-                  <div className="relative mt-2">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      autoComplete="new-password"
-                      placeholder="Create a strong password"
-                      className="w-full rounded-md border border-white/10 bg-white/[0.035] px-4 py-3 pr-12 font-sans text-white placeholder-white/30 outline-none transition-colors focus:border-[#D4AF94] focus:bg-white/[0.06]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-3 text-white/60 transition-colors hover:text-white"
-                      tabIndex={-1}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                </label>
+              <PremiumInput
+                id="signup-password"
+                label="Create a password"
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={(value) => setFormData((prev) => ({ ...prev, password: value }))}
+                autoComplete="new-password"
+                placeholder="Create a strong password"
+                hint="Minimum 12 characters with uppercase, lowercase, number, and symbol."
+                required
+                suffix={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-[#5f5f5f] transition-colors hover:text-[#8B1538]"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                }
+              />
 
-                <label className="block">
-                  <span className="font-mono text-xs uppercase tracking-[0.16em] text-white/45">Confirm password</span>
-                  <div className="relative mt-2">
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      autoComplete="new-password"
-                      placeholder="Repeat password"
-                      className="w-full rounded-md border border-white/10 bg-white/[0.035] px-4 py-3 pr-12 font-sans text-white placeholder-white/30 outline-none transition-colors focus:border-[#D4AF94] focus:bg-white/[0.06]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-3 text-white/60 transition-colors hover:text-white"
-                      tabIndex={-1}
-                      aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                    >
-                      {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
-                </label>
-              </div>
+              <PremiumInput
+                id="signup-confirm-password"
+                label="Confirm password"
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={formData.confirmPassword}
+                onChange={(value) => setFormData((prev) => ({ ...prev, confirmPassword: value }))}
+                autoComplete="new-password"
+                placeholder="Repeat password"
+                required
+                suffix={
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="text-[#5f5f5f] transition-colors hover:text-[#8B1538]"
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                }
+              />
 
-              <div className="rounded-xl border border-white/10 bg-white/[0.025] p-4">
-                <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div className="rounded-2xl border border-[#1a1a1a]/10 bg-white p-4">
+                <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-[#1a1a1a]/10">
                   <div
-                    className="h-full rounded-full bg-[#C0392B] transition-all"
+                    className="h-full rounded-full bg-[#8B1538] transition-all"
                     style={{ width: `${(strength / checks.length) * 100}%` }}
                   />
                 </div>
@@ -334,8 +333,8 @@ export default function SignupPage() {
                   {checks.map((item) => (
                     <div
                       key={item.label}
-                      className={`flex items-center gap-2 font-sans text-xs ${
-                        item.valid ? 'text-emerald-200' : 'text-white/45'
+                      className={`flex items-center gap-2 text-xs ${
+                        item.valid ? 'text-emerald-300' : 'text-[#6B7280]'
                       }`}
                     >
                       <Check className="h-3.5 w-3.5" />
@@ -345,30 +344,45 @@ export default function SignupPage() {
                 </div>
               </div>
 
-              {error && (
-                <p className="rounded-md border border-red-400/30 bg-red-950/30 px-4 py-3 text-sm leading-relaxed text-red-200">
-                  {error}
-                </p>
-              )}
+              <PremiumButton type="submit" loading={submitting} disabled={submitting} fullWidth>
+                Create account
+              </PremiumButton>
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full rounded-md bg-[#C0392B] py-4 font-sans text-base font-semibold text-white transition-colors hover:bg-[#A93225] disabled:cursor-not-allowed disabled:opacity-70"
+              <PremiumButton
+                type="button"
+                variant="secondary"
+                onClick={handleOAuth}
+                loading={submitting && googleEnabled === true}
+                disabled={submitting || googleEnabled !== true}
+                fullWidth
+                icon={<span className="font-bold text-[#8B1538]">G</span>}
+                aria-describedby={googleEnabled === false ? 'google-signup-status' : undefined}
               >
-                {submitting ? 'Creating secure account...' : 'Create Account'}
-              </button>
+                {googleEnabled === null
+                  ? 'Checking Google sign-up...'
+                  : googleEnabled
+                    ? 'Continue with Google'
+                    : 'Google sign-up unavailable'}
+              </PremiumButton>
+              {googleEnabled === false ? (
+                <p id="google-signup-status" role="status" aria-live="polite" className="text-center text-xs text-[#6B7280]">
+                  Google sign-up is not enabled for this environment. Email signup remains available.
+                </p>
+              ) : null}
+
+              <p className="text-center text-xs leading-5 text-[#6B7280]">
+                By creating an account you agree to PlotKare service terms and privacy practices.
+              </p>
             </form>
           )}
 
-          <p className="mt-7 font-sans text-sm text-white/70">
+          <p className="mt-8 text-center text-sm text-[#5f5f5f]">
             Already have an account?{' '}
-            <Link href="/login" className="font-medium text-white transition-colors hover:text-[#D4AF94]">
+            <Link href="/login" className="font-medium text-[#8B1538] underline-offset-4 hover:text-[#75112f] hover:underline">
               Sign in →
             </Link>
           </p>
-        </div>
       </div>
-    </div>
+    </AuthLayout>
   )
 }

@@ -67,7 +67,7 @@ export function ServicesSection({
             return (
               <div
                 key={index}
-                className="premium-surface group rounded-lg border border-border bg-white p-8"
+                className="premium-surface premium-interactive group rounded-lg border border-border bg-white p-8"
               >
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                   <Icon className="h-6 w-6 text-primary" />

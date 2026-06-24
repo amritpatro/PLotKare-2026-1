@@ -86,7 +86,7 @@ export function ProblemSection({
                     </div>
                     <h3 className="mb-2 font-serif text-xl font-semibold text-white">{point.title}</h3>
                     <p className="font-sans text-sm leading-relaxed text-white/60">{point.description}</p>
-                    <p className="mt-4 font-mono text-xs uppercase tracking-wide text-accent">Open brief</p>
+                    <p className="mt-4 font-mono text-xs uppercase tracking-wide text-accent">View risk details</p>
                   </div>
                 </button>
               )

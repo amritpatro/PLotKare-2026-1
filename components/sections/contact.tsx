@@ -129,7 +129,11 @@ export function ContactSection({
 
           <div>
             {success ? (
-              <div className="flex min-h-[240px] flex-col items-center justify-center text-center">
+              <div
+                className="flex min-h-[240px] flex-col items-center justify-center text-center"
+                role="status"
+                aria-live="polite"
+              >
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
                   <svg className="h-7 w-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -143,7 +147,11 @@ export function ContactSection({
             ) : (
               <form onSubmit={handleSubmit} className="space-y-5">
                 {error && (
-                  <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 font-sans text-sm text-primary">
+                  <div
+                    id="contact-form-error"
+                    role="alert"
+                    className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 font-sans text-sm text-primary"
+                  >
                     {error}
                   </div>
                 )}
@@ -159,6 +167,8 @@ export function ContactSection({
                     autoComplete="name"
                     value={formData.name}
                     onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? 'contact-form-error' : undefined}
                     className="w-full rounded-md border border-input bg-background px-3 py-2.5 font-sans text-sm text-foreground shadow-sm transition-[border-color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     placeholder="Your name"
                   />
@@ -175,6 +185,8 @@ export function ContactSection({
                     autoComplete="email"
                     value={formData.email}
                     onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? 'contact-form-error' : undefined}
                     className="w-full rounded-md border border-input bg-background px-3 py-2.5 font-sans text-sm text-foreground shadow-sm transition-[border-color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     placeholder="you@example.com"
                   />
@@ -190,6 +202,8 @@ export function ContactSection({
                     autoComplete="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? 'contact-form-error' : undefined}
                     className="w-full rounded-md border border-input bg-background px-3 py-2.5 font-sans text-sm text-foreground shadow-sm transition-[border-color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     placeholder="Optional phone number"
                   />
@@ -205,6 +219,8 @@ export function ContactSection({
                     required
                     value={formData.message}
                     onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? 'contact-form-error' : undefined}
                     className="w-full resize-y rounded-md border border-input bg-background px-3 py-2.5 font-sans text-sm text-foreground shadow-sm transition-[border-color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     placeholder="Plot location, concerns, or expansion interest…"
                   />
@@ -214,7 +230,7 @@ export function ContactSection({
                   disabled={loading}
                   className="premium-button w-full rounded-sm bg-primary py-3 font-sans text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {loading ? 'Sending…' : 'Send'}
+                  {loading ? 'Sending...' : 'Request a Consultation'}
                 </button>
               </form>
             )}

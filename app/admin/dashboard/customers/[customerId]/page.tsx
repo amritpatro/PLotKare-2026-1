@@ -23,7 +23,7 @@ export default async function AdminCustomerDetailPage({ params }: PageProps) {
   const [{ data: profile }, { data: customerRecord }, { data: sellerRecord }, { data: ownerRecord }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id,full_name,email,phone,customer_type,role,created_at')
+      .select('id,full_name,email,phone,address_line,city,customer_type,role,created_at')
       .eq('id', customerId)
       .maybeSingle(),
     supabase
@@ -47,7 +47,7 @@ export default async function AdminCustomerDetailPage({ params }: PageProps) {
 
   const customerDbId = customerRecord?.id ?? null
 
-  const [{ data: tickets }, { data: documents }, { data: links }, { data: subscription }] = await Promise.all([
+  const [{ data: tickets }, { data: documents }, { data: links }, { data: ownerProperties }, { data: subscription }] = await Promise.all([
     supabase
       .from('support_tickets')
       .select('id,ticket_reference,subject,description,status,priority,created_at,due_at,category,assigned_employee_id')
@@ -64,6 +64,12 @@ export default async function AdminCustomerDetailPage({ params }: PageProps) {
       .from('customer_property_links')
       .select('id,property_id,status,relationship_type,created_at')
       .eq('customer_id', customerDbId ?? '00000000-0000-0000-0000-000000000000')
+      .order('created_at', { ascending: false })
+      .limit(10),
+    supabase
+      .from('properties')
+      .select('id,title,property_kind,asset_type,address,city,state,occupancy_status,lifecycle_status,verification_status,created_at')
+      .eq('owner_profile_id', customerId)
       .order('created_at', { ascending: false })
       .limit(10),
     customerDbId
@@ -121,6 +127,9 @@ export default async function AdminCustomerDetailPage({ params }: PageProps) {
             <p className="mt-4 text-sm leading-6 text-[#6B7280]">
               Joined {formatDate(profileRow.created_at)}. Use this page to confirm the account history before making operational decisions.
             </p>
+            <p className="mt-3 text-sm text-[#6B7280]">
+              Contact: {profile.phone || 'phone pending'}{profile.address_line || profile.city ? ` · ${profile.address_line || profile.city}` : ''}
+            </p>
             {sellerRecord?.gst_number || sellerRecord?.pan_number ? (
               <p className="mt-3 text-sm text-[#6B7280]">
                 Seller details: {sellerRecord.company_name || 'Seller profile'}{sellerRecord.gst_number ? ` · GST ${sellerRecord.gst_number}` : ''}{sellerRecord.pan_number ? ` · PAN ${sellerRecord.pan_number}` : ''}
@@ -146,6 +155,29 @@ export default async function AdminCustomerDetailPage({ params }: PageProps) {
                   </div>
                   <p className="mt-1 text-xs text-[#6B7280]">Linked property: {link.property_id}</p>
                   <p className="mt-1 text-xs text-[#9CA3AF]">Created {formatDate(link.created_at)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+            <h2 className="font-serif text-2xl font-semibold text-[#1F2937]">Registered owner properties</h2>
+            <p className="mt-1 text-sm text-[#6B7280]">Properties created from owner onboarding or dashboard registration.</p>
+            <div className="mt-4 space-y-3">
+              {(ownerProperties ?? []).length === 0 ? <p className="text-sm text-[#6B7280]">No owner properties registered yet.</p> : null}
+              {(ownerProperties ?? []).map((property: any) => (
+                <div key={property.id} className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-[#1F2937]">{property.title || property.address || 'Untitled property'}</p>
+                    <StatusBadge status={property.verification_status} />
+                    <StatusBadge status={property.lifecycle_status} />
+                  </div>
+                  <p className="mt-1 text-xs text-[#6B7280]">
+                    {(property.asset_type || property.property_kind || 'property').replaceAll('_', ' ')} · {property.address || property.city || 'Address pending'}
+                  </p>
+                  {property.occupancy_status ? (
+                    <p className="mt-1 text-xs text-[#9CA3AF]">Occupancy: {property.occupancy_status.replaceAll('_', ' ')}</p>
+                  ) : null}
                 </div>
               ))}
             </div>

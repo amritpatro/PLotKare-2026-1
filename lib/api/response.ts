@@ -16,6 +16,7 @@ const publicMessageCodes = new Set([
   'NOT_FOUND',
   'INVALID_SIGNATURE',
   'PAYMENTS_DISABLED',
+  'RATE_LIMITED',
 ])
 
 export function apiError(message: string, status = 400, code = 'BAD_REQUEST', details?: unknown) {

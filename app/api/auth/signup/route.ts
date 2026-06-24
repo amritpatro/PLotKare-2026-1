@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireSupabaseBrowserEnv } from '@/lib/supabase/env'
 import { signupSchema } from '@/lib/validation/auth'
 import { isRateLimited } from '@/lib/api/rate-limit'
+import { recordAuditLog } from '@/lib/audit'
 
 function response(request: NextRequest, body: Record<string, unknown>, status = 200) {
   const requestId = request.headers.get('x-request-id') || crypto.randomUUID()
@@ -52,8 +53,25 @@ export async function POST(request: NextRequest) {
   })
 
   if (error) {
+    await recordAuditLog({
+      action: 'auth.signup_failed',
+      entityType: 'auth_session',
+      metadata: { email: parsed.data.email, customer_type: parsed.data.customerType, reason: error.name },
+    })
     return response(request, { error: 'We could not create the account right now. Please try again later.' }, 503)
   }
+
+  await recordAuditLog({
+    actorId: data.user?.id ?? null,
+    action: 'auth.signup_requested',
+    entityType: 'auth_session',
+    entityId: data.user?.id ?? null,
+    metadata: {
+      email: parsed.data.email,
+      customer_type: parsed.data.customerType,
+      awaiting_email_confirmation: Boolean(data.user && !data.session),
+    },
+  })
 
   const result = response(request, {
     sessionCreated: Boolean(data.session && data.user),

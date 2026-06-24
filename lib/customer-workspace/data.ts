@@ -54,7 +54,7 @@ export async function getCustomerWorkspaceData(
     supabase
       .from('plot_buyer_details')
       .select(
-        'investment_budget_lakhs,investment_budget_max_lakhs,preferred_locations,preferred_plot_size_min,preferred_plot_size_max,preferred_property_types,loan_interested,kyc_pan_submitted,kyc_aadhaar_submitted,kyc_verified,kyc_status,updated_at',
+        'investment_budget_lakhs,investment_budget_max_lakhs,preferred_locations,preferred_plot_size_min,preferred_plot_size_max,preferred_property_types,buying_purpose,purchase_timeline,loan_interested,kyc_pan_submitted,kyc_aadhaar_submitted,kyc_verified,kyc_status,updated_at',
       )
       .eq('user_id', userId)
       .maybeSingle(),

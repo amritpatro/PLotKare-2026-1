@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireUserContext } from '@/lib/api/auth'
+import { isRateLimited } from '@/lib/api/rate-limit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 
 const schema = z.object({
@@ -17,6 +18,9 @@ const schema = z.object({
 export async function POST(request: Request) {
   const context = await requireUserContext()
   if ('response' in context) return context.response
+  if (await isRateLimited(request, { identifier: context.user.id })) {
+    return NextResponse.json({ ok: false, error: { code: 'RATE_LIMITED', message: 'Too many upload confirmations. Please wait and try again.' } }, { status: 429 })
+  }
   if (context.profile.role !== 'employee') {
     return NextResponse.json({ ok: false, error: { code: 'FIELD_AGENT_REQUIRED', message: 'Field agent access is required.' } }, { status: 403 })
   }

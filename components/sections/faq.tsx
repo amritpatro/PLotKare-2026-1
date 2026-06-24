@@ -22,7 +22,7 @@ export function FaqSection({
         </div>
         <dl className="grid gap-5 md:grid-cols-2">
           {items.map((item) => (
-            <div key={item.question} className="premium-surface rounded-lg border border-border bg-card p-7">
+            <div key={item.question} className="premium-surface premium-interactive rounded-lg border border-border bg-card p-7">
               <dt className="font-serif text-xl font-semibold text-foreground">{item.question}</dt>
               <dd className="mt-3 font-sans text-sm leading-relaxed text-muted-foreground">{item.answer}</dd>
             </div>

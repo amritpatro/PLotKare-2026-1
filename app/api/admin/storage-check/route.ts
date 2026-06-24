@@ -1,6 +1,7 @@
 import { logger } from '@/lib/monitoring/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdminContext } from '@/lib/api/auth'
+import { isRateLimited } from '@/lib/api/rate-limit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 
 type MetadataReference = {
@@ -53,6 +54,9 @@ export async function GET(request: NextRequest) {
   if (!isCron) {
     const context = await requireAdminContext()
     if ('response' in context) return json(requestId, { error: 'Access denied' }, 403)
+    if (await isRateLimited(request, { identifier: context.user.id })) {
+      return json(requestId, { error: 'Too many storage checks. Please wait and try again.' }, 429)
+    }
   }
 
   try {

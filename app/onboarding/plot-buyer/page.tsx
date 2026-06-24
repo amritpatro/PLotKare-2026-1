@@ -1,18 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { OnboardingShell } from '@/components/onboarding/OnboardingShell'
 import { OnboardingStatusPage } from '@/components/onboarding/OnboardingStatusPage'
-import { StepContainer } from '@/components/onboarding/StepContainer'
-import { StepProgress } from '@/components/onboarding/StepProgress'
+import { OnboardingCard } from '@/components/auth/OnboardingCard'
+import { PremiumInput } from '@/components/auth/PremiumInput'
+import { SelectionCard } from '@/components/auth/SelectionCard'
+import { StepProgress } from '@/components/auth/StepProgress'
 import {
   BUDGET_PRESETS_LAKHS,
+  BUYING_PURPOSE_OPTIONS,
   BUYER_LOCATIONS,
   BUYER_PROPERTY_TYPES,
   PLOT_BUYER_STEP_NAMES,
+  PURCHASE_TIMELINE_OPTIONS,
   SIZE_PRESETS_SQ_YARDS,
 } from '@/lib/onboarding/config'
-import { inputClass, labelClass, selectClass } from '@/lib/onboarding/form-classes'
 import { useOnboarding } from '@/lib/onboarding/hooks'
 
 const SLUG = 'plot-buyer'
@@ -33,7 +35,9 @@ export default function PlotBuyerOnboardingPage() {
     showStatus,
   } = useOnboarding(SLUG)
 
-  const [loanInterested, setLoanInterested] = useState(Boolean(formData.loan_interested))
+  const [loanPreference, setLoanPreference] = useState<'no' | 'maybe'>(
+    formData.loan_interested ? 'maybe' : 'no',
+  )
   const locations = (formData.preferred_locations as string[]) ?? []
   const propertyTypes = (formData.preferred_property_types as string[]) ?? []
   const minBudget = Number(formData.investment_budget_lakhs) || 10
@@ -52,12 +56,15 @@ export default function PlotBuyerOnboardingPage() {
   const handleStep1 = async (e: React.FormEvent) => {
     e.preventDefault()
     await submitStep({
+      contact_phone: formData.contact_phone,
       investment_budget_lakhs: minBudget,
       investment_budget_max_lakhs: maxBudget,
       preferred_locations: locations,
       preferred_plot_size_min: formData.preferred_plot_size_min,
       preferred_plot_size_max: formData.preferred_plot_size_max,
       preferred_property_types: propertyTypes,
+      buying_purpose: formData.buying_purpose || 'investment',
+      purchase_timeline: formData.purchase_timeline || 'exploring',
     })
   }
 
@@ -72,9 +79,9 @@ export default function PlotBuyerOnboardingPage() {
   const handleStep3 = async (e: React.FormEvent) => {
     e.preventDefault()
     await submitStep({
-      bank_account_holder: formData.bank_account_holder,
-      bank_account_number: formData.bank_account_number,
-      bank_ifsc: String(formData.bank_ifsc ?? '').toUpperCase(),
+      bank_account_holder: '',
+      bank_account_number: '',
+      bank_ifsc: '',
       account_type: formData.account_type || 'savings',
       kyc_verify_consent: Boolean(formData.kyc_verify_consent),
     })
@@ -83,70 +90,84 @@ export default function PlotBuyerOnboardingPage() {
   const handleStep4 = async (e: React.FormEvent) => {
     e.preventDefault()
     await submitStep({
-      loan_interested: loanInterested,
-      loan_amount_needed: loanInterested ? formData.loan_amount_needed : undefined,
-      employer_name: loanInterested ? formData.employer_name : undefined,
-      monthly_income: loanInterested ? formData.monthly_income : undefined,
-      employment_type: loanInterested ? formData.employment_type : undefined,
+      loan_interested: false,
+      loan_amount_needed: undefined,
+      employer_name: undefined,
+      monthly_income: undefined,
+      employment_type: loanPreference,
     })
   }
 
   if (loading) {
     return (
-      <OnboardingShell eyebrow="Plot buyer" title="Buyer onboarding" description="Loading your progress...">
-        <p className="font-sans text-sm text-white/50">Loading...</p>
-      </OnboardingShell>
+      <main className="min-h-screen bg-[#F8F6F3] px-6 py-10 text-[#1a1a1a]">
+        <p className="mx-auto max-w-2xl text-sm text-[#5f5f5f]">Loading your buyer setup...</p>
+      </main>
     )
   }
 
   if (showStatus) {
     return (
-      <OnboardingShell eyebrow="Plot buyer" title="You're all set" description="Your profile is ready.">
+      <main className="min-h-screen bg-[#F8F6F3] px-6 py-10">
+        <div className="mx-auto max-w-2xl">
         <OnboardingStatusPage
           variant="plot_buyer"
           welcomeBack={welcomeBack}
           onDismissWelcome={() => setWelcomeBack(false)}
         />
-      </OnboardingShell>
+        </div>
+      </main>
     )
   }
 
   return (
-    <OnboardingShell
-      eyebrow="Plot buyer onboarding"
-      title="Quick setup"
-      description="Keep onboarding simple now. Documents and detailed KYC can be done later when booking a plot."
-    >
-      <StepProgress currentStep={currentStep} totalSteps={totalSteps} stepNames={PLOT_BUYER_STEP_NAMES} />
+    <main className="min-h-screen bg-[#F8F6F3] pb-16">
+      <StepProgress
+        currentStep={currentStep}
+        totalSteps={totalSteps}
+        stepLabel={PLOT_BUYER_STEP_NAMES[currentStep - 1] ?? 'Setup'}
+      />
 
       {currentStep === 1 ? (
-        <StepContainer title="Preference profile" onSubmit={handleStep1} isLoading={submitting} error={error}>
-          <div>
-            <span className={labelClass}>Budget range (₹ Lakhs)</span>
-            <p className="mt-2 font-serif text-2xl text-[#D4AF94]">
+        <form onSubmit={handleStep1}>
+          <OnboardingCard
+            stepNumber={1}
+            totalSteps={totalSteps}
+            title="What are you looking for?"
+            description="Your property preferences help us show the right verified plots and listings."
+            nextLoading={submitting}
+            error={error}
+          >
+          <PremiumInput
+            id="buyer-contact-phone"
+            label="Phone / WhatsApp"
+            value={String(formData.contact_phone ?? '')}
+            onChange={(value) => updateField({ contact_phone: value })}
+            autoComplete="tel"
+            placeholder="+91 98765 43210"
+            required
+          />
+
+          <div className="space-y-3">
+            <span className="block text-sm font-medium uppercase tracking-widest text-[#5f5f5f]">Budget range (Lakhs)</span>
+            <p className="text-2xl font-semibold text-[#8B1538]">
               ₹{minBudget}L – ₹{maxBudget}L
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label>
-                <span className="font-sans text-xs text-white/50">Minimum</span>
-                <input
-                  type="number"
-                  min={10}
-                  className={inputClass}
-                  value={minBudget}
-                  onChange={(e) => updateField({ investment_budget_lakhs: Number(e.target.value) })}
-                />
-              </label>
-              <label>
-                <span className="font-sans text-xs text-white/50">Maximum</span>
-                <input
-                  type="number"
-                  min={minBudget}
-                  className={inputClass}
-                  value={maxBudget}
-                  onChange={(e) => updateField({ investment_budget_max_lakhs: Number(e.target.value) })}
-                />
-              </label>
+              <PremiumInput
+                id="buyer-min-budget"
+                label="Minimum"
+                type="number"
+                value={String(minBudget)}
+                onChange={(value) => updateField({ investment_budget_lakhs: Number(value) || 10 })}
+              />
+              <PremiumInput
+                id="buyer-max-budget"
+                label="Maximum"
+                type="number"
+                value={String(maxBudget)}
+                onChange={(value) => updateField({ investment_budget_max_lakhs: Number(value) || minBudget })}
+              />
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {BUDGET_PRESETS_LAKHS.map((n) => (
@@ -154,7 +175,7 @@ export default function PlotBuyerOnboardingPage() {
                   key={n}
                   type="button"
                   onClick={() => updateField({ investment_budget_lakhs: n, investment_budget_max_lakhs: n * 2 })}
-                  className="rounded-full border border-white/15 px-3 py-1 font-mono text-xs text-white/50 hover:border-[#D4AF94]/40"
+                  className="rounded-full border border-[#1a1a1a]/10 px-3 py-1 text-xs text-[#5f5f5f] transition-colors hover:border-[#8B1538]/50 hover:text-[#8B1538]"
                 >
                   {n}L
                 </button>
@@ -162,16 +183,51 @@ export default function PlotBuyerOnboardingPage() {
             </div>
           </div>
 
-          <div>
-            <span className={labelClass}>Preferred locations</span>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium uppercase tracking-widest text-[#5f5f5f]">Buying purpose *</label>
+              <select
+                className="h-14 w-full rounded-xl border border-[#1a1a1a]/15 bg-white px-4 text-base text-[#1a1a1a] outline-none transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-[#8B1538]"
+                value={String(formData.buying_purpose ?? '')}
+                onChange={(e) => updateField({ buying_purpose: e.target.value })}
+                required
+              >
+                <option value="">Select purpose</option>
+                {BUYING_PURPOSE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium uppercase tracking-widest text-[#5f5f5f]">Timeline *</label>
+              <select
+                className="h-14 w-full rounded-xl border border-[#1a1a1a]/15 bg-white px-4 text-base text-[#1a1a1a] outline-none transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-[#8B1538]"
+                value={String(formData.purchase_timeline ?? '')}
+                onChange={(e) => updateField({ purchase_timeline: e.target.value })}
+                required
+              >
+                <option value="">Select timeline</option>
+                {PURCHASE_TIMELINE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <span className="block text-sm font-medium uppercase tracking-widest text-[#5f5f5f]">Preferred locations *</span>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {BUYER_LOCATIONS.map((loc) => (
                 <label
                   key={loc.id}
-                  className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 font-sans text-sm ${
+                  className={`flex cursor-pointer items-center gap-2 rounded-2xl border px-3 py-3 text-sm transition-all ${
                     locations.includes(loc.id)
-                      ? 'border-[#C0392B]/50 bg-[#C0392B]/10 text-white'
-                      : 'border-white/10 text-white/70'
+                      ? 'border-[#8B1538] bg-[#8B1538]/10 text-[#1a1a1a]'
+                      : 'border-[#1a1a1a]/10 bg-white text-[#5f5f5f]'
                   }`}
                 >
                   <input type="checkbox" checked={locations.includes(loc.id)} onChange={() => toggleLocation(loc.id)} />
@@ -182,10 +238,10 @@ export default function PlotBuyerOnboardingPage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <label>
-              <span className={labelClass}>Min plot size (optional)</span>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium uppercase tracking-widest text-[#5f5f5f]">Min plot size</label>
               <select
-                className={selectClass}
+                className="h-14 w-full rounded-xl border border-[#1a1a1a]/15 bg-white px-4 text-base text-[#1a1a1a] outline-none transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-[#8B1538]"
                 value={String(formData.preferred_plot_size_min ?? '')}
                 onChange={(e) => updateField({ preferred_plot_size_min: Number(e.target.value) || undefined })}
               >
@@ -196,11 +252,11 @@ export default function PlotBuyerOnboardingPage() {
                   </option>
                 ))}
               </select>
-            </label>
-            <label>
-              <span className={labelClass}>Max plot size (optional)</span>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium uppercase tracking-widest text-[#5f5f5f]">Max plot size</label>
               <select
-                className={selectClass}
+                className="h-14 w-full rounded-xl border border-[#1a1a1a]/15 bg-white px-4 text-base text-[#1a1a1a] outline-none transition-all duration-200 focus:border-transparent focus:ring-2 focus:ring-[#8B1538]"
                 value={String(formData.preferred_plot_size_max ?? '')}
                 onChange={(e) => updateField({ preferred_plot_size_max: Number(e.target.value) || undefined })}
               >
@@ -211,19 +267,19 @@ export default function PlotBuyerOnboardingPage() {
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
           </div>
 
-          <div>
-            <span className={labelClass}>Property types (optional)</span>
+          <div className="space-y-3">
+            <span className="block text-sm font-medium uppercase tracking-widest text-[#5f5f5f]">Property types *</span>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               {BUYER_PROPERTY_TYPES.map((pt) => (
                 <label
                   key={pt.id}
-                  className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 font-sans text-sm ${
+                  className={`flex cursor-pointer items-center gap-2 rounded-2xl border px-3 py-3 text-sm transition-all ${
                     propertyTypes.includes(pt.id)
-                      ? 'border-[#D4AF94]/50 bg-[#D4AF94]/10'
-                      : 'border-white/10 text-white/70'
+                      ? 'border-[#8B1538] bg-[#8B1538]/10 text-[#1a1a1a]'
+                      : 'border-[#1a1a1a]/10 bg-white text-[#5f5f5f]'
                   }`}
                 >
                   <input type="checkbox" checked={propertyTypes.includes(pt.id)} onChange={() => togglePropertyType(pt.id)} />
@@ -232,118 +288,86 @@ export default function PlotBuyerOnboardingPage() {
               ))}
             </div>
           </div>
-        </StepContainer>
+          </OnboardingCard>
+        </form>
       ) : null}
 
       {currentStep === 2 ? (
-        <StepContainer
-          title="Identity step"
-          subtitle="Optional for now. You can submit full KYC later during booking."
-          onSubmit={handleStep2}
-          isLoading={submitting}
-          error={error}
-          onBack={goToPreviousStep}
-        >
-          <label className="block">
-            <span className={labelClass}>Aadhaar last 4 digits (optional)</span>
-            <input
-              className={inputClass}
-              maxLength={4}
-              inputMode="numeric"
-              value={String(formData.kyc_aadhaar_last_4 ?? '')}
-              onChange={(e) => updateField({ kyc_aadhaar_last_4: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-              placeholder="1234"
-            />
-          </label>
-
-          <label className="flex items-start gap-3 rounded-lg border border-white/10 p-4">
-            <input
-              type="checkbox"
-              checked={Boolean(formData.agree_kyc_rules)}
-              onChange={(e) => updateField({ agree_kyc_rules: e.target.checked })}
-            />
-            <span className="font-sans text-sm text-white/65">I agree to provide complete KYC details later when required.</span>
-          </label>
-        </StepContainer>
+        <form onSubmit={handleStep2}>
+          <OnboardingCard
+            stepNumber={2}
+            totalSteps={totalSteps}
+            title="KYC comes later."
+            description="We keep buyer onboarding simple. Identity checks happen only when you request seller contact, document access, or booking support."
+            onBack={goToPreviousStep}
+            nextLoading={submitting}
+            error={error}
+          >
+          <div className="rounded-2xl border border-[#8B1538]/20 bg-[#8B1538]/10 p-5 text-sm leading-6 text-[#5f5f5f]">
+            No Aadhaar upload, bank details, or sensitive identity documents are collected in this onboarding step.
+          </div>
+          </OnboardingCard>
+        </form>
       ) : null}
 
       {currentStep === 3 ? (
-        <StepContainer
-          title="Payout setup (optional)"
-          subtitle="You can add bank details later."
-          onSubmit={handleStep3}
-          isLoading={submitting}
-          error={error}
-          onBack={goToPreviousStep}
-        >
-          <label className="block">
-            <span className={labelClass}>Account holder (optional)</span>
-            <input
-              className={inputClass}
-              value={String(formData.bank_account_holder ?? '')}
-              onChange={(e) => updateField({ bank_account_holder: e.target.value })}
-            />
-          </label>
-          <label className="block">
-            <span className={labelClass}>Account number (optional)</span>
-            <input
-              className={inputClass}
-              value={String(formData.bank_account_number ?? '')}
-              onChange={(e) => updateField({ bank_account_number: e.target.value })}
-            />
-          </label>
-          <label className="block">
-            <span className={labelClass}>IFSC (optional)</span>
-            <input
-              className={inputClass}
-              value={String(formData.bank_ifsc ?? '')}
-              onChange={(e) => updateField({ bank_ifsc: e.target.value.toUpperCase() })}
-            />
-          </label>
-        </StepContainer>
+        <form onSubmit={handleStep3}>
+          <OnboardingCard
+            stepNumber={3}
+            totalSteps={totalSteps}
+            title="Payment details are not needed now."
+            description="For this launch flow, buyer bank details are not collected during onboarding."
+            onBack={goToPreviousStep}
+            nextLoading={submitting}
+            error={error}
+          >
+          <div className="rounded-2xl border border-[#1a1a1a]/10 bg-white p-5 text-sm leading-6 text-[#5f5f5f]">
+            Continue to set your finance preference. Any verified transaction or booking workflow can request necessary details later.
+          </div>
+          </OnboardingCard>
+        </form>
       ) : null}
 
       {currentStep === 4 ? (
-        <StepContainer
-          title="Assistance preferences"
-          onSubmit={handleStep4}
-          isLoading={submitting}
-          error={error}
-          onBack={goToPreviousStep}
-          submitButtonText="Complete onboarding"
-        >
-          <label className="flex items-center justify-between rounded-lg border border-white/10 px-4 py-3">
-            <span className="font-sans text-sm text-white/80">Interested in loan assistance?</span>
-            <input type="checkbox" checked={loanInterested} onChange={(e) => setLoanInterested(e.target.checked)} />
-          </label>
-
-          {loanInterested ? (
-            <>
-              <label className="block">
-                <span className={labelClass}>Loan amount needed (optional)</span>
-                <input
-                  type="number"
-                  className={inputClass}
-                  value={String(formData.loan_amount_needed ?? '')}
-                  onChange={(e) => updateField({ loan_amount_needed: Number(e.target.value) })}
-                />
-              </label>
-              <label className="block">
-                <span className={labelClass}>Employer name (optional)</span>
-                <input
-                  className={inputClass}
-                  value={String(formData.employer_name ?? '')}
-                  onChange={(e) => updateField({ employer_name: e.target.value })}
-                />
-              </label>
-            </>
-          ) : (
-            <p className="rounded-lg border border-[#D4AF94]/20 bg-[#D4AF94]/10 px-4 py-3 font-sans text-sm text-white/70">
-              Self-funded buyers can finish onboarding now.
-            </p>
-          )}
-        </StepContainer>
+        <form onSubmit={handleStep4}>
+          <OnboardingCard
+            stepNumber={4}
+            totalSteps={totalSteps}
+            title="Finance and next steps."
+            description="Loan assistance is coming soon. Tell us whether to keep finance guidance visible in your dashboard."
+            onBack={goToPreviousStep}
+            nextLoading={submitting}
+            nextLabel="Complete onboarding"
+            error={error}
+          >
+          <div className="grid gap-3">
+            <SelectionCard
+              id="buyer-loan-no"
+              label="No - I am self-funding"
+              description="Show me properties ready for direct purchase conversations."
+              selected={loanPreference === 'no'}
+              onSelect={() => setLoanPreference('no')}
+            />
+            <SelectionCard
+              id="buyer-loan-maybe"
+              label="Maybe - I will decide later"
+              description="Keep finance guidance available in the dashboard without collecting income details now."
+              selected={loanPreference === 'maybe'}
+              onSelect={() => setLoanPreference('maybe')}
+            />
+            <SelectionCard
+              id="buyer-loan-soon"
+              label="Loan guidance"
+              description="Coming soon after launch verification."
+              selected={false}
+              onSelect={() => undefined}
+              badge="Coming soon"
+              disabled
+            />
+          </div>
+          </OnboardingCard>
+        </form>
       ) : null}
-    </OnboardingShell>
+    </main>
   )
 }

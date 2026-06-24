@@ -1,42 +1,91 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Menu, X } from 'lucide-react'
+import { ChevronDown, Menu, X } from 'lucide-react'
 import { LogoMark } from '@/components/logo'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
-const navLinks = [
+const primaryNavLinks = [
   { href: '/listings/', label: 'Listings' },
-  { href: '/blog/', label: 'Blog' },
-  { href: '#about', label: 'About' },
   { href: '#services', label: 'Services' },
   { href: '#how-it-works', label: 'How It Works' },
   { href: '#pricing', label: 'Pricing' },
   { href: '/visakhapatnam/', label: 'Visakhapatnam Services' },
+]
+
+const moreNavLinks = [
+  { href: '/blog/', label: 'Blog' },
+  { href: '#about', label: 'About' },
   { href: '#investors', label: 'For Investors' },
   { href: '#contact', label: 'Contact' },
 ]
 
+const mobileNavLinks = [...primaryNavLinks, ...moreNavLinks]
+const MOBILE_MENU_ID = 'plotkare-mobile-menu'
+
 export function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 80)
     }
-    window.addEventListener('scroll', handleScroll)
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
+    if (!isMobileMenuOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    const main = document.querySelector('main')
+    document.body.style.overflow = 'hidden'
+    main?.setAttribute('inert', '')
+    closeButtonRef.current?.focus()
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setIsMobileMenuOpen(false)
+        return
+      }
+
+      if (event.key !== 'Tab' || !mobileMenuRef.current) return
+      const focusable = Array.from(
+        mobileMenuRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      )
+      if (focusable.length === 0) return
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
+
+    document.addEventListener('keydown', handleKeyDown)
     return () => {
-      document.body.style.overflow = 'unset'
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = previousOverflow
+      main?.removeAttribute('inert')
+      menuButtonRef.current?.focus()
     }
   }, [isMobileMenuOpen])
 
@@ -95,7 +144,7 @@ export function Navigation() {
 
             {/* Desktop Navigation */}
             <div className="hidden flex-1 items-center justify-center gap-4 xl:gap-5 2xl:gap-7 lg:flex">
-              {navLinks.map((link) => (
+              {primaryNavLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -104,6 +153,23 @@ export function Navigation() {
                   {link.label}
                 </Link>
               ))}
+              <DropdownMenu>
+                <DropdownMenuTrigger className="premium-nav-link inline-flex items-center gap-1 whitespace-nowrap font-sans text-[13px] font-medium text-foreground/80 outline-none transition-colors hover:text-primary focus-visible:ring-2 focus-visible:ring-primary xl:text-sm">
+                  More
+                  <ChevronDown className="h-4 w-4" aria-hidden />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  sideOffset={12}
+                  className="min-w-52 rounded-sm border-border bg-white p-2 shadow-xl"
+                >
+                  {moreNavLinks.map((link) => (
+                    <DropdownMenuItem key={link.href} asChild className="cursor-pointer px-3 py-2.5">
+                      <Link href={link.href}>{link.label}</Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* CTA */}
@@ -124,9 +190,12 @@ export function Navigation() {
 
             {/* Mobile Menu Button */}
             <button
+              ref={menuButtonRef}
               onClick={() => setIsMobileMenuOpen(true)}
               className="premium-interactive flex h-10 w-10 items-center justify-center rounded-sm lg:hidden"
               aria-label="Open menu"
+              aria-expanded={isMobileMenuOpen}
+              aria-controls={MOBILE_MENU_ID}
             >
               <Menu className="h-6 w-6" strokeWidth={1.5} aria-hidden />
             </button>
@@ -136,7 +205,14 @@ export function Navigation() {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-[60] bg-charcoal">
+          <div
+            ref={mobileMenuRef}
+            id={MOBILE_MENU_ID}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Site navigation"
+            className="fixed inset-0 z-[60] bg-charcoal"
+          >
             <div className="flex h-full min-h-0 flex-col px-6 py-8">
               <div className="flex items-center justify-between">
                 <Link
@@ -146,6 +222,7 @@ export function Navigation() {
                   <LogoMark variant="light" />
                 </Link>
                 <button
+                  ref={closeButtonRef}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex h-10 w-10 items-center justify-center text-white"
                   aria-label="Close menu"
@@ -155,10 +232,10 @@ export function Navigation() {
               </div>
 
               <nav className="mt-10 flex min-h-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto pb-6">
-                {navLinks.map((link) => (
+                {mobileNavLinks.map((link) => (
                   <div key={link.href}>
                     <Link
-                  href={link.href}
+                      href={link.href}
                       className="block max-w-full break-words font-serif text-3xl font-semibold leading-tight text-white transition-colors hover:text-primary sm:text-4xl"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >

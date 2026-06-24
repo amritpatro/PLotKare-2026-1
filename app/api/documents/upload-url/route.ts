@@ -2,6 +2,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { documentUploadSchema } from '@/lib/validation/app'
 import { requireUserContext } from '@/lib/api/auth'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
+import { isRateLimited } from '@/lib/api/rate-limit'
 
 function safeFileName(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-')
@@ -10,6 +11,9 @@ function safeFileName(name: string) {
 export async function POST(request: Request) {
   const context = await requireUserContext()
   if ('response' in context) return context.response
+  if (await isRateLimited(request, { identifier: context.user.id })) {
+    return apiError('Too many upload requests. Please wait and try again.', 429, 'RATE_LIMITED')
+  }
 
   const parsed = documentUploadSchema.safeParse(await parseJson(request))
   if (!parsed.success) return validationError(parsed.error)

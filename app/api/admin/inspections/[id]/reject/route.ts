@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAdminContext } from '@/lib/api/auth'
+import { isRateLimited } from '@/lib/api/rate-limit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { recordAuditLog } from '@/lib/audit'
 
@@ -11,6 +12,9 @@ const schema = z.object({
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const context = await requireAdminContext()
   if ('response' in context) return context.response
+  if (await isRateLimited(request, { identifier: context.user.id })) {
+    return NextResponse.json({ ok: false, error: { code: 'RATE_LIMITED', message: 'Too many rejection requests. Please wait and try again.' } }, { status: 429 })
+  }
   const { id } = await params
   const parsed = schema.safeParse(await request.json())
   if (!parsed.success) {

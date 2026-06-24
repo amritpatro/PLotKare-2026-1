@@ -157,16 +157,25 @@ function mapStepPayload(customerType: CustomerType, step: number, data: Record<s
   if (customerType === 'land_owner') {
     if (step === 1) {
       return {
+        property_kind: data.property_kind ?? 'plot',
+        owner_relationship: data.owner_relationship,
+        property_purpose: data.property_purpose,
         property_location: data.property_location,
         property_size_sqyards: data.property_size_sqyards,
-        property_facing: data.property_facing,
+        property_facing: data.property_facing || null,
         is_corner_plot: data.is_corner_plot ?? false,
+        boundary_status: data.boundary_status ?? null,
+        occupancy_status: data.occupancy_status ?? null,
+        inspection_contact_name: data.inspection_contact_name || null,
+        inspection_contact_phone: data.inspection_contact_phone || null,
+        property_details: data.property_details ?? {},
       }
     }
     if (step === 2) {
       return {
         property_type: data.property_type,
         interested_in: data.interested_in,
+        concern_types: data.concern_types,
       }
     }
     if (step === 3) {
@@ -180,13 +189,19 @@ function mapStepPayload(customerType: CustomerType, step: number, data: Record<s
     if (step === 1) {
       return {
         company_name: data.company_name,
+        seller_type: data.seller_type,
         gst_number: String(data.gst_number ?? '').toUpperCase(),
         pan_number: String(data.pan_number ?? '').toUpperCase(),
         address: data.address,
       }
     }
     if (step === 2) {
-      return {}
+      return {
+        listing_property_kind: data.listing_property_kind,
+        listing_location: data.listing_location,
+        expected_price_lakhs: data.expected_price_lakhs ?? null,
+        listing_notes: data.listing_notes || null,
+      }
     }
     if (step === 3) {
       return {
@@ -214,6 +229,8 @@ function mapStepPayload(customerType: CustomerType, step: number, data: Record<s
         preferred_plot_size_min: data.preferred_plot_size_min ?? null,
         preferred_plot_size_max: data.preferred_plot_size_max ?? null,
         preferred_property_types: data.preferred_property_types ?? [],
+        buying_purpose: data.buying_purpose,
+        purchase_timeline: data.purchase_timeline,
       }
     }
     if (step === 2) {
@@ -245,6 +262,31 @@ function mapStepPayload(customerType: CustomerType, step: number, data: Record<s
   return {}
 }
 
+function asText(value: unknown) {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function getPropertyDetails(row: Record<string, unknown>) {
+  const details = row.property_details
+  return details && typeof details === 'object' && !Array.isArray(details)
+    ? (details as Record<string, unknown>)
+    : {}
+}
+
+function propertyKindLabel(value: unknown) {
+  const kind = String(value ?? 'plot')
+  if (kind === 'apartment') return 'Apartment'
+  if (kind === 'house') return 'House'
+  if (kind === 'commercial') return 'Commercial property'
+  if (kind === 'agricultural_land') return 'Agricultural land'
+  if (kind === 'mixed_other') return 'Property'
+  return 'Plot'
+}
+
+function operationalPropertyKind(value: unknown) {
+  return String(value) === 'apartment' ? 'apartment' : 'plot'
+}
+
 function facingFromShortCode(value: unknown) {
   const facing = String(value ?? '').toUpperCase()
   if (facing === 'N') return 'North'
@@ -266,6 +308,48 @@ function throwDbError(error: { message?: string } | null | undefined) {
   if (error) throw new Error(error.message ?? 'Database operation failed.')
 }
 
+async function syncProfileContactFields(userId: string, data: Record<string, unknown>) {
+  const updates: Record<string, unknown> = {}
+  const phone = asText(data.contact_phone)
+  const address = asText(data.contact_address) || asText(data.address)
+  const city = asText(data.property_location) || (Array.isArray(data.preferred_locations) ? asText(data.preferred_locations[0]) : '')
+
+  if (phone) updates.phone = phone
+  if (address) updates.address_line = address
+  if (city) updates.city = city
+
+  if (Object.keys(updates).length === 0) return
+
+  const admin = createSupabaseAdminClient()
+  const { error } = await admin.from('profiles').update(updates).eq('id', userId)
+  throwDbError(error)
+}
+
+function auditSafeSnapshot(data: Record<string, unknown>) {
+  const sensitiveKeys = new Set([
+    'contact_phone',
+    'inspection_contact_phone',
+    'bank_account_holder',
+    'bank_account_number',
+    'bank_ifsc',
+    'kyc_aadhaar_last_4',
+    'aadhaar_last4',
+    'pan_number',
+    'gst_number',
+  ])
+  const snapshot: Record<string, unknown> = {}
+
+  for (const [key, value] of Object.entries(data)) {
+    if (sensitiveKeys.has(key)) {
+      snapshot[key] = value ? '[provided]' : ''
+      continue
+    }
+    snapshot[key] = value
+  }
+
+  return snapshot
+}
+
 async function syncOperationalRecordsFromOnboarding(userId: string, customerType: CustomerType) {
   const admin = createSupabaseAdminClient()
   const row = await fetchDetailRow(admin, customerType, userId)
@@ -281,8 +365,23 @@ async function syncOperationalRecordsFromOnboarding(userId: string, customerType
     const sqYards = Number(row.property_size_sqyards ?? 0)
     if (!location || !Number.isFinite(sqYards) || sqYards < 1) return
 
+    const details = getPropertyDetails(row)
+    const selectedKind = String(row.property_kind ?? 'plot')
+    const operationalKind = operationalPropertyKind(selectedKind)
     const plotNumber = `ONB-${userId.slice(0, 8).toUpperCase()}`
-    const title = `Onboarding plot - ${location}`
+    const title = `${propertyKindLabel(selectedKind)} - ${location}`
+    const onboardingDetails = {
+      source: 'onboarding',
+      property_kind: selectedKind,
+      owner_relationship: row.owner_relationship ?? null,
+      property_purpose: row.property_purpose ?? null,
+      boundary_status: row.boundary_status ?? null,
+      land_category: row.property_type ?? null,
+      interested_in: row.interested_in ?? [],
+      concern_types: row.concern_types ?? [],
+      inspection_contact_name: row.inspection_contact_name ?? null,
+      details,
+    }
 
     const { data: existingPlot, error: existingPlotError } = await admin
       .from('plots')
@@ -295,6 +394,19 @@ async function syncOperationalRecordsFromOnboarding(userId: string, customerType
 
     let propertyId = existingPlot?.property_id as string | null | undefined
 
+    if (!propertyId) {
+      const { data: existingProperty, error: existingPropertyError } = await admin
+        .from('properties')
+        .select('id')
+        .eq('owner_profile_id', userId)
+        .eq('created_by', userId)
+        .eq('title', title)
+        .limit(1)
+        .maybeSingle()
+      throwDbError(existingPropertyError)
+      propertyId = existingProperty?.id as string | null | undefined
+    }
+
     if (propertyId) {
       const { error: propertyUpdateError } = await admin
         .from('properties')
@@ -302,7 +414,10 @@ async function syncOperationalRecordsFromOnboarding(userId: string, customerType
           title,
           address: location,
           city: location,
-          property_kind: 'plot',
+          property_kind: operationalKind,
+          asset_type: selectedKind,
+          occupancy_status: row.occupancy_status ?? null,
+          onboarding_details: onboardingDetails,
           lifecycle_status: 'registered',
           verification_status: 'submitted',
         })
@@ -313,10 +428,13 @@ async function syncOperationalRecordsFromOnboarding(userId: string, customerType
         .from('properties')
         .insert({
           owner_profile_id: userId,
-          property_kind: 'plot',
+          property_kind: operationalKind,
+          asset_type: selectedKind,
           title,
           address: location,
           city: location,
+          occupancy_status: row.occupancy_status ?? null,
+          onboarding_details: onboardingDetails,
           lifecycle_status: 'registered',
           verification_status: 'submitted',
           created_by: userId,
@@ -329,6 +447,26 @@ async function syncOperationalRecordsFromOnboarding(userId: string, customerType
       propertyId = property.id
     }
 
+    if (selectedKind === 'apartment') {
+      const rawBhk = Number(details.bhk ?? 0)
+      const rawBuiltUpSqft = Number(details.built_up_sqft ?? 0)
+      const { error: apartmentError } = await admin.from('apartments').upsert(
+        {
+          property_id: propertyId,
+          owner_profile_id: userId,
+          apartment_number: asText(details.unit_number) || asText(details.apartment_number) || null,
+          floor_label: asText(details.floor_label) || null,
+          bhk: Number.isFinite(rawBhk) && rawBhk > 0 ? Math.round(rawBhk) : null,
+          built_up_sqft: Number.isFinite(rawBuiltUpSqft) && rawBuiltUpSqft > 0 ? rawBuiltUpSqft : null,
+          lifecycle_status: 'registered',
+          verification_status: 'submitted',
+        },
+        { onConflict: 'property_id' },
+      )
+      throwDbError(apartmentError)
+      return
+    }
+
     const plotPayload = {
       owner_id: userId,
       property_id: propertyId,
@@ -337,6 +475,14 @@ async function syncOperationalRecordsFromOnboarding(userId: string, customerType
       sq_yards: sqYards,
       facing: facingFromShortCode(row.property_facing),
       corner_plot: Boolean(row.is_corner_plot),
+      survey_number: asText(details.survey_number) || null,
+      dimensions: {
+        source: 'onboarding',
+        property_kind: selectedKind,
+        boundary_status: row.boundary_status ?? null,
+        occupancy_status: row.occupancy_status ?? null,
+        details,
+      },
       purchase_price_lakhs: 0,
       current_value_lakhs: 0,
       status: 'registered',
@@ -364,6 +510,9 @@ async function syncOperationalRecordsFromOnboarding(userId: string, customerType
           gst_number: row.gst_number || null,
           pan_number: row.pan_number || null,
           verification_status: operationalReviewStatus(row.verification_status),
+          admin_notes: row.listing_notes
+            ? `Onboarding: ${row.listing_property_kind ?? 'property'} in ${row.listing_location ?? 'location pending'}`
+            : undefined,
         },
         { onConflict: 'profile_id' },
       )
@@ -409,8 +558,16 @@ function buildSavedData(customerType: CustomerType, row: Record<string, unknown>
       property_size_sqyards: row.property_size_sqyards,
       property_facing: row.property_facing,
       is_corner_plot: row.is_corner_plot,
+      property_kind: row.property_kind,
+      owner_relationship: row.owner_relationship,
+      property_purpose: row.property_purpose,
+      boundary_status: row.boundary_status,
+      occupancy_status: row.occupancy_status,
+      inspection_contact_name: row.inspection_contact_name,
+      property_details: row.property_details,
       property_type: row.property_type,
       interested_in: row.interested_in,
+      concern_types: row.concern_types,
       documents_submitted: row.documents_submitted,
     }
   }
@@ -418,10 +575,15 @@ function buildSavedData(customerType: CustomerType, row: Record<string, unknown>
   if (customerType === 'plot_seller') {
     return {
       company_name: row.company_name,
+      seller_type: row.seller_type,
       gst_number: row.gst_number,
       pan_number: row.pan_number,
       address: row.address,
       business_documents: row.business_documents,
+      listing_property_kind: row.listing_property_kind,
+      listing_location: row.listing_location,
+      expected_price_lakhs: row.expected_price_lakhs,
+      listing_notes: row.listing_notes,
       commission_model: row.commission_model,
       commission_rate: row.commission_rate,
       listing_fee_amount: row.listing_fee_amount,
@@ -441,6 +603,8 @@ function buildSavedData(customerType: CustomerType, row: Record<string, unknown>
     preferred_plot_size_min: row.preferred_plot_size_min,
     preferred_plot_size_max: row.preferred_plot_size_max,
     preferred_property_types: row.preferred_property_types,
+    buying_purpose: row.buying_purpose,
+    purchase_timeline: row.purchase_timeline,
     kyc_aadhaar_last_4: row.kyc_aadhaar_last4,
     kyc_pan_submitted: row.kyc_pan_submitted,
     bank_account_holder: row.bank_account_holder,
@@ -463,15 +627,20 @@ function inferCompletedSteps(customerType: CustomerType, row: Record<string, unk
 
   if (customerType === 'land_owner') {
     if (row.property_location && row.property_size_sqyards) completed.push(1)
-    if (row.property_type && Array.isArray(row.interested_in) && row.interested_in.length > 0) completed.push(2)
+    if (
+      row.property_type
+      && Array.isArray(row.interested_in)
+      && row.interested_in.length > 0
+      && Array.isArray(row.concern_types)
+      && row.concern_types.length > 0
+    ) completed.push(2)
     const docs = row.documents_submitted as Record<string, unknown> | undefined
     if (docs && Object.keys(docs).length > 0) completed.push(3)
   }
 
   if (customerType === 'plot_seller') {
-    if (row.company_name && row.gst_number) completed.push(1)
-    const docs = row.business_documents as Record<string, unknown> | undefined
-    if (docs?.gst_cert && docs?.pan && docs?.address_proof) completed.push(2)
+    if (row.company_name && row.address) completed.push(1)
+    if (row.listing_property_kind && row.listing_location) completed.push(2)
     if (row.commission_model) completed.push(3)
     if (row.bank_account_number) completed.push(4)
   }
@@ -639,6 +808,15 @@ export async function submitOnboardingStepForUser(
     bodyData = parsed.data as Record<string, unknown>
   }
 
+  try {
+    await syncProfileContactFields(userId, bodyData)
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Profile contact sync failed.',
+      status: 500,
+    }
+  }
+
   const payload = mapStepPayload(customerType, step, bodyData)
   const table = DETAIL_TABLE[customerType]
 
@@ -682,7 +860,7 @@ export async function submitOnboardingStepForUser(
     currentStep: isFinal ? maxSteps : step + 1,
     lastCompletedStep: step,
     action: isFinal ? 'onboarding_completed' : 'step_submitted',
-    dataSnapshot: bodyData,
+    dataSnapshot: auditSafeSnapshot(bodyData),
     ipAddress: meta.ipAddress,
     userAgent: meta.userAgent,
   })

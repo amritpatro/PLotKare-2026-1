@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireRoleContext } from '@/lib/api/auth'
+import { isRateLimited } from '@/lib/api/rate-limit'
+import { recordAuditLog } from '@/lib/audit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 
 const paramsSchema = z.object({
@@ -26,6 +28,18 @@ export async function GET(
 ) {
   const context = await requireRoleContext(['plot_seller', 'land_owner', 'customer', 'employee', 'admin'])
   if ('response' in context) return context.response
+  if (await isRateLimited(request, { identifier: context.user.id })) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: {
+          code: 'RATE_LIMITED',
+          message: 'Too many document access requests. Please wait and try again.',
+        },
+      },
+      { status: 429 },
+    )
+  }
 
   const parsedParams = paramsSchema.safeParse(await params)
   if (!parsedParams.success) {
@@ -168,6 +182,19 @@ export async function GET(
       { status: 500 },
     )
   }
+
+  await recordAuditLog({
+    actorId: context.user.id,
+    action: context.isAdmin ? 'document.admin_accessed' : 'document.accessed',
+    entityType: 'document',
+    entityId: document.id,
+    metadata: {
+      mode,
+      role: context.profile.role,
+      property_id: document.property_id,
+      customer_id: document.customer_id,
+    },
+  })
 
   return NextResponse.redirect(signedResult.data.signedUrl, { status: 302 })
 }

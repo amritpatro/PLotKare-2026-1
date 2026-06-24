@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { LogoMark } from '@/components/logo'
 import { Eye, EyeOff } from 'lucide-react'
+import { AuthLayout } from '@/components/auth/AuthLayout'
+import { PremiumButton } from '@/components/auth/PremiumButton'
+import { PremiumInput } from '@/components/auth/PremiumInput'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 import { resolvePostLoginRedirect } from '@/lib/onboarding/redirect'
 import { buildAuthCallbackUrl, formatAuthError } from '@/lib/supabase/auth-redirect'
@@ -23,19 +25,39 @@ const returningUserLines = [
 export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createSupabaseBrowserClient()
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
+  const callbackError = searchParams.get('error')
+  const initialError =
+    callbackError === 'no_code'
+      ? 'The sign-in response was incomplete. Please try again.'
+      : callbackError === 'auth_failed'
+        ? 'Google sign-in could not be completed. Please try again.'
+        : callbackError || ''
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(initialError)
   const [isSigningIn, setIsSigningIn] = useState(false)
   const [isOpeningWorkspace, setIsOpeningWorkspace] = useState(false)
+  const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null)
   const [returningLine, setReturningLine] = useState(returningUserLines[0])
 
   useEffect(() => {
-    const callbackError = searchParams.get('error')
-    if (callbackError) setError(callbackError)
-  }, [searchParams])
+    let mounted = true
+
+    fetch('/api/auth/providers')
+      .then(async (response) => {
+        const providers = (await response.json()) as { google?: boolean }
+        if (mounted) setGoogleEnabled(response.ok && providers.google === true)
+      })
+      .catch(() => {
+        if (mounted) setGoogleEnabled(false)
+      })
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   useEffect(() => {
     try {
@@ -73,17 +95,6 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
       mounted = false
     }
   }, [router, mode, searchParams, supabase])
-
-  const redirectAfterLogin = async (userId: string, userMetadata?: Record<string, unknown>) => {
-    const next = searchParams.get('next')
-    const fallback = next || (mode === 'admin' ? '/admin/dashboard' : '/auth/choose-role')
-    const destination =
-      mode === 'admin'
-        ? fallback
-        : await resolvePostLoginRedirect(supabase, userId, fallback, userMetadata)
-    router.replace(destination)
-    router.refresh()
-  }
 
   const handleSignIn = async () => {
     setError('')
@@ -124,120 +135,154 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
 
   const handleOAuth = async () => {
     setError('')
+    if (googleEnabled !== true) {
+      setError('Google sign-in is not enabled for this PlotKare environment yet.')
+      return
+    }
+
     setIsSigningIn(true)
     const next = searchParams.get('next') || (mode === 'admin' ? '/admin/dashboard' : '/auth/choose-role')
-    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+    const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: buildAuthCallbackUrl(next),
+        skipBrowserRedirect: true,
       },
     })
     if (oauthError) {
       setError(formatAuthError(oauthError))
       setIsSigningIn(false)
+      return
     }
-  }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !isSigningIn) {
-      void handleSignIn()
+    if (!data.url) {
+      setError('Google sign-in could not be started. Please try again.')
+      setIsSigningIn(false)
+      return
     }
+
+    window.location.assign(data.url)
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2">
-      <div className="hidden lg:flex flex-col items-center justify-center bg-[#0A1F12] p-8">
-        <div className="text-center space-y-8">
-          <LogoMark variant="light" />
-          <p className="font-serif text-xl italic text-white/80 max-w-xs">
+    <AuthLayout
+      headline={mode === 'admin' ? 'Command access, guarded.' : 'Your property, protected.'}
+      subtext={
+        mode === 'admin'
+          ? 'Secure operational access for the team that reviews documents, inspections, and customer support.'
+          : 'GPS-verified inspections and real-time boundary monitoring for your land in Visakhapatnam.'
+      }
+    >
+      <div className="rounded-2xl border border-[#1a1a1a]/10 bg-white p-8 shadow-2xl shadow-black/10 md:p-10 xl:p-12">
+        <div className="space-y-3">
+          <h1 className="text-3xl font-bold tracking-tight text-[#1a1a1a] md:text-4xl">Welcome back</h1>
+          <p className="text-base text-[#5f5f5f]">
+            {mode === 'admin' ? 'Sign in to the PlotKare admin workspace.' : 'Sign in to your PlotKare account.'}
+          </p>
+          <p className="text-sm text-[#6B7280]" aria-live="polite">
             {returningLine}
           </p>
         </div>
-      </div>
 
-      <div className="flex min-h-screen items-center justify-center bg-[#0D1A0F] px-5 py-10 sm:px-8">
-        <div className="w-full max-w-[440px] rounded-2xl border border-white/10 bg-white/[0.045] p-6 shadow-2xl shadow-black/30 backdrop-blur-md sm:p-8 lg:p-10">
-          <div className="mb-8">
-            <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#D4AF94]/80">PlotKare access</p>
-            <h1 className="mt-3 font-serif text-4xl font-semibold italic text-[#D4AF94] sm:text-5xl">
-              Welcome Back.
-            </h1>
-          </div>
+        <div className="my-8 border-b border-[#8B1538]/20" />
 
           <form
             onSubmit={(e) => {
               e.preventDefault()
               void handleSignIn()
             }}
-            className="space-y-5"
+            className="space-y-6"
           >
-            <input
+            {error && (
+              <div id="login-error" role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                {error}
+              </div>
+            )}
+
+            <PremiumInput
+              id="login-email"
+              label="Email address"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={handleKeyPress}
+              onChange={setEmail}
               placeholder="your@email.com"
               disabled={isSigningIn}
-              autoComplete="username"
-              className="w-full rounded-md border border-white/10 bg-white/[0.035] px-4 py-3 font-sans text-white placeholder-white/30 outline-none transition-colors focus:border-[#D4AF94] focus:bg-white/[0.06] disabled:opacity-50"
+              autoComplete="email"
+              required
             />
 
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder="Password"
-                disabled={isSigningIn}
-                autoComplete="current-password"
-                className="w-full rounded-md border border-white/10 bg-white/[0.035] px-4 py-3 pr-12 font-sans text-white placeholder-white/30 outline-none transition-colors focus:border-[#D4AF94] focus:bg-white/[0.06] disabled:opacity-50"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-white/60 transition-colors hover:text-white disabled:opacity-50"
-                disabled={isSigningIn}
-                tabIndex={-1}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
+            <PremiumInput
+              id="login-password"
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={setPassword}
+              placeholder="Password"
+              disabled={isSigningIn}
+              autoComplete="current-password"
+              required
+              suffix={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-[#5f5f5f] transition-colors hover:text-[#8B1538] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B1538]"
+                  disabled={isSigningIn}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              }
+            />
+
+            <div className="text-right">
+              <Link href="/forgot-password" className="text-sm font-medium text-[#8B1538] underline-offset-4 hover:text-[#75112f] hover:underline">
+                Forgot password?
+              </Link>
             </div>
 
-            {error && <p className="text-red-500 font-sans text-sm">{error}</p>}
-
-            <button
+            <PremiumButton
               type="submit"
+              fullWidth
+              loading={isSigningIn}
               disabled={isSigningIn}
-              className="mt-7 w-full rounded-md bg-[#C0392B] py-4 font-sans text-base font-semibold text-white shadow-lg shadow-black/20 transition-colors hover:bg-[#A93225] disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isOpeningWorkspace ? 'Opening workspace...' : isSigningIn ? 'Signing In...' : 'Sign In'}
-            </button>
+            </PremiumButton>
           </form>
 
-          <button
-            type="button"
-            onClick={handleOAuth}
-            disabled={isSigningIn}
-            className="mt-5 w-full rounded-md border border-white/10 bg-white/[0.035] py-4 font-sans text-base font-semibold text-white shadow-lg shadow-black/10 transition-colors hover:border-[#D4AF94]/30 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            Continue with Google
-          </button>
+          <div className="my-6 flex items-center gap-3 text-sm text-[#6B7280]">
+            <span className="h-px flex-1 bg-[#1a1a1a]/10" />
+            or
+            <span className="h-px flex-1 bg-[#1a1a1a]/10" />
+          </div>
 
-          <p className="mt-8 font-sans text-sm text-white/70 text-center">
-            <Link href="/forgot-password" className="text-white hover:text-[#D4AF94] font-medium transition-colors">
-              Forgot password?
-            </Link>
-          </p>
-          <p className="mt-7 font-sans text-sm text-white/70 text-center">
+          <PremiumButton
+            variant="secondary"
+            onClick={handleOAuth}
+            fullWidth
+            disabled={isSigningIn || googleEnabled !== true}
+            aria-describedby={googleEnabled === false ? 'google-login-status' : undefined}
+            icon={<span className="font-bold text-[#8B1538]">G</span>}
+          >
+            {googleEnabled === null
+              ? 'Checking Google sign-in...'
+              : googleEnabled
+                ? 'Continue with Google'
+                : 'Google sign-in unavailable'}
+          </PremiumButton>
+          {googleEnabled === false ? (
+            <p id="google-login-status" role="status" aria-live="polite" className="mt-3 text-center text-xs text-[#6B7280]">
+              Google sign-in is not enabled for this environment. Email and password sign-in remains available.
+            </p>
+          ) : null}
+
+          <p className="mt-8 text-center text-sm text-[#5f5f5f]">
             Don&apos;t have an account?{' '}
-            <Link href="/signup" className="text-white hover:text-[#D4AF94] font-medium transition-colors">
+            <Link href="/signup" className="font-medium text-[#8B1538] underline-offset-4 hover:text-[#75112f] hover:underline">
               Sign up →
             </Link>
           </p>
-        </div>
       </div>
-    </div>
+    </AuthLayout>
   )
 }

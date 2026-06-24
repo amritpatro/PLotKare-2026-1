@@ -129,8 +129,8 @@ function ProfileCompletionPrompt({ data }: { data: CustomerWorkspaceData }) {
     { label: 'Contact details', done: Boolean(customer?.phone || customer?.email) },
     { label: 'Budget range', done: Boolean(buyer?.investment_budget_lakhs || buyer?.investment_budget_max_lakhs) },
     { label: 'Preferred locations', done: Boolean(buyer?.preferred_locations?.length) },
-    { label: 'KYC documents', done: Boolean(buyer?.kyc_pan_submitted && buyer?.kyc_aadhaar_submitted) },
-    { label: 'KYC verified', done: Boolean(buyer?.kyc_verified || customer?.kyc_status === 'approved') },
+    { label: 'Property types', done: Boolean(buyer?.preferred_property_types?.length) },
+    { label: 'Purpose and timeline', done: Boolean(buyer?.buying_purpose && buyer?.purchase_timeline) },
   ]
   const completed = checks.filter((check) => check.done).length
   const percentage = Math.round((completed / checks.length) * 100)
@@ -466,7 +466,15 @@ export function CustomerWorkspace({ data, profileLabel, successCode, errorCode }
                 <dd className="mt-1 font-medium text-[#1F2937]">{budgetLabel}</dd>
               </div>
               <div>
-                <dt className="text-[#9CA3AF]">Plot size</dt>
+                <dt className="text-[#9CA3AF]">Property types</dt>
+                <dd className="mt-1 font-medium capitalize text-[#1F2937]">
+                  {data.buyerDetails.preferred_property_types?.length
+                    ? data.buyerDetails.preferred_property_types.map((type) => type.replaceAll('_', ' ')).join(', ')
+                    : 'Any'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[#9CA3AF]">Size preference</dt>
                 <dd className="mt-1 font-medium text-[#1F2937]">
                   {data.buyerDetails.preferred_plot_size_min || 'Any'} - {data.buyerDetails.preferred_plot_size_max || 'Any'} sq. yards
                 </dd>
@@ -478,12 +486,16 @@ export function CustomerWorkspace({ data, profileLabel, successCode, errorCode }
                 </dd>
               </div>
               <div>
-                <dt className="text-[#9CA3AF]">Loan help</dt>
-                <dd className="mt-1 font-medium text-[#1F2937]">{data.buyerDetails.loan_interested ? 'Interested' : 'Not requested'}</dd>
+                <dt className="text-[#9CA3AF]">Purpose</dt>
+                <dd className="mt-1 font-medium capitalize text-[#1F2937]">{statusLabel(data.buyerDetails.buying_purpose)}</dd>
+              </div>
+              <div>
+                <dt className="text-[#9CA3AF]">Timeline</dt>
+                <dd className="mt-1 font-medium capitalize text-[#1F2937]">{statusLabel(data.buyerDetails.purchase_timeline)}</dd>
               </div>
             </dl>
           ) : (
-            <EmptyState title="Buyer preferences not completed" body="Complete onboarding to store preferred budget, location, size, property type, and loan details." />
+            <EmptyState title="Buyer preferences not completed" body="Complete onboarding to store preferred budget, location, size, property type, purpose, and purchase timeline." />
           )}
         </section>
       </section>

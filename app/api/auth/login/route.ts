@@ -4,6 +4,7 @@ import { resolvePostLoginRedirect } from '@/lib/onboarding/redirect'
 import { requireSupabaseBrowserEnv } from '@/lib/supabase/env'
 import { loginSchema } from '@/lib/validation/auth'
 import { isRateLimited } from '@/lib/api/rate-limit'
+import { recordAuditLog } from '@/lib/audit'
 
 export async function POST(request: NextRequest) {
   if (await isRateLimited(request)) {
@@ -41,8 +42,13 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data)
   if (error || !data.user) {
+    await recordAuditLog({
+      action: 'auth.login_failed',
+      entityType: 'auth_session',
+      metadata: { email: parsed.data.email, mode, reason: error?.name ?? 'invalid_credentials' },
+    })
     return NextResponse.json(
-      { error: error?.message ?? 'Unable to sign in. Please try again.' },
+      { error: 'Unable to sign in. Please check your credentials and try again.' },
       { status: 401 },
     )
   }
@@ -55,6 +61,13 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     if (profileError || profile?.role !== 'admin') {
+      await recordAuditLog({
+        actorId: data.user.id,
+        action: 'auth.admin_login_denied',
+        entityType: 'auth_session',
+        entityId: data.user.id,
+        metadata: { mode },
+      })
       await supabase.auth.signOut()
       return NextResponse.json({ error: 'This account does not have admin access.' }, { status: 403 })
     }
@@ -68,6 +81,14 @@ export async function POST(request: NextRequest) {
   const response = NextResponse.json({ success: true, destination })
   cookiesToSet.forEach(({ name, value, options }) => {
     response.cookies.set(name, value, options)
+  })
+
+  await recordAuditLog({
+    actorId: data.user.id,
+    action: 'auth.login_success',
+    entityType: 'auth_session',
+    entityId: data.user.id,
+    metadata: { mode, destination },
   })
 
   return response

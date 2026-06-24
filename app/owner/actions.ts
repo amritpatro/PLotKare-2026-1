@@ -11,7 +11,8 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { upsertVerificationRequest } from '@/lib/verification-requests'
 
 const propertySchema = z.object({
-  propertyKind: z.enum(['plot', 'apartment']),
+  assetType: z.enum(['plot', 'apartment', 'house', 'commercial', 'agricultural_land', 'mixed_other']).default('plot'),
+  propertyKind: z.enum(['plot', 'apartment']).optional(),
   title: z.string().trim().min(2),
   address: z.string().trim().min(2),
   city: z.string().trim().min(2),
@@ -74,6 +75,7 @@ export async function registerOwnerProperty(formData: FormData) {
   const supabase = createSupabaseAdminClient()
   let propertyId: string | null = null
   let failure: string | null = null
+  const propertyKind = parsed.data.assetType === 'apartment' ? 'apartment' : 'plot'
 
   try {
     const { error: ownerError } = await supabase
@@ -86,12 +88,17 @@ export async function registerOwnerProperty(formData: FormData) {
       .from('properties')
       .insert({
         owner_profile_id: user.id,
-        property_kind: parsed.data.propertyKind,
+        property_kind: propertyKind,
+        asset_type: parsed.data.assetType,
         title: parsed.data.title,
         address: parsed.data.address,
         city: parsed.data.city,
         state: parsed.data.state,
         postal_code: parsed.data.postalCode || null,
+        onboarding_details: {
+          source: 'owner_dashboard_registration',
+          asset_type: parsed.data.assetType,
+        },
         lifecycle_status: 'registered',
         verification_status: 'submitted',
         created_by: user.id,
@@ -102,7 +109,18 @@ export async function registerOwnerProperty(formData: FormData) {
     if (propertyError) throw propertyError
     propertyId = property.id
 
-    if (parsed.data.propertyKind === 'plot') {
+    if (propertyKind === 'apartment') {
+      const { error: apartmentError } = await supabase.from('apartments').insert({
+        owner_profile_id: user.id,
+        property_id: property.id,
+        apartment_number: parsed.data.plotNumber || null,
+        built_up_sqft: parsed.data.sqYards ? parsed.data.sqYards * 9 : null,
+        lifecycle_status: 'registered',
+        verification_status: 'submitted',
+      })
+
+      if (apartmentError) throw apartmentError
+    } else {
       const { error: plotError } = await supabase.from('plots').insert({
         owner_id: user.id,
         property_id: property.id,
@@ -111,6 +129,10 @@ export async function registerOwnerProperty(formData: FormData) {
         sq_yards: parsed.data.sqYards ?? 100,
         facing: parsed.data.facing,
         corner_plot: false,
+        dimensions: {
+          source: 'owner_dashboard_registration',
+          asset_type: parsed.data.assetType,
+        },
         purchase_price_lakhs: 0,
         current_value_lakhs: 0,
         status: 'registered',
@@ -129,7 +151,8 @@ export async function registerOwnerProperty(formData: FormData) {
       priority: 'normal',
       metadata: {
         source: 'owner_property_registration',
-        property_kind: parsed.data.propertyKind,
+        property_kind: propertyKind,
+        asset_type: parsed.data.assetType,
       },
     })
   } catch (error) {
@@ -147,7 +170,7 @@ export async function registerOwnerProperty(formData: FormData) {
     action: 'owner.property_registered',
     entityType: 'property',
     entityId: propertyId,
-    metadata: { propertyKind: parsed.data.propertyKind },
+    metadata: { propertyKind, assetType: parsed.data.assetType },
   })
 
   redirect(ownerActionUrl('success', 'property_registered', 'verification'))

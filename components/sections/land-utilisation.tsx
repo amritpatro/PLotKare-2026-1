@@ -131,7 +131,7 @@ export function LandUtilisationSection({
                 <h3 className="mt-3 font-serif text-2xl font-bold leading-tight text-foreground">{service.title}</h3>
                 <p className="mt-3 font-sans text-sm leading-relaxed text-muted-foreground">{service.description}</p>
                 <div className="mt-5 flex items-center gap-2 text-primary">
-                  <span className="font-sans text-sm font-semibold">Open details</span>
+                  <span className="font-sans text-sm font-semibold">View land-use details</span>
                   <ArrowRight className="h-4 w-4" />
                 </div>
               </button>

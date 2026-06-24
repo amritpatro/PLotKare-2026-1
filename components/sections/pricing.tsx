@@ -85,7 +85,7 @@ export function PricingSection({
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`relative rounded-xl p-8 ${
+              className={`premium-interactive relative rounded-xl p-8 ${
                 plan.variant === 'premium'
                   ? 'premium-surface-dark bg-charcoal text-white'
                   : plan.variant === 'featured'

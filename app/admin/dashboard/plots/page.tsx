@@ -41,6 +41,7 @@ type CustomerRow = {
 type PropertyRow = {
   id: string
   title: string
+  asset_type: string | null
   city: string | null
   state: string | null
   lifecycle_status: string
@@ -99,7 +100,7 @@ export default async function AdminPlotsPage({ searchParams }: AdminPlotsPagePro
       ? supabase.from('customers').select('id,full_name,email').in('id', customerIds)
       : Promise.resolve({ data: [] }),
     propertyIds.length
-      ? supabase.from('properties').select('id,title,city,state,lifecycle_status,verification_status').in('id', propertyIds)
+      ? supabase.from('properties').select('id,title,asset_type,city,state,lifecycle_status,verification_status').in('id', propertyIds)
       : Promise.resolve({ data: [] }),
   ])
 
@@ -183,6 +184,7 @@ export default async function AdminPlotsPage({ searchParams }: AdminPlotsPagePro
                   <td className="px-3 py-3">{owner?.full_name || owner?.email || 'Owner pending'}</td>
                   <td className="px-3 py-3 text-[#6B7280]">
                     {property?.title || 'Unlinked'}
+                    {property?.asset_type ? <span className="block text-xs text-[#9CA3AF]">{property.asset_type.replaceAll('_', ' ')}</span> : null}
                     {property?.city ? <span className="block text-xs text-[#9CA3AF]">{property.city}{property.state ? `, ${property.state}` : ''}</span> : null}
                   </td>
                   <td className="px-3 py-3 text-[#6B7280]">{row.location}</td>

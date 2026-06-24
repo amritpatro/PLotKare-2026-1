@@ -48,6 +48,10 @@ function statusLabel(value: string | null | undefined) {
   return String(value ?? 'pending').replaceAll('_', ' ')
 }
 
+function displayLabel(value: string | null | undefined) {
+  return statusLabel(value).replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
 export default async function LandOwnerDashboardPage({ searchParams }: OwnerDashboardPageProps) {
   const { user, profile } = await requirePageRole(['land_owner', 'admin'])
   const supabase = await createSupabaseServerClient()
@@ -76,12 +80,12 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
       .maybeSingle(),
     supabase
       .from('land_owner_details')
-      .select('property_location,property_size_sqyards,property_facing,is_corner_plot,property_type,interested_in,verification_status,updated_at')
+      .select('property_location,property_size_sqyards,property_facing,is_corner_plot,property_kind,owner_relationship,property_purpose,boundary_status,occupancy_status,property_details,property_type,interested_in,concern_types,verification_status,updated_at')
       .eq('user_id', user.id)
       .maybeSingle(),
     supabase
       .from('properties')
-      .select('id,title,property_kind,address,city,state,lifecycle_status,verification_status,created_at')
+      .select('id,title,property_kind,asset_type,address,city,state,occupancy_status,onboarding_details,lifecycle_status,verification_status,created_at')
       .eq('owner_profile_id', user.id)
       .order('created_at', { ascending: false }),
     supabase
@@ -259,9 +263,13 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className={labelClass}>Property type</label>
-                  <select name="propertyKind" className={inputClass} defaultValue="plot">
-                    <option value="plot">Plot</option>
-                    <option value="apartment">Apartment</option>
+                  <select name="assetType" className={inputClass} defaultValue="plot">
+                    <option value="plot">Plot / vacant land</option>
+                    <option value="apartment">Apartment / flat</option>
+                    <option value="house">Independent house / villa</option>
+                    <option value="commercial">Commercial property</option>
+                    <option value="agricultural_land">Agricultural land</option>
+                    <option value="mixed_other">Mixed / other</option>
                   </select>
                 </div>
                 <div>
@@ -290,11 +298,11 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <label className={labelClass}>Plot ID</label>
-                  <input name="plotNumber" placeholder="Optional for apartments" className={inputClass} />
+                  <input name="plotNumber" placeholder="Plot, survey, or unit ID" className={inputClass} />
                 </div>
                 <div>
-                  <label className={labelClass}>Sq. yards</label>
-                  <input name="sqYards" required type="number" min="50" placeholder="200" className={inputClass} />
+                  <label className={labelClass}>Size</label>
+                  <input name="sqYards" required type="number" min="50" placeholder="Sq. yards equivalent" className={inputClass} />
                 </div>
                 <div>
                   <label className={labelClass}>Facing</label>
@@ -323,7 +331,11 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
                     <dd className="mt-1 font-medium">{onboardingDetails.property_location || 'Pending'}</dd>
                   </div>
                   <div>
-                    <dt className="text-[#9CA3AF]">Plot size</dt>
+                    <dt className="text-[#9CA3AF]">Property type</dt>
+                    <dd className="mt-1 font-medium">{displayLabel(onboardingDetails.property_kind || 'plot')}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[#9CA3AF]">Size</dt>
                     <dd className="mt-1 font-medium">
                       {onboardingDetails.property_size_sqyards ? `${onboardingDetails.property_size_sqyards} sq. yards` : 'Pending'}
                     </dd>
@@ -333,8 +345,12 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
                     <dd className="mt-1 font-medium">{onboardingDetails.property_facing || 'Pending'}</dd>
                   </div>
                   <div>
-                    <dt className="text-[#9CA3AF]">Type</dt>
-                    <dd className="mt-1 font-medium">{onboardingDetails.property_type || 'Pending'}</dd>
+                    <dt className="text-[#9CA3AF]">Authority</dt>
+                    <dd className="mt-1 font-medium">{displayLabel(onboardingDetails.owner_relationship)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[#9CA3AF]">Occupancy</dt>
+                    <dd className="mt-1 font-medium">{displayLabel(onboardingDetails.occupancy_status)}</dd>
                   </div>
                 </dl>
               </div>
@@ -347,8 +363,11 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
                     <div>
                       <p className="font-semibold text-[#1F2937]">{property.title}</p>
                       <p className="mt-1 text-sm text-[#6B7280]">
-                        {property.property_kind} · {property.city || 'City pending'} · {property.lifecycle_status}
+                        {displayLabel(property.asset_type || property.property_kind)} · {property.address || property.city || 'Address pending'} · {statusLabel(property.lifecycle_status)}
                       </p>
+                      {property.occupancy_status ? (
+                        <p className="mt-1 text-xs text-[#9CA3AF]">Occupancy: {displayLabel(property.occupancy_status)}</p>
+                      ) : null}
                     </div>
                     <span className="rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-1 text-xs text-[#6B7280]">
                       {property.verification_status}
