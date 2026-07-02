@@ -240,7 +240,8 @@ export async function updateMyAdminTask(formData: FormData) {
       metadata: {
         previous_status: existing.status,
         status: parsed.data.status,
-        employee_note: parsed.data.note,
+        employee_note_present: Boolean(parsed.data.note),
+        employee_note_length: parsed.data.note?.length ?? 0,
         assigned_employee_id: employee.id,
         source_entity_type: existing.entity_type,
         source_entity_id: existing.entity_id,
@@ -339,7 +340,8 @@ export async function updateAssignedWorkItem(formData: FormData) {
       metadata: {
         previous_status: existing.status,
         status: parsed.data.status,
-        employee_note: parsed.data.note,
+        employee_note_present: Boolean(parsed.data.note),
+        employee_note_length: parsed.data.note?.length ?? 0,
         assigned_employee_id: employee.id,
         property_id: existing.property_id,
       },
@@ -526,7 +528,12 @@ export async function reviewAssignedPropertyLinkRequest(formData: FormData) {
       action: `employee.property_link_request.${parsed.data.status}`,
       entityType: 'property_link_request',
       entityId: request.id,
-      metadata: { assigned_employee_id: employee.id, linked_property_id: linkedPropertyId, note: parsed.data.note ?? null },
+      metadata: {
+        assigned_employee_id: employee.id,
+        linked_property_id: linkedPropertyId,
+        note_present: Boolean(parsed.data.note),
+        note_length: parsed.data.note?.length ?? 0,
+      },
     })
   } catch (error) {
     logger.error('Employee property link review failed:', error)
@@ -672,7 +679,8 @@ export async function updateAssignedVerificationStatus(formData: FormData) {
         previous_status: previousStatus ?? null,
         status: parsed.data.status,
         employee_id: employee.id,
-        note: parsed.data.note ?? null,
+        note_present: Boolean(parsed.data.note),
+        note_length: parsed.data.note?.length ?? 0,
         listing_publish_result: listingPublishResult,
       },
     })
@@ -823,7 +831,8 @@ export async function updateAssignedAmenityReview(formData: FormData) {
         priority: task.priority,
         due_at: task.due_at,
         escalation_level: task.escalation_level,
-        note: parsed.data.note ?? null,
+        note_present: Boolean(parsed.data.note),
+        note_length: parsed.data.note?.length ?? 0,
       },
     })
 

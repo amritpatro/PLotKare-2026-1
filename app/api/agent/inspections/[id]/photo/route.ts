@@ -3,6 +3,7 @@ import { requireUserContext } from '@/lib/api/auth'
 import { isRateLimited } from '@/lib/api/rate-limit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { recordAuditLog } from '@/lib/audit'
+import { inspectionPhotoSubjectForDirection } from '@/lib/agent/inspection-templates'
 
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const maxCompressedBytes = 900_000
@@ -67,7 +68,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const direction = String(form.get('direction') || 'evidence').toLowerCase()
-  const subject = String(form.get('subject') || direction)
+  const subject = inspectionPhotoSubjectForDirection(direction)
   const latitude = Number(form.get('latitude'))
   const longitude = Number(form.get('longitude'))
   const accuracy = Number(form.get('accuracy'))

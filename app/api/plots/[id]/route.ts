@@ -1,23 +1,25 @@
 import { plotUpdateSchema } from '@/lib/validation/app'
-import { requireUserContext } from '@/lib/api/auth'
+import { requireRoleContext } from '@/lib/api/auth'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 import { recordAuditLog } from '@/lib/audit'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
 export async function GET(_: Request, contextParams: RouteContext) {
-  const context = await requireUserContext()
+  const context = await requireRoleContext(['land_owner', 'admin'])
   if ('response' in context) return context.response
 
   const { id } = await contextParams.params
-  const { data, error } = await context.supabase.from('plots').select('*').eq('id', id).single()
+  const query = context.supabase.from('plots').select('*').eq('id', id)
+  const scopedQuery = context.isAdmin ? query : query.eq('owner_id', context.user.id)
+  const { data, error } = await scopedQuery.single()
   if (error) return apiError(error.message, 404, 'PLOT_NOT_FOUND')
 
   return apiOk({ plot: data })
 }
 
 export async function PATCH(request: Request, contextParams: RouteContext) {
-  const context = await requireUserContext()
+  const context = await requireRoleContext(['land_owner', 'admin'])
   if ('response' in context) return context.response
 
   const { id } = await contextParams.params
@@ -36,7 +38,9 @@ export async function PATCH(request: Request, contextParams: RouteContext) {
     ...(parsed.data.purchaseDate !== undefined ? { purchase_date: parsed.data.purchaseDate || null } : {}),
   }
 
-  const { data, error } = await context.supabase.from('plots').update(payload).eq('id', id).select('*').single()
+  const query = context.supabase.from('plots').update(payload).eq('id', id)
+  const scopedQuery = context.isAdmin ? query : query.eq('owner_id', context.user.id)
+  const { data, error } = await scopedQuery.select('*').single()
   if (error) return apiError(error.message, 400, 'PLOT_UPDATE_FAILED')
 
   await recordAuditLog({ actorId: context.user.id, action: 'plot.updated', entityType: 'plot', entityId: id })
@@ -44,11 +48,13 @@ export async function PATCH(request: Request, contextParams: RouteContext) {
 }
 
 export async function DELETE(_: Request, contextParams: RouteContext) {
-  const context = await requireUserContext()
+  const context = await requireRoleContext(['land_owner', 'admin'])
   if ('response' in context) return context.response
 
   const { id } = await contextParams.params
-  const { error } = await context.supabase.from('plots').delete().eq('id', id)
+  const query = context.supabase.from('plots').delete().eq('id', id)
+  const scopedQuery = context.isAdmin ? query : query.eq('owner_id', context.user.id)
+  const { error } = await scopedQuery
   if (error) return apiError(error.message, 400, 'PLOT_DELETE_FAILED')
 
   await recordAuditLog({ actorId: context.user.id, action: 'plot.deleted', entityType: 'plot', entityId: id })

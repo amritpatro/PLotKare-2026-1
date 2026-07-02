@@ -1,11 +1,11 @@
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { documentMetadataSchema } from '@/lib/validation/app'
-import { requireUserContext } from '@/lib/api/auth'
+import { requireRoleContext } from '@/lib/api/auth'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 import { recordAuditLog } from '@/lib/audit'
 
 export async function GET() {
-  const context = await requireUserContext()
+  const context = await requireRoleContext(['land_owner', 'admin'])
   if ('response' in context) return context.response
 
   const query = context.supabase.from('documents').select('*').order('created_at', { ascending: false })
@@ -17,7 +17,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const context = await requireUserContext()
+  const context = await requireRoleContext(['land_owner', 'admin'])
   if ('response' in context) return context.response
 
   const parsed = documentMetadataSchema.safeParse(await parseJson(request))
@@ -25,6 +25,17 @@ export async function POST(request: Request) {
 
   const ownerId = context.isAdmin && parsed.data.ownerId ? parsed.data.ownerId : context.user.id
   const supabase = context.isAdmin ? createSupabaseAdminClient() : context.supabase
+
+  if (parsed.data.plotId) {
+    const admin = createSupabaseAdminClient()
+    const plotQuery = admin.from('plots').select('id,owner_id').eq('id', parsed.data.plotId)
+    const scopedPlotQuery = context.isAdmin ? plotQuery : plotQuery.eq('owner_id', context.user.id)
+    const { data: plot, error: plotError } = await scopedPlotQuery.maybeSingle()
+    if (plotError || !plot || plot.owner_id !== ownerId) {
+      return apiError('This plot is not available for document metadata.', 403, 'PLOT_SCOPE_FORBIDDEN')
+    }
+  }
+
   const { data, error } = await supabase
     .from('documents')
     .insert({

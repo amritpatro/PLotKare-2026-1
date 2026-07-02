@@ -40,8 +40,14 @@ const coordinateNumber = (min: number, max: number) =>
 
 const coordinateSchema = z.object({
   plotId: z.string().uuid(),
-  latitude: coordinateNumber(-90, 90),
-  longitude: coordinateNumber(-180, 180),
+  latitude: coordinateNumber(12, 20),
+  longitude: coordinateNumber(76, 85.5),
+  accuracy: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? null : value),
+    z.coerce.number().min(0).nullable().optional(),
+  ),
+  source: z.enum(['owner_map_pin', 'owner_gps', 'owner_manual']).default('owner_map_pin'),
+  landmark: z.string().trim().max(240).optional().or(z.literal('')),
 })
 
 const supportTicketSchema = z.object({
@@ -220,10 +226,10 @@ export async function requestOwnerAmenity(formData: FormData) {
   redirect(ownerActionUrl('success', 'amenity_requested', 'amenities'))
 }
 
-export async function updateOwnerPlotCoordinates(formData: FormData) {
+export async function submitOwnerPlotLocation(formData: FormData) {
   const parsed = coordinateSchema.safeParse(Object.fromEntries(formData))
   if (!parsed.success) {
-    redirect(ownerActionUrl('error', 'invalid_coordinates', 'properties'))
+    redirect(ownerActionUrl('error', 'invalid_location_form', 'properties'))
   }
 
   const { user } = await requirePageRole(['land_owner', 'admin'])
@@ -233,64 +239,75 @@ export async function updateOwnerPlotCoordinates(formData: FormData) {
   try {
     const { data: plot, error: plotError } = await supabase
       .from('plots')
-      .select('id,owner_id,property_id,plot_number')
+      .select('id,owner_id,property_id,plot_number,location_status')
       .eq('id', parsed.data.plotId)
       .eq('owner_id', user.id)
       .maybeSingle()
 
     if (plotError) throw plotError
     if (!plot) throw new Error('Plot is not attached to this owner.')
+    if (plot.location_status === 'pending_verification' || plot.location_status === 'verified') {
+      failure = 'location_locked'
+      throw new Error('Location is locked while pending or verified.')
+    }
 
     const now = new Date().toISOString()
     const { error: plotUpdateError } = await supabase
       .from('plots')
       .update({
-        target_latitude: parsed.data.latitude,
-        target_longitude: parsed.data.longitude,
-        coordinates_confirmed_at: now,
-        coordinates_confirmed_by: user.id,
+        submitted_latitude: parsed.data.latitude,
+        submitted_longitude: parsed.data.longitude,
+        submitted_accuracy_meters: parsed.data.accuracy ?? null,
+        location_source: parsed.data.source,
+        location_status: 'pending_verification',
+        location_note: null,
+        location_submitted_at: now,
+        address_landmark: parsed.data.landmark || null,
+        google_maps_link: null,
+        location_verified_at: null,
+        location_verified_by: null,
+        location_adjusted_by_admin: false,
       })
       .eq('id', plot.id)
       .eq('owner_id', user.id)
 
     if (plotUpdateError) throw plotUpdateError
 
-    if (plot.property_id) {
-      const { error: propertyUpdateError } = await supabase
-        .from('properties')
-        .update({
-          latitude: parsed.data.latitude,
-          longitude: parsed.data.longitude,
-        })
-        .eq('id', plot.property_id)
-        .eq('owner_profile_id', user.id)
+    const { data: admins } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'admin')
 
-      if (propertyUpdateError) throw propertyUpdateError
-    }
-
-    await supabase
-      .from('inspections')
-      .update({
-        target_latitude: parsed.data.latitude,
-        target_longitude: parsed.data.longitude,
-      })
-      .eq('plot_id', plot.id)
-      .in('status', ['requested', 'scheduled', 'in_progress', 'needs_followup'])
+    const notifications = (admins ?? []).map((admin) => ({
+      recipient_id: admin.id,
+      actor_id: user.id,
+      title: 'Plot location pending verification',
+      message: `${plot.plot_number || 'A plot'} has a submitted GPS pin waiting for admin review.`,
+      category: 'location',
+      metadata: {
+        plot_id: plot.id,
+        property_id: plot.property_id,
+        source: parsed.data.source,
+      },
+      link_path: `/admin/dashboard/plots/${plot.id}/location`,
+    }))
+    if (notifications.length) await supabase.from('notifications').insert(notifications)
 
     await recordAuditLog({
       actorId: user.id,
-      action: 'owner.plot_coordinates_saved',
+      action: 'owner.plot_location_submitted',
       entityType: 'plot',
       entityId: plot.id,
       metadata: {
         propertyId: plot.property_id,
-        latitude: parsed.data.latitude,
-        longitude: parsed.data.longitude,
+        source: parsed.data.source,
+        accuracyMeters: parsed.data.accuracy ?? null,
+        hasLandmark: Boolean(parsed.data.landmark),
       },
     })
   } catch (error) {
-    logger.error('Owner coordinate update failed:', error)
-    failure = 'coordinates_save_failed'
+    logger.error('Owner location submission failed:', error)
+    failure = failure ?? 'location_submit_failed'
   }
 
   if (failure) {
@@ -300,7 +317,8 @@ export async function updateOwnerPlotCoordinates(formData: FormData) {
   revalidatePath('/owner')
   revalidatePath('/owner/properties')
   revalidatePath('/owner/verification')
-  redirect(ownerActionUrl('success', 'coordinates_saved', 'properties'))
+  revalidatePath('/admin/dashboard/plots')
+  redirect(ownerActionUrl('success', 'location_submitted', 'properties'))
 }
 
 async function ensureOwnerProperty(supabase: ReturnType<typeof createSupabaseAdminClient>, userId: string, propertyId: string) {

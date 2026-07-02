@@ -11,13 +11,19 @@ type AuditInput = {
 
 const REDACTED = '[redacted]'
 const SENSITIVE_KEY =
-  /authorization|cookie|password|secret|token|api[_-]?key|jwt|signed.?url|url|object.?path|file.?path|report.?path|aadhaar|aadhar|pan|bank|account|ifsc|phone|mobile|email/i
+  /authorization|cookie|password|secret|token|api[_-]?key|jwt|signed.?url|url|object.?path|file.?path|report.?path|aadhaar|aadhar|pan|bank|account|ifsc|phone|mobile|email|note|reason|message|description|summary|body|comment/i
+
+const SENSITIVE_TEXT =
+  /https?:\/\/|\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b|\b[A-Z]{5}[0-9]{4}[A-Z]\b|\b\d{12}\b|\b(?:\+?91[-\s]?)?[6-9]\d{9}\b/i
+
+const SAFE_AUDIT_SIGNAL_KEY = /_(present|length|count)$/i
 
 function redactAuditValue(value: unknown, depth = 0): unknown {
   if (depth > 4) return '[truncated]'
   if (value === null || value === undefined) return value
   if (value instanceof Date) return value.toISOString()
   if (typeof value === 'string') {
+    if (SENSITIVE_TEXT.test(value)) return REDACTED
     if (/https?:\/\//i.test(value)) return REDACTED
     return value.length > 600 ? `${value.slice(0, 600)}...[truncated]` : value
   }
@@ -27,7 +33,7 @@ function redactAuditValue(value: unknown, depth = 0): unknown {
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>).map(([key, item]) => [
       key,
-      SENSITIVE_KEY.test(key) ? REDACTED : redactAuditValue(item, depth + 1),
+      SENSITIVE_KEY.test(key) && !SAFE_AUDIT_SIGNAL_KEY.test(key) ? REDACTED : redactAuditValue(item, depth + 1),
     ]),
   )
 }

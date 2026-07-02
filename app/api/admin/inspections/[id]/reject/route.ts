@@ -52,6 +52,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     })
   }
 
-  await recordAuditLog({ actorId: context.user.id, action: 'inspection_rejected', entityType: 'inspections', entityId: id, metadata: { reason: parsed.data.rejectionReason } })
+  await recordAuditLog({
+    actorId: context.user.id,
+    action: 'inspection_rejected',
+    entityType: 'inspections',
+    entityId: id,
+    metadata: {
+      reason_present: true,
+      reason_length: parsed.data.rejectionReason.length,
+    },
+  })
   return NextResponse.json({ ok: true })
 }

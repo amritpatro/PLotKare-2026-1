@@ -27,6 +27,7 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
   const searchParams = useSearchParams()
   const supabase = useMemo(() => createSupabaseBrowserClient(), [])
   const callbackError = searchParams.get('error')
+  const callbackMessage = searchParams.get('message')
   const initialError =
     callbackError === 'no_code'
       ? 'The sign-in response was incomplete. Please try again.'
@@ -37,6 +38,9 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState(initialError)
+  const [statusMessage] = useState(
+    callbackMessage === 'password-updated' ? 'Your password has been updated. You can now log in.' : '',
+  )
   const [isSigningIn, setIsSigningIn] = useState(false)
   const [isOpeningWorkspace, setIsOpeningWorkspace] = useState(false)
   const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null)
@@ -198,6 +202,11 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
                 {error}
               </div>
             )}
+            {statusMessage && !error ? (
+              <div role="status" aria-live="polite" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
+                {statusMessage}
+              </div>
+            ) : null}
 
             <PremiumInput
               id="login-email"

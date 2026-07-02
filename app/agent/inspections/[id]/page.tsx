@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { AgentShell } from '@/components/agent/agent-shell'
 import { AgentInspectionFlow } from '@/components/agent/agent-inspection-flow'
 import { getAssignedInspectionForAgent, requireFieldAgentPage } from '@/lib/agent/server'
+import { inspectionTypeFromProperty } from '@/lib/agent/inspection-templates'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 
 type PageProps = {
@@ -12,6 +13,12 @@ type PageProps = {
 
 function first<T>(value: T | T[] | null | undefined) {
   return Array.isArray(value) ? value[0] : value
+}
+
+function nullableNumber(value: unknown) {
+  if (value == null) return null
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : null
 }
 
 export default async function AgentInspectionPage({ params }: PageProps) {
@@ -44,10 +51,35 @@ export default async function AgentInspectionPage({ params }: PageProps) {
 
   const title = property?.title || plot?.location || 'Assigned inspection'
   const location = [property?.address, property?.city, property?.state].filter(Boolean).join(', ') || plot?.location || 'Location pending'
-  const targetLatitude =
-    inspection.target_latitude == null ? (property?.latitude == null ? null : Number(property.latitude)) : Number(inspection.target_latitude)
-  const targetLongitude =
-    inspection.target_longitude == null ? (property?.longitude == null ? null : Number(property.longitude)) : Number(inspection.target_longitude)
+  const propertyType = inspectionTypeFromProperty({
+    inspectionPropertyType: inspection.inspection_property_type,
+    assetType: property?.asset_type,
+    propertyKind: property?.property_kind,
+    hasPlot: Boolean(inspection.plot_id),
+  })
+  const plotLocationVerified = plot?.location_status === 'verified'
+  const inspectionTargetLatitude = nullableNumber(inspection.target_latitude)
+  const inspectionTargetLongitude = nullableNumber(inspection.target_longitude)
+  const plotTargetLatitude = nullableNumber(plot?.target_latitude)
+  const plotTargetLongitude = nullableNumber(plot?.target_longitude)
+  const targetLatitude = plotLocationVerified
+    ? inspectionTargetLatitude != null
+      ? inspectionTargetLatitude
+      : plotTargetLatitude != null
+        ? plotTargetLatitude
+        : null
+    : null
+  const targetLongitude = plotLocationVerified
+    ? inspectionTargetLongitude != null
+      ? inspectionTargetLongitude
+      : plotTargetLongitude != null
+        ? plotTargetLongitude
+        : null
+    : null
+  const arrivalLatitude = nullableNumber(inspection.arrival_latitude)
+  const arrivalLongitude = nullableNumber(inspection.arrival_longitude)
+  const arrivalAccuracy = nullableNumber(inspection.arrival_accuracy_meters)
+  const hasArrivalProof = arrivalLatitude != null && arrivalLongitude != null
 
   return (
     <AgentShell title="Inspection workflow" subtitle="One screen at a time: verify arrival, capture evidence, complete checks, and sync safely.">
@@ -60,10 +92,23 @@ export default async function AgentInspectionPage({ params }: PageProps) {
         title={title}
         location={location}
         plotLabel={plot?.plot_number || inspection.id.slice(0, 8)}
+        propertyType={propertyType}
         target={{
           latitude: Number.isFinite(targetLatitude) ? targetLatitude : null,
           longitude: Number.isFinite(targetLongitude) ? targetLongitude : null,
         }}
+        targetLabel={inspection.target_place_label || plot?.target_place_label || null}
+        locationStatus={plot?.location_status || 'not_set'}
+        landmark={plot?.address_landmark || null}
+        googleMapsLink={plot?.google_maps_link || null}
+        initialArrival={hasArrivalProof ? {
+          latitude: arrivalLatitude,
+          longitude: arrivalLongitude,
+          accuracy: arrivalAccuracy ?? 0,
+          capturedAt: inspection.arrival_captured_at || new Date().toISOString(),
+          verified: inspection.arrival_verified === true,
+          outsideRadius: inspection.arrival_outside_radius === true,
+        } : null}
         documents={(documents ?? []).map((doc) => ({
           id: doc.id,
           label: doc.title,

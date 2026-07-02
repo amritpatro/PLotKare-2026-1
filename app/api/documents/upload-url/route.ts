@@ -1,6 +1,6 @@
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { documentUploadSchema } from '@/lib/validation/app'
-import { requireUserContext } from '@/lib/api/auth'
+import { requireRoleContext } from '@/lib/api/auth'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 import { isRateLimited } from '@/lib/api/rate-limit'
 
@@ -9,7 +9,7 @@ function safeFileName(name: string) {
 }
 
 export async function POST(request: Request) {
-  const context = await requireUserContext()
+  const context = await requireRoleContext(['land_owner', 'admin'])
   if ('response' in context) return context.response
   if (await isRateLimited(request, { identifier: context.user.id })) {
     return apiError('Too many upload requests. Please wait and try again.', 429, 'RATE_LIMITED')
@@ -21,6 +21,15 @@ export async function POST(request: Request) {
   const ownerId = context.isAdmin && parsed.data.ownerId ? parsed.data.ownerId : context.user.id
   const objectPath = `${ownerId}/${Date.now()}-${safeFileName(parsed.data.fileName)}`
   const admin = createSupabaseAdminClient()
+
+  if (parsed.data.plotId) {
+    const plotQuery = admin.from('plots').select('id,owner_id').eq('id', parsed.data.plotId)
+    const scopedPlotQuery = context.isAdmin ? plotQuery : plotQuery.eq('owner_id', context.user.id)
+    const { data: plot, error: plotError } = await scopedPlotQuery.maybeSingle()
+    if (plotError || !plot || plot.owner_id !== ownerId) {
+      return apiError('This plot is not available for document upload.', 403, 'PLOT_SCOPE_FORBIDDEN')
+    }
+  }
 
   const { data: upload, error: uploadError } = await admin.storage
     .from(parsed.data.bucket)

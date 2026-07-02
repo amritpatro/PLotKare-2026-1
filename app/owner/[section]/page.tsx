@@ -30,7 +30,7 @@ const actionMessages = {
     service_requested: 'Service request sent to PlotKare operations.',
     support_ticket_created: 'Support ticket opened for operations follow-up.',
     amenity_requested: 'Amenity consultation request submitted.',
-    coordinates_saved: 'Plot coordinates saved for field inspection routing.',
+    location_submitted: 'Plot location submitted for admin verification.',
   },
   error: {
     invalid_property_form: 'Complete the required property details and try again.',
@@ -41,8 +41,9 @@ const actionMessages = {
     service_request_failed: 'The service request could not be created.',
     support_ticket_failed: 'The support ticket could not be created.',
     amenity_request_failed: 'The amenity request could not be created.',
-    invalid_coordinates: 'Select a valid plot and confirmed map coordinates.',
-    coordinates_save_failed: 'The coordinates could not be saved. Please retry.',
+    invalid_location_form: 'Select a valid Andhra Pradesh plot coordinate before submitting.',
+    location_locked: 'This plot location is locked while pending review or already verified.',
+    location_submit_failed: 'The location could not be submitted. Please retry.',
   },
 } as const
 
@@ -99,7 +100,7 @@ export default async function OwnerSectionPage({ params, searchParams }: PagePro
     : { data: [] }
   const { data: ownerPlots } = await supabase
     .from('plots')
-    .select('id,property_id,plot_number,location,sq_yards,facing,status,lifecycle_status,verification_status,target_latitude,target_longitude,created_at')
+    .select('id,property_id,plot_number,location,sq_yards,facing,status,lifecycle_status,verification_status,target_latitude,target_longitude,submitted_latitude,submitted_longitude,submitted_accuracy_meters,location_source,location_status,location_note,location_submitted_at,address_landmark,google_maps_link,location_verified_at,location_adjusted_by_admin,created_at')
     .eq('owner_id', user.id)
     .order('created_at', { ascending: false })
   const plotRows = ownerPlots ?? []

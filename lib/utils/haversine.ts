@@ -23,7 +23,7 @@ export function getGpsLabel(accuracyMeters: number): string {
 export function getArrivalStatus(
   distanceMeters: number,
 ): 'verified' | 'outside-radius' | 'too-far' {
-  if (distanceMeters < 150) return 'verified'
-  if (distanceMeters < 300) return 'outside-radius'
+  if (distanceMeters <= 50) return 'verified'
+  if (distanceMeters <= 200) return 'outside-radius'
   return 'too-far'
 }

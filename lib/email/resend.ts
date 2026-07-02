@@ -6,15 +6,26 @@ type EmailInput = {
   replyTo?: string
 }
 
+function genericResendMessage(errorText: string) {
+  if (!errorText) return 'Email delivery temporarily unavailable'
+  if (errorText.includes('401') || errorText.toLowerCase().includes('api key')) {
+    return 'Email delivery temporarily unavailable'
+  }
+  return 'Email delivery temporarily unavailable'
+}
+
 export function hasTransactionalEmailConfiguration() {
-  return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL)
+  return Boolean(process.env.RESEND_API_KEY)
 }
 
 export async function sendTransactionalEmail(input: EmailInput) {
   const apiKey = process.env.RESEND_API_KEY
-  const from = process.env.RESEND_FROM_EMAIL
+  const from = process.env.RESEND_FROM_EMAIL || 'hello@plotkare.in'
 
-  if (!apiKey || !from) return { skipped: true as const, reason: 'Transactional email is not configured' }
+  if (!apiKey || !apiKey.trim()) {
+    console.error('[Email] RESEND_API_KEY not configured')
+    return { skipped: true as const, reason: 'Email delivery temporarily unavailable' }
+  }
 
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -33,7 +44,9 @@ export async function sendTransactionalEmail(input: EmailInput) {
   })
 
   if (!response.ok) {
-    return { skipped: false as const, error: await response.text() }
+    const errorText = await response.text().catch(() => '')
+    console.error('[Email] Resend error:', genericResendMessage(errorText))
+    return { skipped: false as const, error: 'Email delivery temporarily unavailable' }
   }
 
   return { skipped: false as const, data: await response.json() }

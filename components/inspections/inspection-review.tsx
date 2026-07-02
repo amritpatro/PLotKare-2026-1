@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { getInspectionTemplate, getTriggeredIssueKeys, inspectionTypeFromProperty } from '@/lib/agent/inspection-templates'
 import { InspectionReviewActions } from './inspection-review-actions'
 import { InternalNotes } from './internal-notes'
 import { SecurePhotoGallery, type ReviewPhoto } from './secure-photo-gallery'
@@ -39,7 +40,7 @@ export async function InspectionReview({ inspectionId, readonly = false, backHre
   const [{ data: inspection }, { data: photos }] = await Promise.all([
     admin
       .from('inspections')
-      .select('*,properties(title,address,city,state,owner_profile_id,latitude,longitude),plots(plot_number,location),employees(profile_id,profiles(full_name,email))')
+      .select('*,properties(title,address,city,state,owner_profile_id,latitude,longitude,asset_type,property_kind),plots(plot_number,location),employees(profile_id,profiles(full_name,email))')
       .eq('id', inspectionId)
       .maybeSingle(),
     admin
@@ -66,6 +67,14 @@ export async function InspectionReview({ inspectionId, readonly = false, backHre
     : { data: null }
   const checklist = parseChecklist(inspection.photos)
   const submission = parseSubmission(inspection.photos)
+  const inspectionType = inspectionTypeFromProperty({
+    inspectionPropertyType: inspection.inspection_property_type ?? submission?.property_type,
+    assetType: property?.asset_type,
+    propertyKind: property?.property_kind,
+    hasPlot: Boolean(inspection.plot_id),
+  })
+  const template = getInspectionTemplate(inspectionType)
+  const flaggedChecklistKeys = new Set(getTriggeredIssueKeys(template, checklist))
   const documents = Array.isArray(submission?.documents) ? submission.documents : []
   const amenities = Array.isArray(submission?.amenities) ? submission.amenities : []
   const targetLatitude = inspection.target_latitude ?? property?.latitude ?? null
@@ -97,6 +106,7 @@ export async function InspectionReview({ inspectionId, readonly = false, backHre
             <p className="mt-2 text-sm text-[#6B7280]">{property?.title || plot?.location || 'Property'} · {[property?.address, property?.city, property?.state].filter(Boolean).join(', ')}</p>
             <p className="mt-1 text-sm text-[#6B7280]">Owner: {ownerProfile?.full_name || ownerProfile?.email || 'Owner pending'}</p>
             <p className="mt-1 text-sm text-[#6B7280]">Agent: {agentProfile?.full_name || agentProfile?.email || 'Assigned agent'} · Submitted {formatDate(inspection.submitted_at)}</p>
+            <p className="mt-1 text-sm text-[#6B7280]">Inspection type: {template.label}</p>
           </div>
           <div className="grid gap-2 text-sm">
             <span className="rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-1 font-mono text-xs uppercase text-[#6B7280]">{statusLabel(inspection.workflow_step || inspection.status)}</span>
@@ -136,6 +146,21 @@ export async function InspectionReview({ inspectionId, readonly = false, backHre
       <SecurePhotoGallery inspectionId={inspectionId} photos={(photos ?? []) as ReviewPhoto[]} />
 
       <section className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
+        <h2 className="font-serif text-2xl font-semibold text-[#1F2937]">Expected evidence</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[...template.requiredPhotos, ...(template.optionalPhotos ?? [])].map((photo) => {
+            const optional = template.optionalPhotos?.some((item) => item.key === photo.key)
+            return (
+            <div key={photo.key} className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3 text-sm">
+              <p className="font-semibold text-[#1F2937]">{photo.label}</p>
+              <p className="mt-1 text-xs text-[#6B7280]">{photo.subject}{optional ? ' · optional' : ''}</p>
+            </div>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-sm">
         <h2 className="font-serif text-2xl font-semibold text-[#1F2937]">Checklist results</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[680px] text-left text-sm">
@@ -149,7 +174,7 @@ export async function InspectionReview({ inspectionId, readonly = false, backHre
             <tbody className="divide-y divide-[#F3F4F6]">
               {checklist.length === 0 ? <tr><td colSpan={3} className="py-6 text-[#6B7280]">Checklist not submitted yet.</td></tr> : null}
               {checklist.map((answer: any) => (
-                <tr key={answer.key} className={answer.key === 'encroachment' && answer.value === true ? 'bg-red-50' : ''}>
+                <tr key={answer.key} className={flaggedChecklistKeys.has(answer.key) ? 'bg-red-50' : ''}>
                   <td className="py-3 pr-4 text-[#1F2937]">{answer.label}</td>
                   <td className="py-3 pr-4"><span className={`rounded-full px-2 py-1 text-xs font-semibold ${answer.value === true ? answer.key === 'encroachment' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700' : answer.value === false ? 'bg-gray-100 text-gray-700' : 'bg-amber-100 text-amber-700'}`}>{answer.value === true ? 'Yes' : answer.value === false ? 'No' : 'Pending'}</span></td>
                   <td className="py-3 pr-4 text-[#6B7280]">{answer.note || 'No note'}</td>

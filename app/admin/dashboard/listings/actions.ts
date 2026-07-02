@@ -14,7 +14,11 @@ export async function archiveListing(listingId: string) {
 
   const { data: updatedListing, error } = await context.supabase
     .from('listings')
-    .update({ status: 'archived', is_published: false, archived_at: new Date().toISOString(), archived_by: context.user.id })
+    .update({
+      is_published: false,
+      archived_at: new Date().toISOString(),
+      archived_by: context.user.id,
+    })
     .eq('id', id)
     .select('id')
     .maybeSingle()

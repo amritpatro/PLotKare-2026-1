@@ -29,6 +29,7 @@ type ListingRow = {
   approval_status: string | null
   is_published: boolean | null
   verified_at: string | null
+  archived_at: string | null
   inquiries_count: number
   property_kind: string
   bhk: number | null
@@ -76,7 +77,7 @@ export default async function AdminListingsPage({ searchParams }: AdminListingsP
   let listingQuery = supabase
     .from('listings')
     .select(
-      'id,owner_id,property_id,seller_id,plot_id,plot_number,location,size_label,size_sq_yards,facing,corner_plot,premium,price_display,status,approval_status,is_published,verified_at,inquiries_count,property_kind,bhk,floor_label,created_at',
+      'id,owner_id,property_id,seller_id,plot_id,plot_number,location,size_label,size_sq_yards,facing,corner_plot,premium,price_display,status,approval_status,is_published,verified_at,archived_at,inquiries_count,property_kind,bhk,floor_label,created_at',
     )
     .order('created_at', { ascending: false })
     .limit(100)
@@ -97,7 +98,11 @@ export default async function AdminListingsPage({ searchParams }: AdminListingsP
     listingQuery = listingQuery.or(exprs.join(','))
   }
 
-  if (status) listingQuery = listingQuery.eq('status', status)
+  if (status === 'archived') {
+    listingQuery = listingQuery.eq('is_published', false).not('archived_at', 'is', null)
+  } else if (status) {
+    listingQuery = listingQuery.eq('status', status)
+  }
   if (kind) listingQuery = listingQuery.eq('property_kind', kind)
 
   const { data: listings } = await listingQuery
@@ -187,7 +192,7 @@ export default async function AdminListingsPage({ searchParams }: AdminListingsP
             {rows.map((row) => {
               const owner = row.owner_id ? ownerById.get(row.owner_id) : null
               const plot = row.plot_id ? plotById.get(row.plot_id) : null
-              const isArchived = row.status.toLowerCase() === 'archived'
+              const isArchived = !row.is_published && Boolean(row.archived_at)
 
               return (
                 <tr key={row.id} className="font-sans text-[#1F2937]">
@@ -213,7 +218,7 @@ export default async function AdminListingsPage({ searchParams }: AdminListingsP
                   </td>
                   <td className="px-3 py-3 text-[#6B7280]">{row.price_display}</td>
                   <td className="px-3 py-3 font-mono text-[#1F2937]">{row.inquiries_count}</td>
-                  <td className="px-3 py-3">{badge(row.status)}</td>
+                  <td className="px-3 py-3">{badge(isArchived ? 'archived' : row.status)}</td>
                   <td className="px-3 py-3 text-[#6B7280]">{new Date(row.created_at).toLocaleDateString('en-IN')}</td>
                   <td className="px-3 py-3">
                     <ArchiveListingButton listingId={row.id} archived={isArchived} />

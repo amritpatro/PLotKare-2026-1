@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { recordAuditLog } from '@/lib/audit'
+import { inspectionTypeFromProperty } from '@/lib/agent/inspection-templates'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { reverseGeocodeLabel } from '@/lib/maps/reverse-geocode'
@@ -13,6 +14,7 @@ const assignmentSchema = z.object({
   reportId: z.string().uuid(),
   assignedEmployeeId: z.string().uuid(),
   scheduledFor: z.string().trim().optional().or(z.literal('')),
+  acknowledgeUnverifiedLocation: z.coerce.boolean().optional().default(false),
 })
 
 const coordinateNumber = (min: number, max: number) =>
@@ -81,7 +83,6 @@ export async function updateInspectionReportCoordinates(formData: FormData) {
       .update({
         latitude: parsed.data.latitude,
         longitude: parsed.data.longitude,
-        target_place_label: targetPlaceLabel,
       })
       .eq('id', plot.property_id)
 
@@ -155,7 +156,7 @@ export async function assignInspectionReport(formData: FormData) {
 
   const { data: plot, error: plotError } = await supabase
     .from('plots')
-    .select('id,property_id,plot_number,location,target_place_label')
+    .select('id,property_id,plot_number,location,target_latitude,target_longitude,target_place_label,location_status,google_maps_link,address_landmark')
     .eq('id', report.plot_id)
     .maybeSingle()
 
@@ -166,7 +167,7 @@ export async function assignInspectionReport(formData: FormData) {
 
   const { data: property, error: propertyError } = await supabase
     .from('properties')
-    .select('id,latitude,longitude')
+    .select('id,latitude,longitude,asset_type,property_kind')
     .eq('id', plot.property_id)
     .maybeSingle()
 
@@ -175,14 +176,27 @@ export async function assignInspectionReport(formData: FormData) {
     inspectionRedirect('error', 'property_required')
   }
 
-  const targetLatitude = Number(property.latitude)
-  const targetLongitude = Number(property.longitude)
-  if (!Number.isFinite(targetLatitude) || !Number.isFinite(targetLongitude)) {
-    inspectionRedirect('error', 'coordinates_required')
+  const plotTargetLatitude = Number(plot.target_latitude)
+  const plotTargetLongitude = Number(plot.target_longitude)
+  const hasVerifiedLocation =
+    plot.location_status === 'verified' && Number.isFinite(plotTargetLatitude) && Number.isFinite(plotTargetLongitude)
+
+  if (!hasVerifiedLocation && !parsed.data.acknowledgeUnverifiedLocation) {
+    inspectionRedirect('error', 'verified_location_required')
   }
 
   const scheduledFor = parsed.data.scheduledFor ? new Date(parsed.data.scheduledFor).toISOString() : null
-  const targetPlaceLabel = plot.target_place_label || (await reverseGeocodeLabel(targetLatitude, targetLongitude))
+  const targetLatitude = hasVerifiedLocation ? plotTargetLatitude : null
+  const targetLongitude = hasVerifiedLocation ? plotTargetLongitude : null
+  const targetPlaceLabel =
+    hasVerifiedLocation && targetLatitude != null && targetLongitude != null
+      ? plot.target_place_label || (await reverseGeocodeLabel(targetLatitude, targetLongitude))
+      : plot.address_landmark || plot.location || 'Location pending admin verification'
+  const inspectionPropertyType = inspectionTypeFromProperty({
+    assetType: property.asset_type,
+    propertyKind: property.property_kind,
+    hasPlot: Boolean(report.plot_id),
+  })
 
   const { data: existingInspection, error: existingError } = await supabase
     .from('inspections')
@@ -208,7 +222,8 @@ export async function assignInspectionReport(formData: FormData) {
     target_latitude: targetLatitude,
     target_longitude: targetLongitude,
     target_place_label: targetPlaceLabel,
-    proximity_radius_meters: 150,
+    inspection_property_type: inspectionPropertyType,
+    proximity_radius_meters: 50,
     workflow_step: 'briefing',
     sync_status: 'server',
     summary: report.finding || `Inspection assigned for ${plot.plot_number || plot.location || report.month}.`,
@@ -288,6 +303,9 @@ export async function assignInspectionReport(formData: FormData) {
       inspection_id: inspectionId,
       report_id: report.id,
       plot_id: report.plot_id,
+      verified_location: hasVerifiedLocation,
+      unverified_location_acknowledged: !hasVerifiedLocation,
+      inspection_property_type: inspectionPropertyType,
     },
   })
 
@@ -302,6 +320,9 @@ export async function assignInspectionReport(formData: FormData) {
       previous_assigned_employee_id: previousAssignee,
       assigned_employee_id: employee.id,
       scheduled_for: scheduledFor,
+      verifiedLocation: hasVerifiedLocation,
+      unverifiedLocationAcknowledged: !hasVerifiedLocation,
+      inspectionPropertyType,
     },
   })
 

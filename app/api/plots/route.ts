@@ -1,20 +1,22 @@
 import { plotCreateSchema } from '@/lib/validation/app'
-import { requireUserContext } from '@/lib/api/auth'
+import { requireRoleContext } from '@/lib/api/auth'
 import { apiError, apiOk, parseJson, validationError } from '@/lib/api/response'
 import { recordAuditLog } from '@/lib/audit'
 
 export async function GET() {
-  const context = await requireUserContext()
+  const context = await requireRoleContext(['land_owner', 'admin'])
   if ('response' in context) return context.response
 
-  const { data, error } = await context.supabase.from('plots').select('*').order('created_at', { ascending: false })
+  const query = context.supabase.from('plots').select('*').order('created_at', { ascending: false })
+  const scopedQuery = context.isAdmin ? query : query.eq('owner_id', context.user.id)
+  const { data, error } = await scopedQuery
   if (error) return apiError(error.message, 400, 'PLOTS_FETCH_FAILED')
 
   return apiOk({ plots: data ?? [] })
 }
 
 export async function POST(request: Request) {
-  const context = await requireUserContext()
+  const context = await requireRoleContext(['land_owner', 'admin'])
   if ('response' in context) return context.response
 
   const parsed = plotCreateSchema.safeParse(await parseJson(request))

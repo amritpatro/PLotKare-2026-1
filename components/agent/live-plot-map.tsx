@@ -120,7 +120,7 @@ export function LivePlotMap({ target, current, distanceMeters, arrivalStatus, ac
         }).addTo(map)
         layersRef.current.plot = L.marker(targetPoint, { icon: L.divIcon(markerIcon('plot')) }).addTo(map)
         layersRef.current.radius = L.circle(targetPoint, {
-          radius: 150,
+          radius: 50,
           color: '#C0392B',
           weight: 2,
           opacity: 0.8,
@@ -147,7 +147,7 @@ export function LivePlotMap({ target, current, distanceMeters, arrivalStatus, ac
     const L = leafletRef.current
     layersRef.current.plot?.setLatLng(targetPoint)
     layersRef.current.radius?.setLatLng(targetPoint)
-    layersRef.current.radius?.setRadius(150)
+    layersRef.current.radius?.setRadius(50)
 
     if (currentPoint) {
       if (layersRef.current.agent) {

@@ -8,7 +8,6 @@ import { LogoMark } from '@/components/logo'
 import { PremiumButton } from '@/components/auth/PremiumButton'
 import { PremiumInput } from '@/components/auth/PremiumInput'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
-import { resolvePostLoginRedirect } from '@/lib/onboarding/redirect'
 import { getPasswordRequirementChecks, updatePasswordSchema } from '@/lib/validation/auth'
 
 export default function UpdatePasswordPage() {
@@ -20,6 +19,7 @@ export default function UpdatePasswordPage() {
   const [sessionReady, setSessionReady] = useState(false)
   const [linkExpired, setLinkExpired] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const passwordChecks = useMemo(() => getPasswordRequirementChecks(password), [password])
@@ -30,10 +30,10 @@ export default function UpdatePasswordPage() {
     async function establishRecoverySession() {
       try {
         const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
-        const search = new URLSearchParams(window.location.search)
-        const accessToken = hash.get('access_token')
-        const refreshToken = hash.get('refresh_token')
-        const code = search.get('code')
+      const search = new URLSearchParams(window.location.search)
+      const accessToken = hash.get('access_token')
+      const refreshToken = hash.get('refresh_token')
+      const code = search.get('code')
 
         let recoveryError: Error | null = null
         if (accessToken && refreshToken) {
@@ -88,28 +88,17 @@ export default function UpdatePasswordPage() {
     if (updateError) {
       const message = updateError.message.toLowerCase()
       setError(message.includes('session') || message.includes('expired') || message.includes('invalid')
-        ? 'This reset link is no longer valid. Request a new password reset email and try again.'
+        ? 'This reset link has expired. Request a new one.'
         : 'We could not update your password right now. Please try again later.')
       return
     }
 
-    const { data } = await supabase.auth.getUser()
-    const user = data.user
-
-    if (!user) {
-      setError('Your password was updated, but we could not confirm your session. Please sign in again.')
-      return
-    }
-
-    const destination = await resolvePostLoginRedirect(
-      supabase,
-      user.id,
-      '/settings',
-      user.user_metadata as Record<string, unknown> | undefined,
-    )
-
-    router.replace(destination)
-    router.refresh()
+    await supabase.auth.signOut()
+    setSuccess(true)
+    window.setTimeout(() => {
+      router.replace('/auth/login?message=password-updated')
+      router.refresh()
+    }, 2000)
   }
 
   return (
@@ -126,20 +115,25 @@ export default function UpdatePasswordPage() {
           </p>
 
           {!sessionReady ? <p role="status" aria-live="polite" className="mt-8 text-sm text-[#5f5f5f]">Checking your reset link...</p> : null}
-          {sessionReady && linkExpired ? (
+          {success ? (
+            <div className="mt-8 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm leading-6 text-emerald-700" role="status" aria-live="polite">
+              Your password has been updated. Redirecting you to login...
+            </div>
+          ) : null}
+          {sessionReady && linkExpired && !success ? (
             <div className="mt-8 space-y-5">
-              <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-300">
-                This reset link has expired. Request a new password reset email and try again.
+              <p role="alert" className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-700">
+                This reset link has expired. Request a new one.
               </p>
               <Link
-                href="/forgot-password"
+                href="/auth/forgot-password"
                 className="flex h-14 w-full items-center justify-center rounded-xl bg-[#8B1538] px-5 text-base font-semibold text-white transition-all duration-200 hover:bg-[#75112f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B1538] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F8F6F3]"
               >
                 Request a new reset link
               </Link>
             </div>
           ) : null}
-          {sessionReady && !linkExpired ? <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          {sessionReady && !linkExpired && !success ? <form onSubmit={handleSubmit} className="mt-8 space-y-6">
             <PremiumInput
               id="new-password"
               label="New password"

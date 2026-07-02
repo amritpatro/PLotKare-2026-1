@@ -78,7 +78,7 @@ export async function POST(_: Request, contextParams: RouteContext) {
 
   const { error: listingError } = await supabase
     .from('listings')
-    .update({ status: 'archived', is_published: false, archived_at: now, archived_by: context.user.id })
+    .update({ is_published: false, archived_at: now, archived_by: context.user.id })
     .eq('plot_id', id)
 
   if (listingError) return apiError(listingError.message, 400, 'LISTING_UNPUBLISH_FAILED')

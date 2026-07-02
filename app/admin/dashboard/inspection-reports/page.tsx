@@ -2,8 +2,8 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import escapeSearchTerm from '@/lib/search'
 import StatusBadge from '@/components/ui/status-badge'
-import { CoordinatePicker } from '@/components/maps/coordinate-picker'
-import { assignInspectionReport, updateInspectionReportCoordinates } from './actions'
+import { getInspectionTemplate, inspectionTypeFromProperty } from '@/lib/agent/inspection-templates'
+import { assignInspectionReport } from './actions'
 
 const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass = 'rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
@@ -32,11 +32,18 @@ type PlotRow = {
   target_latitude: number | null
   target_longitude: number | null
   target_place_label: string | null
+  location_status: string | null
+  submitted_latitude: number | null
+  submitted_longitude: number | null
+  address_landmark: string | null
+  google_maps_link: string | null
 }
 
 type PropertyRow = {
   id: string
   title: string | null
+  property_kind: string | null
+  asset_type: string | null
   city: string | null
   state: string | null
   latitude: number | null
@@ -68,6 +75,7 @@ type InspectionRow = {
   summary: string | null
   photos: unknown
   target_place_label: string | null
+  inspection_property_type: string | null
 }
 
 function getParam(params: Record<string, string | string[] | undefined>, key: string) {
@@ -123,7 +131,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
       ? supabase.from('profiles').select('id,full_name,email').in('id', ownerIds)
       : Promise.resolve({ data: [] }),
     plotIds.length
-      ? supabase.from('plots').select('id,property_id,plot_number,location,target_latitude,target_longitude,target_place_label').in('id', plotIds)
+      ? supabase.from('plots').select('id,property_id,plot_number,location,target_latitude,target_longitude,target_place_label,location_status,submitted_latitude,submitted_longitude,address_landmark,google_maps_link').in('id', plotIds)
       : Promise.resolve({ data: [] }),
     supabase
       .from('employees')
@@ -134,7 +142,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
     plotIds.length
       ? supabase
           .from('inspections')
-          .select('id,plot_id,assigned_employee_id,status,scheduled_for,created_at,completed_at,summary,photos,target_place_label')
+          .select('id,plot_id,assigned_employee_id,status,scheduled_for,created_at,completed_at,summary,photos,target_place_label,inspection_property_type')
           .in('plot_id', plotIds)
           .in('status', ['requested', 'scheduled', 'in_progress', 'needs_followup'])
           .order('created_at', { ascending: false })
@@ -143,7 +151,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
 
   const propertyIds = unique(((plots ?? []) as PlotRow[]).map((plot) => plot.property_id))
   const { data: properties } = propertyIds.length
-    ? await supabase.from('properties').select('id,title,city,state,latitude,longitude').in('id', propertyIds)
+    ? await supabase.from('properties').select('id,title,property_kind,asset_type,city,state,latitude,longitude').in('id', propertyIds)
     : { data: [] }
 
   const profileById = new Map(((profiles ?? []) as ProfileRow[]).map((row) => [row.id, row]))
@@ -170,6 +178,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
     invalid_coordinates: 'Choose a valid map coordinate before saving.',
     plot_required: 'This report is not linked to a plot, so it cannot become a field assignment yet.',
     property_required: 'The linked plot does not have a property record. Register/verify the plot first.',
+    verified_location_required: 'Verify the plot location first, or tick the admin acknowledgement to assign without GPS arrival proof.',
     coordinates_required: 'Add confirmed latitude and longitude to the linked property before assigning a field inspection.',
     coordinates_save_failed: 'Coordinate update failed. Please try again.',
     assignment_failed: 'Inspection assignment failed. Please try again.',
@@ -252,13 +261,21 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
               const owner = profileById.get(row.owner_id)
               const assignedInspection = row.plot_id ? inspectionByPlotId.get(row.plot_id) : null
               const assignedAgent = assignedInspection?.assigned_employee_id ? agentById.get(assignedInspection.assigned_employee_id) : null
-              const targetLatitude = plot?.target_latitude ?? property?.latitude ?? null
-              const targetLongitude = plot?.target_longitude ?? property?.longitude ?? null
+              const inspectionType = inspectionTypeFromProperty({
+                inspectionPropertyType: assignedInspection?.inspection_property_type,
+                assetType: property?.asset_type,
+                propertyKind: property?.property_kind,
+                hasPlot: Boolean(row.plot_id),
+              })
+              const inspectionTypeLabel = getInspectionTemplate(inspectionType).label
+              const verifiedLocation = plot?.location_status === 'verified' && plot.target_latitude != null && plot.target_longitude != null
+              const targetLatitude = verifiedLocation ? plot?.target_latitude ?? null : null
+              const targetLongitude = verifiedLocation ? plot?.target_longitude ?? null : null
               const coordinateLabel =
                 targetLatitude != null && targetLongitude != null
                   ? `${Number(targetLatitude).toFixed(5)}, ${Number(targetLongitude).toFixed(5)}`
                   : 'Coordinates pending'
-              const targetPlaceLabel = assignedInspection?.target_place_label || plot?.target_place_label || coordinateLabel
+              const targetPlaceLabel = assignedInspection?.target_place_label || plot?.target_place_label || plot?.address_landmark || property?.city || coordinateLabel
               const assignedAtLabel = assignedInspection?.scheduled_for
                 ? new Date(assignedInspection.scheduled_for).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
                 : assignedInspection?.created_at
@@ -270,8 +287,16 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                   <td className="px-3 py-3 text-[#6B7280]">{row.month}</td>
                   <td className="px-3 py-3">
                     <span className="font-mono text-[#C0392B]">{plot?.plot_number || 'Unlinked'}</span>
+                    <span className="ml-2 rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#6B7280]">
+                      {inspectionTypeLabel}
+                    </span>
                     {plot?.location ? <span className="block text-xs text-[#9CA3AF]">{plot.location}</span> : null}
                     <span className="mt-1 block text-[10px] uppercase tracking-[0.12em] text-[#C9A962]">{targetPlaceLabel}</span>
+                    {plot ? (
+                      <span className={`mt-2 inline-flex rounded-full border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] ${verifiedLocation ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700'}`}>
+                        {verifiedLocation ? 'GPS verified' : 'GPS not verified'}
+                      </span>
+                    ) : null}
                   </td>
                   <td className="px-3 py-3">{owner?.full_name || owner?.email || 'Owner pending'}</td>
                   <td className="px-3 py-3 text-[#6B7280]">{row.agent_name || 'Unassigned'}</td>
@@ -288,7 +313,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                         </p>
                         <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-[#C9A962]">{targetPlaceLabel}</p>
                         {targetLatitude != null && targetLongitude != null ? (
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${targetLatitude},${targetLongitude}`} target="_blank" rel="noreferrer" className="mt-2 block text-xs font-semibold text-[#C0392B]">
+                          <a href={plot?.google_maps_link || `https://www.google.com/maps/search/?api=1&query=${targetLatitude},${targetLongitude}`} target="_blank" rel="noreferrer" className="mt-2 block text-xs font-semibold text-[#C0392B]">
                             View plot location on Google Maps
                           </a>
                         ) : null}
@@ -313,27 +338,21 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                         ))}
                       </select>
                       <input name="scheduledFor" type="datetime-local" defaultValue={assignedInspection?.scheduled_for ? new Date(assignedInspection.scheduled_for).toISOString().slice(0, 16) : ''} className={inputClass} />
+                      {!verifiedLocation && row.plot_id ? (
+                        <label className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
+                          <input type="checkbox" name="acknowledgeUnverifiedLocation" value="true" className="mr-2 align-middle" />
+                          Assign without a verified GPS target. Agent navigation will show a warning and arrival proof will remain blocked until admin verifies location.
+                        </label>
+                      ) : null}
                       <button type="submit" className="rounded-lg bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white disabled:bg-[#9CA3AF]" disabled={!row.plot_id || agents.length === 0}>
                         Assign to field portal
                       </button>
                     </form>
-                    <form action={updateInspectionReportCoordinates} className="mt-3 min-w-72 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] p-3">
-                      <input type="hidden" name="reportId" value={row.id} />
-                      <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[#C9A962]">Correct GPS pin</p>
-                      <CoordinatePicker
-                        initialLatitude={targetLatitude}
-                        initialLongitude={targetLongitude}
-                        defaultQuery={[plot?.location, property?.city, property?.state].filter(Boolean).join(', ')}
-                        compact
-                      />
-                      <button
-                        type="submit"
-                        className="mt-2 inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-[#C0392B] bg-white px-3 text-xs font-semibold text-[#C0392B] disabled:border-[#D1D5DB] disabled:text-[#9CA3AF]"
-                        disabled={!row.plot_id}
-                      >
-                        Save corrected pin
-                      </button>
-                    </form>
+                    {row.plot_id ? (
+                      <Link href={`/admin/dashboard/plots/${row.plot_id}/location`} className="mt-3 inline-flex min-h-10 min-w-72 items-center justify-center rounded-lg border border-[#C0392B] bg-white px-3 text-xs font-semibold text-[#C0392B]">
+                        Review or verify GPS pin
+                      </Link>
+                    ) : null}
                   </td>
                 </tr>
               )

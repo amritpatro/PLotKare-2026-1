@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server'
-import { requireUserContext } from '@/lib/api/auth'
+import { requireRoleContext } from '@/lib/api/auth'
 import { apiError, apiOk } from '@/lib/api/response'
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const context = await requireUserContext()
+  const context = await requireRoleContext(['land_owner', 'admin'])
   if ('response' in context) return context.response
 
   const { error: fetchError, data: doc } = await context.supabase

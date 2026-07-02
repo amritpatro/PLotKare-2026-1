@@ -19,10 +19,12 @@ const mappedPlotNumbers = new Set<number>(getMappedPlotNumbers())
 const quickPlots = [18, 35, 54, 72, 90, 108, 118, 121, 122].filter((plot) => mappedPlotNumbers.has(plot))
 
 export function PlotVisualizationSection({
+  sectionId = 'plot-layout',
   heading = 'Real Plot Layout:',
   accentHeading = '3D Property File for Every Owner',
   description = 'Source-mapped layout geometry, road linework, plot counts, and area data form an owner-facing digital snapshot with facing, access, size, and current review status.',
 }: {
+  sectionId?: string | null
   heading?: string
   accentHeading?: string
   description?: string
@@ -31,7 +33,7 @@ export function PlotVisualizationSection({
   const selectedProfile = useMemo(() => getPlotProfile(selectedPlot), [selectedPlot])
 
   return (
-    <section id="plot-layout" className="premium-section bg-secondary py-24 lg:py-32">
+    <section id={sectionId ?? undefined} className="premium-section bg-secondary py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(520px,1.15fr)] lg:gap-16">
           <div>

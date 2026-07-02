@@ -5,22 +5,22 @@ import { HeroSection } from '@/components/sections/hero'
 import { TrustStrip } from '@/components/sections/trust-strip'
 import { ProblemSection } from '@/components/sections/problem'
 import { ServicesSection } from '@/components/sections/services'
-import { PlotVisualizationSection } from '@/components/sections/plot-visualization'
 import { HowItWorksSection } from '@/components/sections/how-it-works'
-import { LandUtilisationSection } from '@/components/sections/land-utilisation'
 import { StatisticsSection } from '@/components/sections/statistics'
-import { AvailablePlotsShowcaseSection } from '@/components/sections/available-plots-showcase'
 import { PricingSection } from '@/components/sections/pricing'
 import { MonitoringInsightsSection } from '@/components/sections/testimonials'
 import { AwardsSection } from '@/components/sections/awards'
 import { NewsroomSection } from '@/components/sections/newsroom'
 import { ContactSection } from '@/components/sections/contact'
 import { FaqSection } from '@/components/sections/faq'
+import { LazyAvailablePlotsShowcaseSection, LazyLandUtilisationSection, LazyPlotVisualizationSection } from '@/components/sections/lazy-home-sections'
 import { Footer } from '@/components/footer'
 import { JsonLd } from '@/components/json-ld'
 import { SITE_NAME, canonicalPageUrl } from '@/lib/site-config'
 import { getVerifiedPublicListings } from '@/lib/public-listings-server'
 import { HOME_FAQS, buildFaqSchema } from '@/lib/marketing-seo'
+
+export const revalidate = 60
 
 const HOME_TITLE = `Plot Management and Property Monitoring Services | ${SITE_NAME}`
 const HOME_DESCRIPTION =
@@ -78,11 +78,11 @@ export default async function HomePage() {
       <TrustStrip />
       <ProblemSection />
       <ServicesSection />
-      <PlotVisualizationSection />
+      <LazyPlotVisualizationSection />
       <HowItWorksSection />
-      <LandUtilisationSection />
+      <LazyLandUtilisationSection />
       <StatisticsSection />
-      <AvailablePlotsShowcaseSection initialListings={verifiedListings} />
+      <LazyAvailablePlotsShowcaseSection initialListings={verifiedListings} />
       <PricingSection />
       <MonitoringInsightsSection />
       <AwardsSection />

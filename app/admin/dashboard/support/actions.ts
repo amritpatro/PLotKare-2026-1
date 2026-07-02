@@ -140,7 +140,8 @@ export async function updateSupportTicket(formData: FormData) {
       priority: parsed.data.priority,
       previous_assigned_employee_id: existing.assigned_employee_id,
       assigned_employee_id: assignedEmployeeId,
-      note,
+      note_present: Boolean(note),
+      note_length: note?.length ?? 0,
       property_id: existing.property_id,
     },
   })

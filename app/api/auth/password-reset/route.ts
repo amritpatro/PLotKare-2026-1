@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSupabaseBrowserEnv, requireSupabaseServiceEnv } from '@/lib/supabase/env'
+import { getSiteUrl } from '@/lib/site-config'
 import { resetPasswordSchema } from '@/lib/validation/auth'
 import { isRateLimited } from '@/lib/api/rate-limit'
 import { recordAuditLog } from '@/lib/audit'
@@ -44,7 +45,7 @@ async function sendRecoveryWithTransactionalEmail(email: string, origin: string)
   recoveryUrl.searchParams.set('flow', 'recovery')
   recoveryUrl.searchParams.set('type', 'recovery')
   recoveryUrl.searchParams.set('token_hash', data.properties.hashed_token)
-  recoveryUrl.searchParams.set('next', '/update-password')
+  recoveryUrl.searchParams.set('next', '/auth/update-password')
   const safeUrl = escapeHtml(recoveryUrl.toString())
 
   const delivery = await sendTransactionalEmail({
@@ -107,12 +108,13 @@ export async function POST(request: NextRequest) {
       },
     },
   })
-  const redirectTo = `${request.nextUrl.origin}/auth/callback?flow=recovery&next=${encodeURIComponent('/update-password')}`
+  const siteUrl = getSiteUrl()
+  const redirectTo = `${siteUrl}/auth/update-password`
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, { redirectTo })
   let deliveryFallbackReason: string | null = null
 
   if (error) {
-    const fallback = await sendRecoveryWithTransactionalEmail(parsed.data.email, request.nextUrl.origin).catch((fallbackError) => {
+    const fallback = await sendRecoveryWithTransactionalEmail(parsed.data.email, siteUrl).catch((fallbackError) => {
       logger.error('Password recovery fallback crashed', {
         requestId: request.headers.get('x-request-id'),
         error: fallbackError instanceof Error ? fallbackError.message : 'unknown',
@@ -140,7 +142,7 @@ export async function POST(request: NextRequest) {
 
   return response(
     request,
-    { message: 'If an account exists for that email, a reset link has been sent.' },
+    { success: true, message: 'If that email is registered, a reset link has been sent.' },
     200,
     cookiesToSet,
   )

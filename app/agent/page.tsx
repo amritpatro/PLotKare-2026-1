@@ -10,6 +10,8 @@ type AssignmentRow = {
   scheduled_for: string | null
   completed_at: string | null
   summary: string | null
+  target_latitude: number | null
+  target_longitude: number | null
   properties?: {
     title: string | null
     address: string | null
@@ -26,9 +28,11 @@ type AssignmentRow = {
   plots?: {
     plot_number: string | null
     location: string | null
+    location_status: string | null
   } | Array<{
     plot_number: string | null
     location: string | null
+    location_status: string | null
   }> | null
 }
 
@@ -51,7 +55,7 @@ export default async function AgentHomePage() {
   const admin = createSupabaseAdminClient()
   const { data } = await admin
     .from('inspections')
-    .select('id,status,scheduled_for,completed_at,summary,properties(title,address,city,latitude,longitude),plots(plot_number,location)')
+    .select('id,status,scheduled_for,completed_at,summary,target_latitude,target_longitude,properties(title,address,city,latitude,longitude),plots(plot_number,location,location_status)')
     .eq('assigned_employee_id', agent.employeeId)
     .in('status', ['requested', 'scheduled', 'in_progress', 'needs_followup'])
     .order('scheduled_for', { ascending: true, nullsFirst: false })
@@ -73,7 +77,7 @@ export default async function AgentHomePage() {
         {assignments.map((item) => {
           const property = first(item.properties)
           const plot = first(item.plots)
-          const hasCoordinates = property?.latitude != null && property?.longitude != null
+          const hasCoordinates = plot?.location_status === 'verified' && item.target_latitude != null && item.target_longitude != null
 
           return (
             <article key={item.id} className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
@@ -90,7 +94,7 @@ export default async function AgentHomePage() {
 
               <div className="mt-4 grid gap-2 text-sm text-[#6B7280]">
                 <span className="flex items-center gap-2"><CalendarClock className="h-4 w-4 text-[#C0392B]" /> Due {formatDate(item.scheduled_for)}</span>
-                <span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-[#C0392B]" /> {hasCoordinates ? 'GPS target ready' : 'Admin must add plot coordinates before arrival verification'}</span>
+                <span className="flex items-center gap-2"><MapPin className="h-4 w-4 text-[#C0392B]" /> {hasCoordinates ? 'Verified GPS target ready' : 'Admin must verify plot coordinates before arrival proof'}</span>
               </div>
 
               <Link

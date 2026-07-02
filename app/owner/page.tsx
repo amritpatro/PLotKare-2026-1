@@ -20,7 +20,7 @@ const ownerMessages = {
     property_registered: 'Property submitted for verification and connected to your dashboard.',
     service_requested: 'Service request created and routed to PlotKare operations.',
     support_ticket_created: 'Support ticket created. PlotKare support can now track this request.',
-    coordinates_saved: 'Plot coordinates saved for field inspection routing.',
+    location_submitted: 'Plot location submitted for admin verification.',
   },
   error: {
     invalid_property_form: 'Please complete the required property details before submitting.',
@@ -29,8 +29,9 @@ const ownerMessages = {
     property_save_failed: 'We could not save the property. Please try again or contact support.',
     service_request_failed: 'We could not create the service request. Please try again or contact support.',
     support_ticket_failed: 'We could not create the support ticket. Please try again or contact support.',
-    invalid_coordinates: 'Select a valid plot and confirmed map coordinates.',
-    coordinates_save_failed: 'We could not save the coordinates. Please try again or contact support.',
+    invalid_location_form: 'Select a valid Andhra Pradesh plot coordinate before submitting.',
+    location_locked: 'This plot location is locked while pending review or already verified.',
+    location_submit_failed: 'We could not submit the location. Please try again or contact support.',
   },
 } as const
 
@@ -125,7 +126,7 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
       .limit(5),
     supabase
       .from('plots')
-      .select('id,property_id,plot_number,location,sq_yards,facing,status,lifecycle_status,verification_status,target_latitude,target_longitude,created_at')
+      .select('id,property_id,plot_number,location,sq_yards,facing,status,lifecycle_status,verification_status,target_latitude,target_longitude,submitted_latitude,submitted_longitude,submitted_accuracy_meters,location_source,location_status,location_note,location_submitted_at,address_landmark,google_maps_link,location_verified_at,location_adjusted_by_admin,created_at')
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false }),
   ])
@@ -149,7 +150,7 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
   const { data: liveInspections } = ownerPropertyIds.length
     ? await supabase
         .from('inspections')
-        .select('id,status,property_id,plot_id,target_latitude,target_longitude,properties(title,latitude,longitude),plots(plot_number,location,target_latitude,target_longitude)')
+        .select('id,status,property_id,plot_id,target_latitude,target_longitude,properties(title,latitude,longitude),plots(plot_number,location,target_latitude,target_longitude,location_status)')
         .in('property_id', ownerPropertyIds)
         .in('status', ['requested', 'scheduled', 'in_progress', 'needs_followup'])
         .order('created_at', { ascending: false })
@@ -180,8 +181,8 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
       title: property?.title || plot?.location || 'Inspection in progress',
       plotLabel: plot?.plot_number || inspection.id.slice(0, 8),
       status: inspection.status,
-      targetLatitude: inspection.target_latitude ?? plot?.target_latitude ?? property?.latitude ?? null,
-      targetLongitude: inspection.target_longitude ?? plot?.target_longitude ?? property?.longitude ?? null,
+      targetLatitude: inspection.target_latitude ?? (plot?.location_status === 'verified' ? plot?.target_latitude : null) ?? property?.latitude ?? null,
+      targetLongitude: inspection.target_longitude ?? (plot?.location_status === 'verified' ? plot?.target_longitude : null) ?? property?.longitude ?? null,
       agentLatitude: location?.latitude ?? null,
       agentLongitude: location?.longitude ?? null,
       accuracyMeters: location?.accuracy_meters ?? null,

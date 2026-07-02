@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { cache } from 'react'
+import { getInspectionTemplate, inspectionTypeFromProperty, type InspectionPropertyType } from '@/lib/agent/inspection-templates'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 type CustomerContextPanelProps = {
@@ -21,6 +22,8 @@ type CustomerProfile = {
 
 type CustomerContext = {
   profile: CustomerProfile
+  ownerProperty: OwnerPropertySummary | null
+  ownerPlot: OwnerPlotSummary | null
   verificationStatus: string | null
   customerTypeLabel: string
   verificationTone: 'amber' | 'green' | 'red' | 'slate'
@@ -34,6 +37,26 @@ type CustomerContext = {
   detailHref: string
   joinedLabel: string
   profileSummary: string
+  documentRequirements: string[]
+  propertyContextSummary: string
+}
+
+type OwnerPropertySummary = {
+  id: string
+  title: string | null
+  property_kind: string | null
+  asset_type: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  onboarding_details: Record<string, unknown> | null
+}
+
+type OwnerPlotSummary = {
+  plot_number: string | null
+  location: string | null
+  sq_yards: number | null
+  facing: string | null
 }
 
 const CUSTOMER_TYPE_LABELS: Record<string, string> = {
@@ -77,6 +100,13 @@ const VERIFICATION_TONES: Record<string, 'amber' | 'green' | 'red' | 'slate'> = 
 
 const OPEN_SUPPORT_STATUSES = ['open', 'assigned', 'in_progress', 'waiting_on_customer', 'waiting_on_admin', 'escalated']
 const PENDING_DOCUMENT_STATUSES = ['submitted', 'under_review', 'needs_clarification', 'withdrawal_requested']
+
+const DOCUMENT_REQUIREMENTS: Record<InspectionPropertyType, string[]> = {
+  vacant_plot: ['Property papers', 'EC certificate', 'Survey/layout proof', 'Tax receipts'],
+  apartment: ['Sale deed/agreement', 'Society NOC', 'Possession letter', 'EC certificate'],
+  house_villa: ['Sale deed', 'Completion certificate', 'EC certificate', 'Building plan'],
+  commercial: ['Sale deed', 'Usage certificate', 'EC certificate', 'Trade license if applicable'],
+}
 
 function toneClasses(tone: 'amber' | 'green' | 'red' | 'slate' | 'blue' | 'orange' | 'violet') {
   switch (tone) {
@@ -122,6 +152,44 @@ function formatRelativeDays(value: string | null | undefined) {
   return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`
 }
 
+function asRecord(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {}
+}
+
+function asText(value: unknown) {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function propertyContextSummary(property: OwnerPropertySummary | null, plot: OwnerPlotSummary | null, propertyType: InspectionPropertyType) {
+  if (!property) return 'No property record linked yet.'
+  const details = asRecord(property.onboarding_details?.details)
+  const address = [property.address, property.city, property.state].filter(Boolean).join(', ')
+
+  if (propertyType === 'apartment') {
+    const unit = asText(details.unit_number) || asText(details.apartment_number) || 'unit pending'
+    const floor = asText(details.floor_label) || 'floor pending'
+    const building = asText(details.tower_or_block) || asText(details.building_name) || property.title || 'building pending'
+    return `${building} · ${unit} · ${floor} · ${address || 'address pending'}`
+  }
+
+  if (propertyType === 'house_villa') {
+    const builtUp = asText(details.built_up_sqft) || asText(details.built_up_area) || 'built-up area pending'
+    return `${address || property.title || 'address pending'} · plot area ${plot?.sq_yards ?? 'pending'} sq yd · ${builtUp}`
+  }
+
+  if (propertyType === 'commercial') {
+    const useType = asText(details.commercial_use) || asText(details.usage_type) || 'commercial use pending'
+    return `${address || property.title || 'address pending'} · ${useType}`
+  }
+
+  return [
+    plot?.plot_number ? `Plot ${plot.plot_number}` : property.title || 'Plot details pending',
+    plot?.location || address || 'location pending',
+    plot?.sq_yards ? `${plot.sq_yards} sq yd` : null,
+    plot?.facing ? `${plot.facing} facing` : null,
+  ].filter(Boolean).join(' · ')
+}
+
 const loadCustomerContext = cache(async (userId: string): Promise<CustomerContext | null> => {
   const supabase = await createSupabaseServerClient()
 
@@ -163,7 +231,7 @@ const loadCustomerContext = cache(async (userId: string): Promise<CustomerContex
   const verificationTone = VERIFICATION_TONES[verificationStatus] ?? 'amber'
 
   const customerRecordId = customer?.id ?? null
-  const [supportCount, openSupportCount, documentsCount, pendingDocumentsCount, ownerPropertiesCount, subscription] = await Promise.all([
+  const [supportCount, openSupportCount, documentsCount, pendingDocumentsCount, ownerPropertiesCount, subscription, latestOwnerProperty] = await Promise.all([
     supabase
       .from('support_tickets')
       .select('id', { count: 'exact', head: true })
@@ -203,7 +271,30 @@ const loadCustomerContext = cache(async (userId: string): Promise<CustomerContex
           .limit(1)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    supabase
+      .from('properties')
+      .select('id,title,property_kind,asset_type,address,city,state,onboarding_details,created_at')
+      .eq('owner_profile_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
+
+  const ownerProperty = (latestOwnerProperty.data ?? null) as OwnerPropertySummary | null
+  const { data: ownerPlot } = ownerProperty?.id
+    ? await supabase
+        .from('plots')
+        .select('plot_number,location,sq_yards,facing')
+        .eq('property_id', ownerProperty.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null }
+  const propertyType = inspectionTypeFromProperty({
+    assetType: ownerProperty?.asset_type,
+    propertyKind: ownerProperty?.property_kind,
+    hasPlot: Boolean(ownerPlot),
+  })
 
   const subscriptionRow =
     subscription && typeof subscription === 'object' && 'data' in subscription ? subscription.data : null
@@ -224,6 +315,8 @@ const loadCustomerContext = cache(async (userId: string): Promise<CustomerContex
 
   return {
     profile,
+    ownerProperty,
+    ownerPlot: (ownerPlot ?? null) as OwnerPlotSummary | null,
     verificationStatus,
     customerTypeLabel,
     verificationTone,
@@ -237,6 +330,8 @@ const loadCustomerContext = cache(async (userId: string): Promise<CustomerContex
     detailHref: `/admin/dashboard/customers/${profile.id}`,
     joinedLabel: formatDate(profile.created_at),
     profileSummary: profileSummaryParts.join(' · '),
+    documentRequirements: DOCUMENT_REQUIREMENTS[propertyType],
+    propertyContextSummary: propertyContextSummary(ownerProperty, (ownerPlot ?? null) as OwnerPlotSummary | null, propertyType),
   }
 })
 
@@ -280,6 +375,13 @@ export async function CustomerContextPanel({ userId, className = '' }: CustomerC
           {formatVerificationStatus(context.verificationStatus)}
         </span>
         <span className={badgeClass(context.planTone)}>{context.planLabel}</span>
+        {context.ownerProperty ? (
+          <span className={badgeClass('slate')}>{getInspectionTemplate(inspectionTypeFromProperty({
+            assetType: context.ownerProperty.asset_type,
+            propertyKind: context.ownerProperty.property_kind,
+            hasPlot: Boolean(context.ownerPlot),
+          })).label}</span>
+        ) : null}
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -320,6 +422,25 @@ export async function CustomerContextPanel({ userId, className = '' }: CustomerC
           <p className="mt-1 text-sm font-semibold text-[#1F2937]">{formatVerificationStatus(context.verificationStatus)}</p>
           <p className="mt-1 text-xs text-[#6B7280]">Use the linked profile to review full account history, documents, and support records.</p>
         </div>
+        {context.ownerProperty ? (
+          <div className="sm:col-span-2 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">Property context</p>
+            <p className="mt-1 text-sm font-semibold text-[#1F2937]">{context.ownerProperty.title || 'Registered property'}</p>
+            <p className="mt-1 text-xs leading-5 text-[#6B7280]">{context.propertyContextSummary}</p>
+          </div>
+        ) : null}
+        {context.documentRequirements.length ? (
+          <div className="sm:col-span-2 rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">Expected documents</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {context.documentRequirements.map((label) => (
+                <span key={label} className="rounded-full border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs font-semibold text-[#4B5563]">
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </aside>
   )

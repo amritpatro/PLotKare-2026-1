@@ -7,13 +7,17 @@ import { distanceMeters, inspectionJsonArray } from '@/lib/agent/server'
 import { recordAuditLog } from '@/lib/audit'
 import { getArrivalStatus } from '@/lib/utils/haversine'
 import { reverseGeocodeLabel } from '@/lib/maps/reverse-geocode'
+import { logger } from '@/lib/monitoring/logger'
 
 const bodySchema = z.object({
   latitude: z.coerce.number().min(-90).max(90),
   longitude: z.coerce.number().min(-180).max(180),
   accuracy: z.coerce.number().positive(),
   capturedAt: z.string().datetime(),
-  confirmOutsideRadius: z.coerce.boolean().optional().default(false),
+  confirmOutsideRadius: z.preprocess(
+    (value) => value === true || value === 'true' || value === '1',
+    z.boolean().optional().default(false),
+  ),
 })
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -47,7 +51,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const { data: inspection, error } = await admin
     .from('inspections')
-    .select('id,status,assigned_employee_id,photos,target_latitude,target_longitude,properties(latitude,longitude)')
+    .select('id,status,assigned_employee_id,photos,target_latitude,target_longitude,properties(latitude,longitude),plots(target_latitude,target_longitude,location_status,google_maps_link,address_landmark)')
     .eq('id', id)
     .eq('assigned_employee_id', employee.id)
     .maybeSingle()
@@ -56,33 +60,44 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ ok: false, error: { code: 'INSPECTION_NOT_FOUND', message: 'Assigned inspection was not found.' } }, { status: 404 })
   }
 
-  const property = Array.isArray(inspection.properties) ? inspection.properties[0] : inspection.properties
-  const targetLatitude = inspection.target_latitude == null ? Number(property?.latitude) : Number(inspection.target_latitude)
-  const targetLongitude = inspection.target_longitude == null ? Number(property?.longitude) : Number(inspection.target_longitude)
+  const plot = Array.isArray(inspection.plots) ? inspection.plots[0] : inspection.plots
+  const plotVerified = plot?.location_status === 'verified'
+  const inspectionTargetLatitude = Number(inspection.target_latitude)
+  const inspectionTargetLongitude = Number(inspection.target_longitude)
+  const plotTargetLatitude = Number(plot?.target_latitude)
+  const plotTargetLongitude = Number(plot?.target_longitude)
+  const targetLatitude = plotVerified
+    ? Number.isFinite(inspectionTargetLatitude)
+      ? inspectionTargetLatitude
+      : plotTargetLatitude
+    : Number.NaN
+  const targetLongitude = plotVerified
+    ? Number.isFinite(inspectionTargetLongitude)
+      ? inspectionTargetLongitude
+      : plotTargetLongitude
+    : Number.NaN
 
   if (!Number.isFinite(targetLatitude) || !Number.isFinite(targetLongitude)) {
-    return NextResponse.json({ ok: false, error: { code: 'TARGET_COORDINATES_REQUIRED', message: 'Location not set for this plot. Contact your admin to add the plot location.' } }, { status: 409 })
+    return NextResponse.json({ ok: false, error: { code: 'TARGET_COORDINATES_REQUIRED', message: 'Verified plot location is missing. Contact admin before starting GPS arrival proof.' } }, { status: 409 })
   }
 
   const distance = Math.round(distanceMeters(parsed.data, { latitude: targetLatitude, longitude: targetLongitude }))
   const weakAccuracy = parsed.data.accuracy > 80
   const arrivalStatus = getArrivalStatus(distance)
-  const verified = arrivalStatus === 'verified' && !weakAccuracy
+  const verified = arrivalStatus === 'verified'
   const outsideRadius = arrivalStatus === 'outside-radius'
 
-  if (weakAccuracy || arrivalStatus === 'too-far' || (outsideRadius && !parsed.data.confirmOutsideRadius)) {
+  if (arrivalStatus === 'too-far' || (outsideRadius && !parsed.data.confirmOutsideRadius)) {
     return NextResponse.json({
       ok: false,
       error: {
-        code: weakAccuracy ? 'WEAK_GPS' : arrivalStatus === 'too-far' ? 'TOO_FAR_FROM_PLOT' : 'OUTSIDE_RADIUS_CONFIRM_REQUIRED',
-        message: weakAccuracy
-          ? 'Weak GPS — move to open area and wait'
-          : arrivalStatus === 'too-far'
-            ? 'You are too far from the plot. Please walk to the plot before starting the inspection.'
-            : 'You appear to be a little far from the plot. Are you sure you are at the right location?',
+        code: arrivalStatus === 'too-far' ? 'TOO_FAR_FROM_PLOT' : 'OUTSIDE_RADIUS_CONFIRM_REQUIRED',
+        message: arrivalStatus === 'too-far'
+          ? 'You are more than 200m from the verified plot pin. Please walk closer before starting.'
+          : 'You are 51-200m from the verified plot pin. Confirm only if you are at the right location.',
       },
       distanceMeters: distance,
-      canConfirmOutsideRadius: outsideRadius && !weakAccuracy,
+      canConfirmOutsideRadius: outsideRadius,
     }, { status: 409 })
   }
 
@@ -96,6 +111,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     distance_meters: distance,
     verified,
     outside_radius: outsideRadius,
+    override_confirmed: outsideRadius && parsed.data.confirmOutsideRadius,
+    weak_accuracy: weakAccuracy,
     target_latitude: targetLatitude,
     target_longitude: targetLongitude,
     submitted_by: context.user.id,
@@ -124,6 +141,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     .eq('assigned_employee_id', employee.id)
 
   if (updateError) {
+    logger.error('Arrival proof update failed:', updateError)
     return NextResponse.json({ ok: false, error: { code: 'ARRIVAL_SAVE_FAILED', message: 'Could not confirm arrival.' } }, { status: 400 })
   }
 
@@ -141,7 +159,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   await recordAuditLog({
     actorId: context.user.id,
-    action: 'agent.arrival_verified',
+    action: outsideRadius ? 'agent.arrival_override' : 'agent.arrival_verified',
     entityType: 'inspections',
     entityId: inspection.id,
     metadata: event,
@@ -153,6 +171,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     nextStep: 'photos',
     distanceMeters: distance,
     verified,
+    weakAccuracy,
     arrival: event,
   })
 }

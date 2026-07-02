@@ -3,6 +3,8 @@ import { SITE_NAME, canonicalPageUrl } from '@/lib/site-config'
 import { getVerifiedPublicListings } from '@/lib/public-listings-server'
 import ListingsPageClient from './listings-client'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Visakhapatnam verified plots & apartments — listings hub',
   description:

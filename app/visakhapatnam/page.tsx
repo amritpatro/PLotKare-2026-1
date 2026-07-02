@@ -23,6 +23,8 @@ import { getVerifiedPublicListings } from '@/lib/public-listings-server'
 import { VISAKHAPATNAM_FAQS, buildFaqSchema } from '@/lib/marketing-seo'
 import { publicBusinessConfig, publicOfficeAddress } from '@/lib/business-config'
 
+export const dynamic = 'force-dynamic'
+
 const CITY_TITLE = `Plot Management Services in Visakhapatnam | ${SITE_NAME}`
 const CITY_DESCRIPTION =
   'Monthly plot inspections, encroachment monitoring, and document tracking for NRI and local owners in Visakhapatnam. Book a free consultation.'

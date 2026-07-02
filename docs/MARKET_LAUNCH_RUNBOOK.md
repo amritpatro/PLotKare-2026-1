@@ -28,7 +28,7 @@ The application can be shown to invited owners and used for controlled field ope
 - [ ] Redeploy after changing Vercel environment variables. Existing deployments do not receive new values.
 - [ ] In Supabase Auth URL Configuration:
   - [ ] Set Site URL to `https://<real-domain>`.
-  - [ ] Add local callback `http://127.0.0.1:3002/auth/callback**` while local smoke testing is needed.
+  - [ ] Add Vercel preview callback URLs while preview smoke testing is needed.
   - [ ] Add Vercel production callback `https://<vercel-production-host>/auth/callback**` until the custom domain is live.
   - [ ] Add production callback `https://<real-domain>/auth/callback**`. The narrow wildcard is needed for the callback `next` query parameter.
   - [ ] Add `https://www.plotkare.in/auth/callback**` if `www` remains a supported host.

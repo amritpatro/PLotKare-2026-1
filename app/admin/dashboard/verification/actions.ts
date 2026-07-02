@@ -241,7 +241,8 @@ export async function updateVerificationStatus(formData: FormData) {
       priority,
       due_at: dueAt,
       escalation_level: escalationLevel,
-      note: note || null,
+      note_present: Boolean(note),
+      note_length: note?.length ?? 0,
       listing_publish_result: listingPublishResult,
     },
   })
@@ -348,7 +349,11 @@ export async function reviewCustomerPropertyRequest(formData: FormData) {
     action: `admin.property_link_request.${parsed.data.status}`,
     entityType: 'property_link_request',
     entityId: request.id,
-    metadata: { linked_property_id: linkedPropertyId, note: parsed.data.note || null },
+    metadata: {
+      linked_property_id: linkedPropertyId,
+      note_present: Boolean(parsed.data.note),
+      note_length: parsed.data.note?.length ?? 0,
+    },
   })
 
   revalidatePath('/customer/properties')

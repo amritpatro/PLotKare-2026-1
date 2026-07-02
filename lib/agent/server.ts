@@ -51,7 +51,7 @@ export async function getAssignedInspectionForAgent(inspectionId: string, employ
   const { data, error } = await admin
     .from('inspections')
     .select(
-      'id,property_id,plot_id,customer_id,assigned_employee_id,status,scheduled_for,completed_at,summary,photos,created_at,workflow_step,target_latitude,target_longitude,proximity_radius_meters,arrival_latitude,arrival_longitude,arrival_accuracy_meters,arrival_distance_meters,arrival_verified,properties(id,title,address,city,state,latitude,longitude,owner_profile_id),plots(id,plot_number,location,sq_yards,facing)',
+      'id,property_id,plot_id,customer_id,assigned_employee_id,status,scheduled_for,completed_at,summary,photos,created_at,workflow_step,inspection_property_type,target_latitude,target_longitude,target_place_label,proximity_radius_meters,arrival_latitude,arrival_longitude,arrival_accuracy_meters,arrival_distance_meters,arrival_captured_at,arrival_verified,arrival_outside_radius,properties(id,title,address,city,state,latitude,longitude,owner_profile_id,property_kind,asset_type),plots(id,plot_number,location,sq_yards,facing,target_latitude,target_longitude,target_place_label,location_status,address_landmark,google_maps_link,location_verified_at)',
     )
     .eq('id', inspectionId)
     .eq('assigned_employee_id', employeeId)

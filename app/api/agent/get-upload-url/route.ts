@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { requireUserContext } from '@/lib/api/auth'
 import { isRateLimited } from '@/lib/api/rate-limit'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { inspectionPhotoSubjectForDirection } from '@/lib/agent/inspection-templates'
 
 const schema = z.object({
   inspectionId: z.string().uuid(),
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
       object_path: storagePath,
       mime_type: parsed.data.mimeType,
       direction: parsed.data.direction,
-      subject: parsed.data.direction,
+      subject: inspectionPhotoSubjectForDirection(parsed.data.direction),
       upload_status: 'pending',
     }
 

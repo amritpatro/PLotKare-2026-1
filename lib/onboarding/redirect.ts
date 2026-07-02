@@ -147,7 +147,9 @@ export async function resolvePostLoginRedirect(
   const effectiveRole = effectiveRoleForProfile(profile)
 
   if (effectiveRole === 'admin') return dashboardPathForRole('admin')
-  if (effectiveRole === 'employee') return dashboardPathForRole('employee')
+  if (effectiveRole === 'employee') {
+    return profile?.employee_role === 'field_inspection_agent' ? '/agent' : dashboardPathForRole('employee')
+  }
 
   if (!profile) {
     clearPendingOnboardingPath()

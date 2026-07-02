@@ -97,7 +97,7 @@ order by tablename;
 
 | Gate | Priority | Status | Owner | Evidence |
 | --- | --- | --- | --- | --- |
-| Production canonical points to final domain, not localhost/preview | High | blocked | Vercel/DNS owner | View-source evidence |
+| Production canonical points to final domain, not preview or development hosts | High | blocked | Vercel/DNS owner | View-source evidence |
 | No placeholder contact/email/WhatsApp/address/support-hours data | High | blocked | Operations owner | Verified business data |
 | No fake/test listings or dummy phone numbers on production | High | pending | Operations/QA | Public page screenshot |
 | Lighthouse median recorded for production homepage/city/login | Medium | blocked | QA | Production URL needed |

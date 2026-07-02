@@ -1,4 +1,5 @@
 const PRODUCTION_CANONICAL_URL = 'https://plotkare.in'
+const DEPLOYMENT_FALLBACK_URL = 'https://p-lot-kare-2026-1.vercel.app'
 
 function cleanUrl(value: string): string {
   return value.trim().replace(/\/$/, '')
@@ -18,7 +19,7 @@ export function getSiteUrl(): string {
   const env = process.env.NEXT_PUBLIC_SITE_URL?.trim()
   if (env) return cleanUrl(env)
   if (process.env.VERCEL_URL) return cleanUrl(`https://${process.env.VERCEL_URL}`)
-  return ['http:/', '/127.0.0.1:3000'].join('')
+  return DEPLOYMENT_FALLBACK_URL
 }
 
 /** Public canonical URL for metadata, sitemap, and JSON-LD. Never default to preview hosts. */
