@@ -73,6 +73,15 @@ Run: dig plotkare.in A
 Expected: shows 76.76.21.21 or Vercel IP
 Or use: https://dnschecker.org
 
+## Step 9: Run production smoke test
+After Vercel SSL is active and the production deployment is redeployed with
+NEXT_PUBLIC_SITE_URL=https://plotkare.in, run:
+
+  pnpm run smoke:production
+
+This verifies health, auth provider status, public routes, protected-route
+redirects, security headers, canonical URL, and sitemap domain signals.
+
 ## Verification Checklist
 [ ] plotkare.in loads over HTTPS (green padlock)
 [ ] www.plotkare.in redirects to plotkare.in
@@ -80,3 +89,4 @@ Or use: https://dnschecker.org
 [ ] Password reset email arrives from hello@plotkare.in
 [ ] Google login works
 [ ] /api/health returns 200
+[ ] pnpm run smoke:production passes

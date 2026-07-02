@@ -1,10 +1,10 @@
 # PlotKare Launch E2E Checklist
 
-Last updated: 2026-07-01
+Last updated: 2026-07-03
 
 ## Scope Freeze
 
-- Apartments: deferred.
+- Apartments: property type supported for onboarding/inspection context; full rental/tenant/vendor module deferred.
 - Payments: deferred unless live payment keys, webhook, and KYC are verified.
 - WhatsApp automation: deferred.
 - Current target: controlled pilot readiness for plot workflows.
@@ -22,35 +22,35 @@ Last updated: 2026-07-01
 - PASS: Arrival rule `>200m` blocks.
 - PASS: Agent inspection submit requires arrival, four directional photos, checklist answers, and evidence.
 - PASS: Submitted inspection persists as `status=completed`, `workflow_step=submitted`, and creates a pending-review report.
-- TODO: Manual browser check of admin reject-with-note copy and owner resubmission UX.
+- MANUAL GATE: Browser check of admin reject-with-note copy and owner resubmission UX.
 
 ### Lane B: Owner, Seller, Customer, Listings
 
 - PARTIAL: Owner/property/plot data path exists and was used for verified-location fixture setup.
-- TODO: Owner onboarding/property creation full browser happy path.
-- TODO: Seller onboarding/listing creation full browser happy path.
-- TODO: Listing approval/archive/public disappearance browser test.
-- TODO: Customer inquiry/support browser test.
+- MANUAL GATE: Owner onboarding/property creation full browser happy path.
+- MANUAL GATE: Seller onboarding/listing creation full browser happy path.
+- MANUAL GATE: Listing approval/archive/public disappearance browser test.
+- MANUAL GATE: Customer inquiry/support browser test.
 - PASS: Protected admin and agent routes redirect unauthenticated users to `/auth/login`.
-- TODO: Full authenticated cross-role browser matrix.
+- MANUAL GATE: Full authenticated cross-role browser matrix.
 
 ### Lane C: Employee, Admin, Support, Audit
 
-- TODO: Support employee ticket queue browser test.
-- TODO: Support employee reply/internal-note browser test.
-- TODO: Employee forbidden admin-only API browser/API test.
+- MANUAL GATE: Support employee ticket queue browser test.
+- MANUAL GATE: Support employee reply/internal-note browser test.
+- MANUAL GATE: Employee forbidden admin-only API browser/API test.
 - PASS: Admin plots and location review pages load for authenticated admin during E2E.
 - PASS: Agent arrival and submit actions create audit events.
 - PASS: Audit metadata redaction helper is present; route coverage still needs final review.
 
 ### Lane D: Performance And Production Config
 
-- TODO: Lighthouse public page median is recorded.
+- MANUAL GATE: Lighthouse public page median is recorded.
 - Accessibility, Best Practices, and SEO are recorded.
 - PASS: `/api/health` returns `200` on built local production server.
 - PASS: `/api/auth/providers` reports email and Google provider availability.
-- TODO: Password reset delivery status is verified without exposing secrets.
-- TODO: Production blockers for Resend, Google OAuth, Vercel env, DNS, and canonical URL are rechecked on final Vercel environment.
+- MANUAL GATE: Password reset delivery status is verified without exposing secrets.
+- MANUAL GATE: Production blockers for Resend, Google OAuth, Vercel env, DNS, and canonical URL are rechecked on final Vercel environment.
 
 ## Current Known Fixes Already Verified
 

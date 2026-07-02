@@ -13,6 +13,13 @@
 [ ] NEXT_PUBLIC_SENTRY_DSN set
 [ ] CRON_SECRET set
 
+## Local Code Gates
+[ ] pnpm run prelaunch:static passes
+[ ] pnpm run build passes
+[ ] pnpm run smoke:local passes against a local production server
+[ ] No real secrets are present in committed files
+[ ] No old temporary production URL is present in runtime source
+
 ## Supabase
 [ ] Leaked password protection: ENABLED
 [ ] Minimum password: 12 characters with complexity
@@ -36,6 +43,7 @@
 [ ] Supabase callback in authorized redirect URIs
 
 ## Functionality Tests
+[ ] pnpm run smoke:production passes after DNS and Vercel SSL are active
 [ ] Homepage loads at https://plotkare.in
 [ ] /api/health returns { "status": "ok" }
 [ ] New user can sign up and receive confirmation email
@@ -48,12 +56,19 @@
 [ ] Sentry receives a test error
 
 ## Data
+[ ] Run scripts/delete-demo-accounts.sql only during the final launch window, after reviewing its SELECT output
 [ ] All demo/test accounts deleted from Supabase Auth
 [ ] All test listings removed or in draft
 [ ] At least one real or seeded listing visible on homepage
 [ ] No placeholder text visible on any public page
 [ ] No XXXXXXXXXX phone numbers on any page
 [ ] Canonical URLs show https://plotkare.in (not localhost)
+
+## Scope Control
+[ ] Apartment is supported as a property type for onboarding/inspection context
+[ ] The full apartment rental module remains frozen until the controlled plot pilot passes
+[ ] Razorpay live payments remain disabled unless live keys, webhook verification, and reconciliation are complete
+[ ] WhatsApp automation, loans, vendors, tenant roles, and apartment rental workflows remain post-pilot
 
 ## Security
 [ ] Rate limit test: 6 rapid logins -> 429 on 6th

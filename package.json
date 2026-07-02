@@ -12,7 +12,10 @@
     "restore:verification-agent": "node scripts/restore-verification-agent.mjs",
     "build:github": "cross-env NEXT_PUBLIC_BASE_PATH=/PLotKAre-2026 next build",
     "start": "next start",
-    "lint": "eslint app components lib"
+    "lint": "eslint app components lib",
+    "prelaunch:static": "node scripts/prelaunch-static-check.mjs",
+    "smoke:local": "node scripts/production-smoke-test.mjs http://127.0.0.1:3002 --allow-local",
+    "smoke:production": "node scripts/production-smoke-test.mjs https://plotkare.in"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

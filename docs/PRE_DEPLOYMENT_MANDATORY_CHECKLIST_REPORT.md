@@ -3,7 +3,7 @@
 Generated: 2026-06-03
 Branch: codex/predeploy-hardening
 Target domain: plotkare.in
-Target production app: https://webpage-rho-dusky.vercel.app/
+Target production app after domain cutover: https://plotkare.in/
 
 This report follows the mandatory pre-deployment prompt. Secret values were not printed, copied, or included.
 
@@ -138,4 +138,3 @@ Configure outside the repo:
 - Enable Supabase leaked password protection.
 - Configure production Upstash Redis for rate limiting.
 - Re-run smoke tests and Lighthouse on the final domain.
-
