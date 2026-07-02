@@ -50,6 +50,7 @@ export function Navigation() {
 
     const previousOverflow = document.body.style.overflow
     const main = document.querySelector('main')
+    const menuButton = menuButtonRef.current
     document.body.style.overflow = 'hidden'
     main?.setAttribute('inert', '')
     closeButtonRef.current?.focus()
@@ -85,7 +86,7 @@ export function Navigation() {
       document.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = previousOverflow
       main?.removeAttribute('inert')
-      menuButtonRef.current?.focus()
+      menuButton?.focus()
     }
   }, [isMobileMenuOpen])
 
@@ -143,7 +144,7 @@ export function Navigation() {
             </Link>
 
             {/* Desktop Navigation */}
-            <div className="hidden flex-1 items-center justify-center gap-4 xl:gap-5 2xl:gap-7 lg:flex">
+            <div className="hidden flex-1 items-center justify-center gap-5 2xl:gap-7 xl:flex">
               {primaryNavLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -173,7 +174,7 @@ export function Navigation() {
             </div>
 
             {/* CTA */}
-            <div className="hidden shrink-0 items-center gap-4 xl:gap-6 lg:flex">
+            <div className="hidden shrink-0 items-center gap-6 xl:flex">
               <Link
                 href="/signup"
                 className="premium-nav-link font-sans text-sm font-medium text-primary transition-colors hover:text-primary/90"
@@ -192,7 +193,7 @@ export function Navigation() {
             <button
               ref={menuButtonRef}
               onClick={() => setIsMobileMenuOpen(true)}
-              className="premium-interactive flex h-10 w-10 items-center justify-center rounded-sm lg:hidden"
+              className="premium-interactive flex h-10 w-10 items-center justify-center rounded-sm xl:hidden"
               aria-label="Open menu"
               aria-expanded={isMobileMenuOpen}
               aria-controls={MOBILE_MENU_ID}
