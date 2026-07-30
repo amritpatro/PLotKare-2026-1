@@ -54,6 +54,32 @@ function verificationRedirect(kind: 'success' | 'error', code: string, section: 
   redirect(`/admin/dashboard/${section}?${kind}=${code}`)
 }
 
+async function assertVerificationAssignee(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  assignedEmployeeId: string | null,
+): Promise<boolean> {
+  if (!assignedEmployeeId) return true
+
+  const { data, error } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('id', assignedEmployeeId)
+    .eq('active', true)
+    .eq('employee_role', 'verification_agent')
+    .maybeSingle()
+
+  if (error || !data) {
+    if (error) {
+      console.error('Database error checking verification assignment employee:', error)
+    } else {
+      console.error('Verification assignment employee is not an active verification agent:', assignedEmployeeId)
+    }
+    return false
+  }
+
+  return true
+}
+
 export async function updateVerificationStatus(formData: FormData) {
   const parsed = verificationActionSchema.safeParse({
     entityType: formData.get('entityType'),
@@ -76,6 +102,8 @@ export async function updateVerificationStatus(formData: FormData) {
   const dueAt = parsed.data.dueAt || null
   const escalationLevel = parsed.data.escalationLevel ?? 0
   const supabase = createSupabaseAdminClient()
+  const isValidAssignee = await assertVerificationAssignee(supabase, assignedEmployeeId)
+  if (!isValidAssignee) verificationRedirect('error', 'invalid_employee_assignment', returnSection)
   const statusColumn = statusColumnByEntity[entityType]
 
   const { data: existing, error: existingError } = await supabase
@@ -309,6 +337,8 @@ export async function reviewCustomerPropertyRequest(formData: FormData) {
   }
 
   const assignedEmployeeId = parsed.data.assignedEmployeeId || null
+  const isValidAssignee = await assertVerificationAssignee(supabase, assignedEmployeeId)
+  if (!isValidAssignee) verificationRedirect('error', 'invalid_employee_assignment')
   const { error: updateError } = await supabase.from('customer_property_requests').update({
     status: parsed.data.status,
     assigned_employee_id: assignedEmployeeId,
