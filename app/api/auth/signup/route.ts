@@ -4,6 +4,7 @@ import { requireSupabaseBrowserEnv } from '@/lib/supabase/env'
 import { signupSchema } from '@/lib/validation/auth'
 import { isRateLimited } from '@/lib/api/rate-limit'
 import { recordAuditLog } from '@/lib/audit'
+import { ensureAuthProfile } from '@/lib/auth/profile-bootstrap'
 
 function response(request: NextRequest, body: Record<string, unknown>, status = 200) {
   const requestId = request.headers.get('x-request-id') || crypto.randomUUID()
@@ -59,6 +60,34 @@ export async function POST(request: NextRequest) {
       metadata: { email: parsed.data.email, customer_type: parsed.data.customerType, reason: error.name },
     })
     return response(request, { error: 'We could not create the account right now. Please try again later.' }, 503)
+  }
+
+  if (data.user) {
+    try {
+      await ensureAuthProfile({
+        userId: data.user.id,
+        email: parsed.data.email.toLowerCase(),
+        fullName: parsed.data.fullName,
+        customerType: parsed.data.customerType,
+      })
+    } catch (profileError) {
+      await recordAuditLog({
+        actorId: data.user.id,
+        action: 'auth.signup_profile_bootstrap_failed',
+        entityType: 'auth_session',
+        entityId: data.user.id,
+        metadata: {
+          email: parsed.data.email,
+          customer_type: parsed.data.customerType,
+          reason: profileError instanceof Error ? profileError.name : 'unknown',
+        },
+      })
+      return response(
+        request,
+        { error: 'Your account was created, but the workspace profile is not ready yet. Please contact support.' },
+        500,
+      )
+    }
   }
 
   await recordAuditLog({

@@ -110,28 +110,18 @@ export default function ChooseRolePage() {
         return
       }
 
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          customer_type: selected,
-          onboarding_status: 'in_progress',
-          onboarding_completed: false,
-        })
-        .eq('id', user.id)
-
-      if (updateError) {
-        const { error: fallbackError } = await supabase
-          .from('profiles')
-          .update({
-            customer_type: selected,
-            onboarding_status: 'in_progress',
-          })
-          .eq('id', user.id)
-
-        if (fallbackError) throw fallbackError
+      const response = await fetch('/api/auth/choose-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerType: selected }),
+      })
+      const result = (await response.json()) as { destination?: string; error?: string }
+      if (!response.ok || !result.destination) {
+        throw new Error(result.error ?? 'Workspace role could not be saved.')
       }
 
-      router.push(`/onboarding/${slugFromCustomerType(selected)}`)
+      router.push(result.destination ?? `/onboarding/${slugFromCustomerType(selected)}`)
+      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Try again.')
       setLoading(false)

@@ -5,6 +5,7 @@ import { requireSupabaseBrowserEnv } from '@/lib/supabase/env'
 import { loginSchema } from '@/lib/validation/auth'
 import { isRateLimited } from '@/lib/api/rate-limit'
 import { recordAuditLog } from '@/lib/audit'
+import { authUserBootstrapInput, ensureAuthProfile } from '@/lib/auth/profile-bootstrap'
 
 export async function POST(request: NextRequest) {
   if (await isRateLimited(request)) {
@@ -50,6 +51,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: 'Unable to sign in. Please check your credentials and try again.' },
       { status: 401 },
+    )
+  }
+
+  try {
+    await ensureAuthProfile(authUserBootstrapInput(data.user))
+  } catch (profileError) {
+    await recordAuditLog({
+      actorId: data.user.id,
+      action: 'auth.login_profile_bootstrap_failed',
+      entityType: 'auth_session',
+      entityId: data.user.id,
+      metadata: { mode, reason: profileError instanceof Error ? profileError.name : 'unknown' },
+    })
+    await supabase.auth.signOut()
+    return NextResponse.json(
+      { error: 'Your workspace profile is not ready yet. Please contact support.' },
+      { status: 409 },
     )
   }
 

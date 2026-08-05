@@ -2,6 +2,7 @@ import { logger } from '@/lib/monitoring/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { resolvePostLoginRedirect } from '@/lib/onboarding/redirect'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { authUserBootstrapInput, ensureAuthProfile } from '@/lib/auth/profile-bootstrap'
 
 function safeRelativePath(path: string | null, fallback: string) {
   if (!path || !path.startsWith('/') || path.startsWith('//')) return fallback
@@ -62,6 +63,13 @@ export async function GET(request: NextRequest) {
 
   if (flow === 'recovery') {
     return redirectTo(request, '/update-password')
+  }
+
+  try {
+    await ensureAuthProfile(authUserBootstrapInput(user))
+  } catch (profileError) {
+    logger.error('Auth callback profile bootstrap error:', profileError)
+    return redirectTo(request, '/auth/login?error=profile_not_ready')
   }
 
   const destination = await resolvePostLoginRedirect(
