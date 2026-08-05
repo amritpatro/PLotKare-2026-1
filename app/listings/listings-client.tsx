@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import {
   filterPublicListings,
@@ -9,7 +8,7 @@ import {
   type PublicPlotListing,
 } from '@/lib/public-listings'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
-import { withBasePath } from '@/lib/site-config'
+import { ListingImage } from '@/components/listings/listing-image'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 import {
   Dialog,
@@ -17,10 +16,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-
-function resolveImageUrl(imageUrl: string) {
-  return imageUrl.startsWith('http') ? imageUrl : withBasePath(imageUrl)
-}
 
 const FILTERS: ListingFilter[] = [
   'All Plots',
@@ -39,10 +34,9 @@ function ListingCard({ plot, onViewDetails }: { plot: PublicPlotListing; onViewD
           <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1">
             {gallery.map((imageUrl, index) => (
               <div key={`${plot.id}-${index}`} className="relative">
-                <Image
-                  src={resolveImageUrl(imageUrl)}
+                <ListingImage
+                  imageUrl={imageUrl}
                   alt={`Listing photo ${index + 1} for ${plot.plotNumber}`}
-                  fill
                   className="object-cover"
                   sizes="(max-width:768px) 50vw, 20vw"
                 />
@@ -50,7 +44,12 @@ function ListingCard({ plot, onViewDetails }: { plot: PublicPlotListing; onViewD
             ))}
           </div>
         ) : (
-          <Image src={resolveImageUrl(plot.imageUrl)} alt="" fill className="object-cover" sizes="(max-width:768px) 100vw, 33vw" />
+          <ListingImage
+            imageUrl={plot.imageUrl}
+            alt={`Listing preview for ${plot.plotNumber}`}
+            className="object-cover"
+            sizes="(max-width:768px) 100vw, 33vw"
+          />
         )}
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
           {plot.verified !== false ? <PlotKareVerifiedStamp compact tone="dark" /> : null}
@@ -210,10 +209,9 @@ export default function ListingsPageClient({
                   <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1">
                     {detailPlot.imageUrls.slice(0, 4).map((imageUrl, index) => (
                       <div key={`${detailPlot.id}-detail-${index}`} className="relative">
-                        <Image
-                          src={resolveImageUrl(imageUrl)}
+                        <ListingImage
+                          imageUrl={imageUrl}
                           alt={`Listing photo ${index + 1} for ${detailPlot.plotNumber}`}
-                          fill
                           className="object-cover"
                           sizes="(max-width:768px) 50vw, 350px"
                         />
@@ -221,10 +219,9 @@ export default function ListingsPageClient({
                     ))}
                   </div>
                 ) : (
-                  <Image
-                    src={resolveImageUrl(detailPlot.imageUrl)}
+                  <ListingImage
+                    imageUrl={detailPlot.imageUrl}
                     alt={`Listing preview for ${detailPlot.plotNumber}`}
-                    fill
                     className="object-cover"
                     sizes="(max-width:768px) 100vw, 700px"
                   />

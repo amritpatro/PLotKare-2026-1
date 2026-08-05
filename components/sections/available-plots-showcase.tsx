@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import {
   Dialog,
@@ -15,7 +14,7 @@ import {
   getLandingShowcaseListings,
   type PublicPlotListing,
 } from '@/lib/public-listings'
-import { withBasePath } from '@/lib/site-config'
+import { ListingImage } from '@/components/listings/listing-image'
 
 const CRIMSON = '#C0392B'
 const GOLD = '#F59E0B'
@@ -26,10 +25,6 @@ const VERIFICATION_CHECKLIST = [
   'Vastu and facing notes verified with the owner before publication.',
   'Title, tax, and approval documents uploaded before the listing is marked public.',
 ] as const
-
-function resolveImageUrl(imageUrl: string) {
-  return imageUrl.startsWith('http') ? imageUrl : withBasePath(imageUrl)
-}
 
 function ListingInquiryForm({
   plot,
@@ -154,25 +149,21 @@ function PlotCard({
         <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1">
           {gallery.map((imageUrl, index) => (
             <div key={`${plot.id}-${index}`} className="relative">
-              <Image
-                src={resolveImageUrl(imageUrl)}
+              <ListingImage
+                imageUrl={imageUrl}
                 alt={`Listing photo ${index + 1} for ${plot.plotNumber}`}
-                fill
                 className="object-cover transition-[filter,transform] duration-300 group-hover:brightness-[1.08]"
                 sizes="(max-width:768px) 50vw, 20vw"
-                loading="lazy"
               />
             </div>
           ))}
         </div>
       ) : (
-        <Image
-          src={resolveImageUrl(plot.imageUrl)}
+        <ListingImage
+          imageUrl={plot.imageUrl}
           alt={`Verified ${plot.propertyKind === 'apartment' ? 'apartment' : 'plot'} listing in ${plot.location} - PlotKare marketplace preview`}
-          fill
           className="object-cover transition-[filter,transform] duration-300 group-hover:brightness-[1.08]"
           sizes="(max-width:768px) 100vw, 33vw"
-          loading="lazy"
         />
       )}
       <div
@@ -356,10 +347,9 @@ export function AvailablePlotsShowcaseSection({
                   <div className="absolute inset-0 grid grid-cols-2 grid-rows-2 gap-1">
                     {detailPlot.imageUrls.slice(0, 4).map((imageUrl, index) => (
                       <div key={`${detailPlot.id}-detail-${index}`} className="relative">
-                        <Image
-                          src={resolveImageUrl(imageUrl)}
+                        <ListingImage
+                          imageUrl={imageUrl}
                           alt={`Listing photo ${index + 1} for ${detailPlot.plotNumber}`}
-                          fill
                           className="object-cover"
                           sizes="(max-width: 768px) 50vw, 350px"
                         />
@@ -367,10 +357,9 @@ export function AvailablePlotsShowcaseSection({
                     ))}
                   </div>
                 ) : (
-                  <Image
-                    src={resolveImageUrl(detailPlot.imageUrl)}
+                  <ListingImage
+                    imageUrl={detailPlot.imageUrl}
                     alt={`Verified ${detailPlot.propertyKind === 'apartment' ? 'apartment' : 'plot'} listing in ${detailPlot.location} - PlotKare marketplace detail`}
-                    fill
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, 700px"
                   />
