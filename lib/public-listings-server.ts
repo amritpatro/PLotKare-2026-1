@@ -64,6 +64,19 @@ type DocumentRow = {
   uploaded_by: string | null
 }
 
+function listingFetchErrorSummary(error: unknown) {
+  if (!error || typeof error !== 'object') return { code: 'unknown', message: 'Unknown listing fetch failure' }
+
+  const candidate = error as { code?: unknown; message?: unknown }
+  return {
+    code: typeof candidate.code === 'string' ? candidate.code : 'unknown',
+    message:
+      typeof candidate.message === 'string'
+        ? candidate.message.replace(/\s+/g, ' ').slice(0, 240)
+        : 'Listing fetch failed without an upstream message',
+  }
+}
+
 function toFacing(value: string | null): Facing {
   if (value === 'North' || value === 'South' || value === 'West') return value
   return 'East'
@@ -138,7 +151,7 @@ export async function getVerifiedPublicListings(limit?: number): Promise<PublicP
 
   const { data, error } = await query
   if (error) {
-    logger.error('Verified public listings fetch failed:', error)
+    logger.error('Verified public listings fetch failed:', listingFetchErrorSummary(error))
     return []
   }
 
