@@ -41,7 +41,22 @@ export async function POST(request: NextRequest) {
     },
   })
 
-  const { data, error } = await supabase.auth.signInWithPassword(parsed.data)
+  const signInResult = await supabase.auth.signInWithPassword(parsed.data).catch(() => null)
+  if (!signInResult) {
+    return NextResponse.json(
+      { error: 'Sign-in is temporarily unavailable. Please try again in a moment.' },
+      { status: 503 },
+    )
+  }
+
+  const { data, error } = signInResult
+  if (error?.status === 0) {
+    return NextResponse.json(
+      { error: 'Sign-in is temporarily unavailable. Please try again in a moment.' },
+      { status: 503 },
+    )
+  }
+
   if (error || !data.user) {
     await recordAuditLog({
       action: 'auth.login_failed',

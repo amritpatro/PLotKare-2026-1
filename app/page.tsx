@@ -2,15 +2,10 @@ import type { Metadata } from 'next'
 import { Navigation } from '@/components/navigation'
 import { FloatingContactCta } from '@/components/floating-contact-cta'
 import { HeroSection } from '@/components/sections/hero'
-import { TrustStrip } from '@/components/sections/trust-strip'
 import { ProblemSection } from '@/components/sections/problem'
 import { ServicesSection } from '@/components/sections/services'
 import { HowItWorksSection } from '@/components/sections/how-it-works'
-import { StatisticsSection } from '@/components/sections/statistics'
 import { PricingSection } from '@/components/sections/pricing'
-import { MonitoringInsightsSection } from '@/components/sections/testimonials'
-import { AwardsSection } from '@/components/sections/awards'
-import { NewsroomSection } from '@/components/sections/newsroom'
 import { ContactSection } from '@/components/sections/contact'
 import { FaqSection } from '@/components/sections/faq'
 import { LazyAvailablePlotsShowcaseSection, LazyLandUtilisationSection, LazyPlotVisualizationSection } from '@/components/sections/lazy-home-sections'
@@ -66,31 +61,25 @@ export default async function HomePage() {
 
   return (
     <main>
-      <JsonLd data={[serviceSchema, buildFaqSchema(HOME_FAQS)]} />
+      <JsonLd data={[serviceSchema, buildFaqSchema(HOME_FAQS.slice(0, 4))]} />
       <Navigation />
       <HeroSection
         supportingLink={{
           href: '/visakhapatnam/',
           label: 'Explore plot management in Visakhapatnam',
         }}
-        quickAnswer="PlotKare coordinates monthly plot inspections with geotagged photos, encroachment monitoring, EC certificate and document tracking, and a verified property marketplace for landowners across India. Owners receive a PDF report every inspection cycle. Pricing is confirmed after a free consultation call with no billing before scope is agreed."
       />
-      <TrustStrip />
-      <ProblemSection />
       <ServicesSection />
-      <LazyPlotVisualizationSection />
+      <ProblemSection />
       <HowItWorksSection />
+      <LazyPlotVisualizationSection />
       <LazyLandUtilisationSection />
-      <StatisticsSection />
       <LazyAvailablePlotsShowcaseSection initialListings={verifiedListings} />
       <PricingSection />
-      <MonitoringInsightsSection />
-      <AwardsSection />
-      <NewsroomSection />
       <FaqSection
-        heading="Frequently Asked Questions About Plot Management"
-        introduction="Direct answers for owners deciding how to monitor vacant property and keep its records usable."
-        items={HOME_FAQS}
+        heading="Before you begin"
+        introduction="Short answers for owners deciding whether PlotKare fits their property workflow."
+        items={HOME_FAQS.slice(0, 4)}
       />
       <ContactSection />
       <Footer />

@@ -1,48 +1,31 @@
-import { 
-  Camera, 
-  FileText, 
-  Bell, 
-  Scale, 
-  TrendingUp, 
-  FolderLock 
-} from 'lucide-react'
+import Image from 'next/image'
+import { Camera, FileText, Bell } from 'lucide-react'
+import { withBasePath } from '@/lib/site-config'
 
 const services = [
   {
     icon: Camera,
-    title: 'Monthly Field Inspections',
-    description: 'Set an inspection cadence for boundary, access, and visible site-condition records after the service scope is confirmed.',
+    image: '/images/amenities/real/boundary-fencing.jpg',
+    title: 'Know what changed on site',
+    description: 'A visit captures visible boundary, access, and site-condition evidence against the verified plot location.',
   },
   {
     icon: FileText,
-    title: 'Digital Report Delivery',
-    description: 'Authorized owners can review submitted photographs, timestamps, and property updates associated with their file.',
+    image: '/images/amenities/real/legal-sign-boards.jpg',
+    title: 'Keep the property file usable',
+    description: 'Documents, inspection notes, and follow-up stay associated with the property instead of scattered across messages.',
   },
   {
     icon: Bell,
-    title: 'Encroachment Alerts',
-    description: 'Record a boundary or access concern so it can enter the appropriate support and operational review workflow.',
-  },
-  {
-    icon: Scale,
-    title: 'Legal Health Monitoring',
-    description: 'Organize EC, tax, mutation, registration, and supporting records for review by authorized users.',
-  },
-  {
-    icon: TrendingUp,
-    title: 'Value Appreciation Tracker',
-    description: 'Keep property status, inspection evidence, and marketplace readiness visible before a sale decision.',
-  },
-  {
-    icon: FolderLock,
-    title: 'Document Vault',
-    description: 'Sale deed, patta, link documents, and all legal paperwork stored securely in your digital vault.',
+    image: '/images/amenities/real/cctv-installation.jpg',
+    title: 'Act on a clear next step',
+    description: 'A concern can move into review and support with an evidence trail your family or advisor can understand.',
   },
 ]
 
 export function ServicesSection({
-  heading = 'Monthly Inspection, Legal Monitoring, and Document Tracking',
-  introduction = 'PlotKare organizes the field, document, and support records owners need to monitor property responsibly.',
+  heading = 'The property record, made visible',
+  introduction = 'Three practical layers of confidence for owners managing land from a distance.',
 }: {
   heading?: string
   introduction?: string
@@ -61,23 +44,36 @@ export function ServicesSection({
         </div>
 
         {/* Services Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           {services.map((service, index) => {
             const Icon = service.icon
             return (
               <div
                 key={index}
-                className="premium-surface premium-interactive group rounded-lg border border-border bg-white p-8"
+                className={`premium-surface premium-interactive group relative overflow-hidden rounded-lg border border-border bg-white ${
+                  index === 0 ? 'lg:row-span-2' : ''
+                }`}
               >
-                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                  <Icon className="h-6 w-6 text-primary" />
+                <div className={`relative overflow-hidden ${index === 0 ? 'aspect-[4/3] lg:aspect-auto lg:h-full' : 'aspect-[16/8]'}`}>
+                  <Image
+                    src={withBasePath(service.image)}
+                    alt=""
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                  />
                 </div>
-                <h3 className="mb-3 font-serif text-xl font-semibold text-foreground">
-                  {service.title}
-                </h3>
-                <p className="font-sans text-sm leading-relaxed text-muted-foreground">
-                  {service.description}
-                </p>
+                <div className={`p-7 ${index === 0 ? 'lg:absolute lg:inset-x-0 lg:bottom-0 lg:bg-white/95 lg:backdrop-blur-sm' : ''}`}>
+                  <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <h3 className="mb-3 font-serif text-xl font-semibold text-foreground">
+                    {service.title}
+                  </h3>
+                  <p className="font-sans text-sm leading-relaxed text-muted-foreground">
+                    {service.description}
+                  </p>
+                </div>
               </div>
             )
           })}

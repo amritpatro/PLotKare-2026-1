@@ -2,15 +2,14 @@ import Link from 'next/link'
 import { HeroMapFrame } from '@/components/sections/hero-map-frame'
 
 const pillars = [
-  { title: 'Protect', label: 'Inspections and evidence' },
-  { title: 'Track', label: 'Value and status' },
-  { title: 'Grow', label: 'Optional services' },
-  { title: 'Trade', label: 'Verified marketplace' },
+  { title: 'Verified pin', label: 'Location before assignment' },
+  { title: 'Field evidence', label: 'Dated inspection records' },
+  { title: 'Private file', label: 'Documents under your control' },
 ]
 
 export function HeroSection({
-  heading = 'Manage, Monitor, and Protect Your Plot From Anywhere in India',
-  description = 'PlotKare is a plot management and property monitoring platform for Indian landowners who cannot personally watch their plots. Field inspections, document tracking, issue reporting, and a verified marketplace come together in one platform, whether you own one plot or a portfolio. Starting from Visakhapatnam, expanding across India.',
+  heading = 'Clear evidence for land you cannot visit every day.',
+  description = 'A property file that connects verified location, field visits, documents, and follow-up in one place.',
   primaryLabel = 'See Real Plot Layout',
   secondaryLabel = 'Register My Plot',
   supportingLink,
@@ -64,7 +63,7 @@ export function HeroSection({
               </Link>
             </div>
 
-            <div className="mt-14 grid max-w-3xl grid-cols-2 gap-x-7 gap-y-5 border-t border-[#1a1a1a]/10 pt-8 md:grid-cols-4">
+            <div className="mt-12 grid max-w-3xl gap-x-7 gap-y-5 border-t border-[#1a1a1a]/10 pt-7 sm:grid-cols-3">
               {pillars.map((p) => (
                 <div key={p.title}>
                   <p className="font-serif text-xl font-bold text-[#8B1538]">{p.title}</p>

@@ -40,18 +40,29 @@ export async function POST(request: NextRequest) {
   })
 
   const emailRedirectTo = `${request.nextUrl.origin}/auth/callback?next=${encodeURIComponent(onboardingPath)}`
-  const { data, error } = await supabase.auth.signUp({
-    email: parsed.data.email.toLowerCase(),
-    password: parsed.data.password,
-    options: {
-      emailRedirectTo,
-      data: {
-        full_name: parsed.data.fullName,
-        customer_type: parsed.data.customerType,
-        onboarding_status: 'in_progress',
+  const signUpResult = await supabase.auth
+    .signUp({
+      email: parsed.data.email.toLowerCase(),
+      password: parsed.data.password,
+      options: {
+        emailRedirectTo,
+        data: {
+          full_name: parsed.data.fullName,
+          customer_type: parsed.data.customerType,
+          onboarding_status: 'in_progress',
+        },
       },
-    },
-  })
+    })
+    .catch(() => null)
+
+  if (!signUpResult) {
+    return response(request, { error: 'Account creation is temporarily unavailable. Please try again in a moment.' }, 503)
+  }
+
+  const { data, error } = signUpResult
+  if (error?.status === 0) {
+    return response(request, { error: 'Account creation is temporarily unavailable. Please try again in a moment.' }, 503)
+  }
 
   if (error) {
     await recordAuditLog({

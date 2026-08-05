@@ -1,35 +1,24 @@
 const steps = [
   {
     number: '01',
-    title: 'List Your Plot',
-    description: 'Share your plot number, location, and documents through the registration workflow.',
+    title: 'Register the property',
+    description: 'Share the address, property type, and supporting details that start the file.',
   },
   {
     number: '02',
-    title: 'Book a Consultation',
-    description: 'Choose a monitoring cadence with the team after your property location, access, and documents are reviewed.',
+    title: 'Verify the location',
+    description: 'The submitted map pin is reviewed before it becomes the target for field work.',
   },
   {
     number: '03',
-    title: 'Agent Deployed',
-    description:
-      'A field coordinator is assigned to your plot file with a written scope — timelines depend on corridor and intake volume.',
-  },
-  {
-    number: '04',
-    title: 'Services Activated',
-    description: 'Approved services, document review, and property tracking become visible in your workspace.',
-  },
-  {
-    number: '05',
-    title: 'Track History',
-    description: 'Your account preserves submitted records, statuses, and follow-up activity for future reference.',
+    title: 'Review the evidence',
+    description: 'Reports, documents, and any follow-up are visible in your private workspace.',
   },
 ]
 
 export function HowItWorksSection({
-  heading = 'How Plot Monitoring Works:',
-  highlightedHeading = 'Five Steps',
+  heading = 'From property pin to',
+  highlightedHeading = 'clear evidence',
 }: {
   heading?: string
   highlightedHeading?: string
@@ -45,7 +34,7 @@ export function HowItWorksSection({
         </div>
 
         {/* Responsive Grid */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
           {steps.map((step, index) => (
             <div
               key={step.number}
