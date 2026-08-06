@@ -1,4 +1,9 @@
 import { NextResponse } from 'next/server'
+import {
+  authServiceUnavailablePayload,
+  isAuthServiceUnavailableStatus,
+  type AuthServiceStatusPayload,
+} from '@/lib/auth/auth-service-status'
 import { requireSupabaseBrowserEnv } from '@/lib/supabase/env'
 
 type AuthSettings = {
@@ -17,14 +22,25 @@ export async function GET() {
       cache: 'no-store',
     })
 
-    if (!response.ok) throw new Error('Auth settings request failed')
+    if (!response.ok) {
+      const payload = authServiceUnavailablePayload(response.status)
+      return NextResponse.json(payload, {
+        status: isAuthServiceUnavailableStatus(response.status) ? 503 : response.status,
+      })
+    }
 
     const settings = (await response.json()) as AuthSettings
-    return NextResponse.json({
+    const payload: AuthServiceStatusPayload = {
+      available: true,
       email: settings.external?.email === true,
       google: settings.external?.google === true,
-    })
+      status: response.status,
+      message: null,
+      checkedAt: new Date().toISOString(),
+    }
+
+    return NextResponse.json(payload)
   } catch {
-    return NextResponse.json({ email: true, google: false }, { status: 503 })
+    return NextResponse.json(authServiceUnavailablePayload(null), { status: 503 })
   }
 }

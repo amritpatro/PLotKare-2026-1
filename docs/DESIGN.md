@@ -6,10 +6,10 @@ PlotKare should feel calm, specific and accountable. It manages consequential pr
 
 ## Foundations
 
-- Keep the existing white canvas, current logo, and brand purple `#8B1538` unchanged.
-- Use brand purple for primary action, selected state, key headings and high-confidence emphasis; never for every card, chip or paragraph.
-- Retain the existing warm metallic accent only for positive premium emphasis; keep semantic warning, danger and success colors distinct.
-- Typography: use the current serif display face for page titles and meaningful property moments; use the current sans face for all operational UI. Never use display type for dense tables or forms.
+- Keep the existing warm cream/off-white canvas, current logo, brand maroon `#8B1538`, and gold accent `#C9A962` unchanged.
+- Use brand maroon for primary action, selected state, key headings and high-confidence emphasis; never for every card, chip or paragraph.
+- Use the thin gold/mustard accent as a hairline, boundary, premium highlight or verified-evidence cue. Keep semantic warning, danger and success colors distinct.
+- Typography keeps the three-font system: serif display for page titles and meaningful property moments, sans for body/UI, and mono for coordinates, plot IDs and data labels. Never use display type for dense tables or forms.
 - Type scale: 12 meta, 14 supporting copy, 16 body/form text, 20 section title, 28 page title, 40 marketing/title moment. Input text stays at least 16px on mobile.
 - Spacing scale: 4, 8, 12, 16, 24, 32, 48, 64. Use 24/32 inside work panels and 48/64 only for page rhythm.
 - Radius: 6px controls, 8px cards, 12px modals. Avoid oversized pills except statuses.
@@ -39,6 +39,7 @@ PlotKare should feel calm, specific and accountable. It manages consequential pr
 - GPS state uses only semantic status: ready, needs permission, inaccurate, too far, override needed, confirmed, unavailable.
 - 3D uses progressive loading, an accessible detail alternative, and clear unavailable/error copy.
 - Payments show a deliberate unavailable/manual state until the live provider is verified. Never imply a successful payment before webhook confirmation.
+- Auth screens distinguish user mistakes from infrastructure outages. Upstream 5xx or Cloudflare `521` must show a service-unavailable state with retry and status context, not a wrong-password message.
 
 ## Motion
 

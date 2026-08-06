@@ -5,6 +5,10 @@ import { requireSupabaseBrowserEnv } from '@/lib/supabase/env'
 import { loginSchema } from '@/lib/validation/auth'
 import { isRateLimited } from '@/lib/api/rate-limit'
 import { recordAuditLog } from '@/lib/audit'
+import {
+  AUTH_SERVICE_UNAVAILABLE_MESSAGE,
+  isAuthServiceUnavailableError,
+} from '@/lib/auth/auth-service-status'
 import { authUserBootstrapInput, ensureAuthProfile } from '@/lib/auth/profile-bootstrap'
 
 export async function POST(request: NextRequest) {
@@ -44,15 +48,15 @@ export async function POST(request: NextRequest) {
   const signInResult = await supabase.auth.signInWithPassword(parsed.data).catch(() => null)
   if (!signInResult) {
     return NextResponse.json(
-      { error: 'Sign-in is temporarily unavailable. Please try again in a moment.' },
+      { error: AUTH_SERVICE_UNAVAILABLE_MESSAGE },
       { status: 503 },
     )
   }
 
   const { data, error } = signInResult
-  if (error?.status === 0) {
+  if (isAuthServiceUnavailableError(error)) {
     return NextResponse.json(
-      { error: 'Sign-in is temporarily unavailable. Please try again in a moment.' },
+      { error: AUTH_SERVICE_UNAVAILABLE_MESSAGE },
       { status: 503 },
     )
   }

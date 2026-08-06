@@ -7,6 +7,10 @@ import { getSiteUrl } from '@/lib/site-config'
 import { resetPasswordSchema } from '@/lib/validation/auth'
 import { isRateLimited } from '@/lib/api/rate-limit'
 import { recordAuditLog } from '@/lib/audit'
+import {
+  AUTH_SERVICE_UNAVAILABLE_MESSAGE,
+  isAuthServiceUnavailableError,
+} from '@/lib/auth/auth-service-status'
 import { hasTransactionalEmailConfiguration, sendTransactionalEmail } from '@/lib/email/resend'
 
 type CookieToSet = {
@@ -127,6 +131,19 @@ export async function POST(request: NextRequest) {
         requestId: request.headers.get('x-request-id'),
         reason: fallback.reason,
       })
+
+      if (isAuthServiceUnavailableError(error)) {
+        await recordAuditLog({
+          action: 'auth.password_reset_unavailable',
+          entityType: 'auth_session',
+          metadata: {
+            supabase_delivery_failed: true,
+            fallback_reason: deliveryFallbackReason,
+          },
+        })
+
+        return response(request, { error: AUTH_SERVICE_UNAVAILABLE_MESSAGE }, 503, cookiesToSet)
+      }
     }
   }
 

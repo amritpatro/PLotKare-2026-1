@@ -4,6 +4,10 @@ import { requireSupabaseBrowserEnv } from '@/lib/supabase/env'
 import { signupSchema } from '@/lib/validation/auth'
 import { isRateLimited } from '@/lib/api/rate-limit'
 import { recordAuditLog } from '@/lib/audit'
+import {
+  AUTH_SERVICE_UNAVAILABLE_MESSAGE,
+  isAuthServiceUnavailableError,
+} from '@/lib/auth/auth-service-status'
 import { ensureAuthProfile } from '@/lib/auth/profile-bootstrap'
 
 function response(request: NextRequest, body: Record<string, unknown>, status = 200) {
@@ -56,12 +60,12 @@ export async function POST(request: NextRequest) {
     .catch(() => null)
 
   if (!signUpResult) {
-    return response(request, { error: 'Account creation is temporarily unavailable. Please try again in a moment.' }, 503)
+    return response(request, { error: AUTH_SERVICE_UNAVAILABLE_MESSAGE }, 503)
   }
 
   const { data, error } = signUpResult
-  if (error?.status === 0) {
-    return response(request, { error: 'Account creation is temporarily unavailable. Please try again in a moment.' }, 503)
+  if (isAuthServiceUnavailableError(error)) {
+    return response(request, { error: AUTH_SERVICE_UNAVAILABLE_MESSAGE }, 503)
   }
 
   if (error) {

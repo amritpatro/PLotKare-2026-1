@@ -5,9 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Check, Eye, EyeOff } from 'lucide-react'
 import { AuthLayout } from '@/components/auth/AuthLayout'
+import { AuthServiceNotice } from '@/components/auth/AuthServiceNotice'
 import { PremiumButton } from '@/components/auth/PremiumButton'
 import { PremiumInput } from '@/components/auth/PremiumInput'
 import { SelectionCard } from '@/components/auth/SelectionCard'
+import { useAuthProviderStatus } from '@/hooks/use-auth-provider-status'
+import { AUTH_SERVICE_UNAVAILABLE_MESSAGE } from '@/lib/auth/auth-service-status'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 import {
   rememberPendingOnboardingPath,
@@ -73,7 +76,7 @@ export default function SignupPage() {
   const [awaitingEmailConfirmation, setAwaitingEmailConfirmation] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null)
+  const authProviders = useAuthProviderStatus()
 
   const checks = useMemo(() => getPasswordRequirementChecks(formData.password), [formData.password])
   const strength = checks.filter((item) => item.valid).length
@@ -83,23 +86,6 @@ export default function SignupPage() {
     const next = params.get('next')
     if (next?.startsWith('/')) setNextPath(next)
     setIntent(params.get('intent') ?? '')
-  }, [])
-
-  useEffect(() => {
-    let mounted = true
-
-    fetch('/api/auth/providers')
-      .then(async (response) => {
-        const providers = (await response.json()) as { google?: boolean }
-        if (mounted) setGoogleEnabled(response.ok && providers.google === true)
-      })
-      .catch(() => {
-        if (mounted) setGoogleEnabled(false)
-      })
-
-    return () => {
-      mounted = false
-    }
   }, [])
 
   useEffect(() => {
@@ -118,6 +104,10 @@ export default function SignupPage() {
     e.preventDefault()
     if (submitting) return
     setError('')
+    if (!authProviders.available) {
+      setError(authProviders.message ?? AUTH_SERVICE_UNAVAILABLE_MESSAGE)
+      return
+    }
 
     const parsed = signupSchema.safeParse(formData)
 
@@ -163,7 +153,12 @@ export default function SignupPage() {
 
   const handleOAuth = async () => {
     setError('')
-    if (googleEnabled !== true) {
+    if (!authProviders.available) {
+      setError(authProviders.message ?? AUTH_SERVICE_UNAVAILABLE_MESSAGE)
+      return
+    }
+
+    if (authProviders.google !== true) {
       setError('Google sign-up is not enabled for this PlotKare environment yet.')
       return
     }
@@ -241,6 +236,13 @@ export default function SignupPage() {
                   {error}
                 </div>
               )}
+              <AuthServiceNotice
+                available={authProviders.available}
+                status={authProviders.status}
+                message={authProviders.message}
+                loading={authProviders.loading}
+                onRetry={authProviders.refresh}
+              />
 
               <div className="space-y-4">
                 <span className="block text-sm font-medium uppercase tracking-widest text-[#5f5f5f]">I am a...</span>
@@ -344,29 +346,31 @@ export default function SignupPage() {
                 </div>
               </div>
 
-              <PremiumButton type="submit" loading={submitting} disabled={submitting} fullWidth>
-                Create account
+              <PremiumButton type="submit" loading={submitting} disabled={submitting || !authProviders.available} fullWidth>
+                {authProviders.available ? 'Create account' : 'Service unavailable'}
               </PremiumButton>
 
               <PremiumButton
                 type="button"
                 variant="secondary"
                 onClick={handleOAuth}
-                loading={submitting && googleEnabled === true}
-                disabled={submitting || googleEnabled !== true}
+                loading={submitting && authProviders.google === true}
+                disabled={submitting || authProviders.loading || authProviders.google !== true}
                 fullWidth
                 icon={<span className="font-bold text-[#8B1538]">G</span>}
-                aria-describedby={googleEnabled === false ? 'google-signup-status' : undefined}
+                aria-describedby={authProviders.google === false ? 'google-signup-status' : undefined}
               >
-                {googleEnabled === null
+                {authProviders.loading
                   ? 'Checking Google sign-up...'
-                  : googleEnabled
+                  : authProviders.google
                     ? 'Continue with Google'
                     : 'Google sign-up unavailable'}
               </PremiumButton>
-              {googleEnabled === false ? (
+              {authProviders.google === false ? (
                 <p id="google-signup-status" role="status" aria-live="polite" className="text-center text-xs text-[#6B7280]">
-                  Google sign-up is not enabled for this environment. Email signup remains available.
+                  {authProviders.available
+                    ? 'Google sign-up is not enabled for this environment. Email signup remains available.'
+                    : 'Google sign-up will remain unavailable until the authentication service is reachable.'}
                 </p>
               ) : null}
 

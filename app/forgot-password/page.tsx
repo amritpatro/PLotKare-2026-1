@@ -5,8 +5,11 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { LogoMark } from '@/components/logo'
+import { AuthServiceNotice } from '@/components/auth/AuthServiceNotice'
 import { PremiumButton } from '@/components/auth/PremiumButton'
 import { PremiumInput } from '@/components/auth/PremiumInput'
+import { useAuthProviderStatus } from '@/hooks/use-auth-provider-status'
+import { AUTH_SERVICE_UNAVAILABLE_MESSAGE } from '@/lib/auth/auth-service-status'
 import { resetPasswordSchema } from '@/lib/validation/auth'
 
 export default function ForgotPasswordPage() {
@@ -16,6 +19,7 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [cooldown, setCooldown] = useState(0)
+  const authProviders = useAuthProviderStatus()
   const linkError = searchParams.get('error')
   const linkErrorMessage =
     linkError === 'expired_link'
@@ -28,6 +32,10 @@ export default function ForgotPasswordPage() {
     e.preventDefault()
     setError('')
     setMessage('')
+    if (!authProviders.available) {
+      setError(authProviders.message ?? AUTH_SERVICE_UNAVAILABLE_MESSAGE)
+      return
+    }
 
     const parsed = resetPasswordSchema.safeParse({ email })
     if (!parsed.success) {
@@ -105,6 +113,13 @@ export default function ForgotPasswordPage() {
               </p>
 
               <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+                <AuthServiceNotice
+                  available={authProviders.available}
+                  status={authProviders.status}
+                  message={authProviders.message}
+                  loading={authProviders.loading}
+                  onRetry={authProviders.refresh}
+                />
                 <PremiumInput
               id="forgot-password-email"
                   label="Email address"
@@ -117,8 +132,8 @@ export default function ForgotPasswordPage() {
                   error={error}
                 />
                 {linkErrorMessage ? <p className="text-sm text-[#8B1538]" role="status">{linkErrorMessage}</p> : null}
-                <PremiumButton type="submit" disabled={loading} loading={loading} fullWidth>
-                  Send reset link
+                <PremiumButton type="submit" disabled={loading || !authProviders.available} loading={loading} fullWidth>
+                  {authProviders.available ? 'Send reset link' : 'Service unavailable'}
                 </PremiumButton>
               </form>
             </>

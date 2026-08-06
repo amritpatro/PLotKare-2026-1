@@ -5,8 +5,11 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { AuthLayout } from '@/components/auth/AuthLayout'
+import { AuthServiceNotice } from '@/components/auth/AuthServiceNotice'
 import { PremiumButton } from '@/components/auth/PremiumButton'
 import { PremiumInput } from '@/components/auth/PremiumInput'
+import { useAuthProviderStatus } from '@/hooks/use-auth-provider-status'
+import { AUTH_SERVICE_UNAVAILABLE_MESSAGE } from '@/lib/auth/auth-service-status'
 import { createSupabaseBrowserClient } from '@/lib/supabase/browser'
 import { resolvePostLoginRedirect } from '@/lib/onboarding/redirect'
 import { buildAuthCallbackUrl, formatAuthError } from '@/lib/supabase/auth-redirect'
@@ -43,25 +46,8 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
   )
   const [isSigningIn, setIsSigningIn] = useState(false)
   const [isOpeningWorkspace, setIsOpeningWorkspace] = useState(false)
-  const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null)
   const [returningLine, setReturningLine] = useState(returningUserLines[0])
-
-  useEffect(() => {
-    let mounted = true
-
-    fetch('/api/auth/providers')
-      .then(async (response) => {
-        const providers = (await response.json()) as { google?: boolean }
-        if (mounted) setGoogleEnabled(response.ok && providers.google === true)
-      })
-      .catch(() => {
-        if (mounted) setGoogleEnabled(false)
-      })
-
-    return () => {
-      mounted = false
-    }
-  }, [])
+  const authProviders = useAuthProviderStatus()
 
   useEffect(() => {
     try {
@@ -102,6 +88,11 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
 
   const handleSignIn = async () => {
     setError('')
+    if (!authProviders.available) {
+      setError(authProviders.message ?? AUTH_SERVICE_UNAVAILABLE_MESSAGE)
+      return
+    }
+
     const parsed = loginSchema.safeParse({ email, password })
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Please fill in all fields')
@@ -139,7 +130,12 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
 
   const handleOAuth = async () => {
     setError('')
-    if (googleEnabled !== true) {
+    if (!authProviders.available) {
+      setError(authProviders.message ?? AUTH_SERVICE_UNAVAILABLE_MESSAGE)
+      return
+    }
+
+    if (authProviders.google !== true) {
       setError('Google sign-in is not enabled for this PlotKare environment yet.')
       return
     }
@@ -207,6 +203,13 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
                 {statusMessage}
               </div>
             ) : null}
+            <AuthServiceNotice
+              available={authProviders.available}
+              status={authProviders.status}
+              message={authProviders.message}
+              loading={authProviders.loading}
+              onRetry={authProviders.refresh}
+            />
 
             <PremiumInput
               id="login-email"
@@ -253,9 +256,15 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
               type="submit"
               fullWidth
               loading={isSigningIn}
-              disabled={isSigningIn}
+              disabled={isSigningIn || !authProviders.available}
             >
-              {isOpeningWorkspace ? 'Opening workspace...' : isSigningIn ? 'Signing In...' : 'Sign In'}
+              {!authProviders.available
+                ? 'Service unavailable'
+                : isOpeningWorkspace
+                  ? 'Opening workspace...'
+                  : isSigningIn
+                    ? 'Signing In...'
+                    : 'Sign In'}
             </PremiumButton>
           </form>
 
@@ -269,19 +278,21 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
             variant="secondary"
             onClick={handleOAuth}
             fullWidth
-            disabled={isSigningIn || googleEnabled !== true}
-            aria-describedby={googleEnabled === false ? 'google-login-status' : undefined}
+            disabled={isSigningIn || authProviders.loading || authProviders.google !== true}
+            aria-describedby={authProviders.google === false ? 'google-login-status' : undefined}
             icon={<span className="font-bold text-[#8B1538]">G</span>}
           >
-            {googleEnabled === null
+            {authProviders.loading
               ? 'Checking Google sign-in...'
-              : googleEnabled
+              : authProviders.google
                 ? 'Continue with Google'
                 : 'Google sign-in unavailable'}
           </PremiumButton>
-          {googleEnabled === false ? (
+          {authProviders.google === false ? (
             <p id="google-login-status" role="status" aria-live="polite" className="mt-3 text-center text-xs text-[#6B7280]">
-              Google sign-in is not enabled for this environment. Email and password sign-in remains available.
+              {authProviders.available
+                ? 'Google sign-in is not enabled for this environment. Email and password sign-in remains available.'
+                : 'Google sign-in will remain unavailable until the authentication service is reachable.'}
             </p>
           ) : null}
 
