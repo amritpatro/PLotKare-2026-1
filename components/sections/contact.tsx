@@ -122,7 +122,7 @@ export function ContactSection({
                 prefetch={false}
                 className="premium-button-outline inline-flex rounded-sm border border-foreground px-6 py-3 font-sans text-sm font-medium text-foreground transition-colors hover:bg-foreground hover:text-background"
               >
-                Open 3D demo
+                View 3D plot demo
               </Link>
             </div>
           </div>
@@ -139,7 +139,7 @@ export function ContactSection({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="font-serif text-xl font-semibold text-foreground">Thanks — we received your note</h3>
+                <h3 className="font-serif text-xl font-semibold text-foreground">Thanks, we received your note</h3>
                 <p className="mt-2 font-sans text-sm text-muted-foreground">
                   Our team will review it and get back to you shortly.
                 </p>

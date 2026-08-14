@@ -1,22 +1,5 @@
 import { BODUVALASA_LAYOUT } from '@/lib/boduvalasa-layout'
 
-const OWNER_NAMES = [
-  'Ravi Kumar',
-  'Ananya Rao',
-  'Suresh Varma',
-  'Meera Iyer',
-  'Kiran Reddy',
-  'Priya Menon',
-  'Arjun Naidu',
-  'Lakshmi Devi',
-  'Vikram Shah',
-  'Nisha Patel',
-  'Harish Gupta',
-  'Deepa Singh',
-]
-
-const STATUS = ['Owner verified', 'Boundary check due', 'Document review', 'Inspection active']
-
 type MappedPlotMark = {
   n: number
   x: number
@@ -70,10 +53,10 @@ export function getPlotProfile(plotNumber: number) {
 
   return {
     plotNumber,
-    ownerName: OWNER_NAMES[plotNumber % OWNER_NAMES.length],
+    ownerName: 'Private owner record',
     facing,
     roadAccess,
     extent: extent ? `${extent.toLocaleString('en-IN')} sq yards` : 'Survey extent pending',
-    status: STATUS[plotNumber % STATUS.length],
+    status: 'Source layout mapped',
   }
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Navigation } from '@/components/navigation'
 import { FloatingContactCta } from '@/components/floating-contact-cta'
 import { HeroSection } from '@/components/sections/hero'
+import { EvidenceStorySection } from '@/components/sections/evidence-story'
 import { ProblemSection } from '@/components/sections/problem'
 import { ServicesSection } from '@/components/sections/services'
 import { HowItWorksSection } from '@/components/sections/how-it-works'
@@ -69,6 +70,7 @@ export default async function HomePage() {
           label: 'Explore plot management in Visakhapatnam',
         }}
       />
+      <EvidenceStorySection />
       <ServicesSection />
       <ProblemSection />
       <HowItWorksSection />

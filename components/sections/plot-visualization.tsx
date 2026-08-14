@@ -1,6 +1,6 @@
 'use client'
 
-import { Compass, Route, Ruler, ShieldCheck, UserRound } from 'lucide-react'
+import { Compass, FileLock2, Route, Ruler, ShieldCheck } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
@@ -77,7 +77,7 @@ export function PlotVisualizationSection({
               </div>
               <dl className="mt-5 grid gap-4 sm:grid-cols-2">
                 {[
-                  { label: 'Owner Name', value: selectedProfile?.ownerName ?? 'Mapped record pending', icon: UserRound },
+                  { label: 'Owner record', value: 'Private in dashboard', icon: FileLock2 },
                   { label: 'Facing', value: selectedProfile?.facing ?? 'Mapped record pending', icon: Compass },
                   { label: 'Road Access', value: selectedProfile?.roadAccess ?? 'Mapped record pending', icon: Route },
                   { label: 'Plot Size', value: selectedProfile?.extent ?? 'Mapped record pending', icon: Ruler },
@@ -117,7 +117,7 @@ export function PlotVisualizationSection({
           <div className="space-y-6">
             <div className="relative">
               <div className="absolute inset-x-8 -bottom-5 h-10 rounded-full bg-black/15 blur-xl" />
-              <div className="premium-surface-dark relative h-[560px] overflow-hidden rounded-xl border border-foreground/10 bg-[#151515] p-3 shadow-2xl">
+              <div className="premium-surface-dark relative h-[560px] overflow-hidden rounded-xl border border-foreground/10 bg-darker p-3 shadow-2xl">
                 <Image
                   src={withBasePath('/images/boduvalasa-layout-preview.webp')}
                   alt="Source-mapped Boduvalasa layout preview with real plot geometry and roads"

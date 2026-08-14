@@ -22,7 +22,7 @@ const plans: Plan[] = [
     features: [
       { text: 'Scheduled field inspection', included: true },
       { text: 'Boundary photo evidence', included: true },
-      { text: 'WhatsApp report delivery', included: true },
+      { text: 'Report delivery to registered contact', included: true },
       { text: 'Plot status indicator', included: true },
       { text: 'Legal hygiene workflow', included: false },
       { text: 'Document vault', included: false },
