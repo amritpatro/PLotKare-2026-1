@@ -21,6 +21,9 @@ import {
   unsaveListing,
 } from '@/app/customer/actions'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
+import { DashboardSectionHeader, DashboardStatCard } from '@/components/dashboard/dashboard-primitives'
+import { ValueSnapshotChart } from '@/components/dashboard/value-snapshot-chart'
+import { ListingImage } from '@/components/listings/listing-image'
 import { PlotKareVerifiedStamp } from '@/components/plotkare-verified-stamp'
 import { linkedPropertyFrom } from '@/lib/customer-workspace/data'
 import StatusBadge from '@/components/ui/status-badge'
@@ -32,8 +35,7 @@ import type {
   SiteVisitRequest,
 } from '@/lib/customer-workspace/types'
 
-const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
-const subtleCardClass = 'rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] p-4'
+const cardClass = 'dashboard-card rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass =
   'w-full rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
 const labelClass = 'mb-2 block font-mono text-[10px] uppercase tracking-[0.16em] text-[#6B7280]'
@@ -80,13 +82,17 @@ function formatMoneyLakhs(value: number | null | undefined) {
   return `₹${value.toLocaleString('en-IN')}L`
 }
 
+function formatRecordedLakhs(value: number) {
+  return `₹${value.toLocaleString('en-IN')}L`
+}
+
 function statusLabel(value: string | null | undefined) {
   return value ? value.replace(/_/g, ' ') : 'pending'
 }
 
 function EmptyState({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-[#D1D5DB] bg-[#F9FAFB] p-6 text-sm">
+    <div className="dashboard-empty rounded-xl border border-dashed border-[#D1D5DB] bg-[#F9FAFB] p-6 text-sm">
       <p className="font-semibold text-[#1F2937]">{title}</p>
       <p className="mt-2 leading-6 text-[#6B7280]">{body}</p>
     </div>
@@ -170,6 +176,79 @@ function ProfileCompletionPrompt({ data }: { data: CustomerWorkspaceData }) {
           ))}
         </div>
       ) : null}
+    </section>
+  )
+}
+
+function PropertyValueSnapshot({ data }: { data: CustomerWorkspaceData }) {
+  const recordedValues = data.linkedPropertyValues.filter(
+    (value) => value.purchase_price_lakhs > 0 || value.current_value_lakhs > 0,
+  )
+  const purchaseTotal = recordedValues.reduce((total, value) => total + value.purchase_price_lakhs, 0)
+  const currentTotal = recordedValues.reduce((total, value) => total + value.current_value_lakhs, 0)
+  const hasComparableValues = purchaseTotal > 0 && currentTotal > 0
+  const difference = hasComparableValues ? currentTotal - purchaseTotal : null
+  const percentage = difference != null && purchaseTotal > 0 ? (difference / purchaseTotal) * 100 : null
+
+  return (
+    <section id="value-snapshot" className="dashboard-card dashboard-glass rounded-2xl p-6 md:p-7">
+      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#C9A962]">Recorded value</p>
+          <h2 className="mt-2 font-serif text-3xl font-semibold text-[#1F2937]">Your property value snapshot</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6B7280]">
+            A transparent comparison of values already recorded against your linked plots. It is not a price forecast or a market promise.
+          </p>
+        </div>
+        <span className="dashboard-status-badge border-[#E8D8A8] bg-[#FFF8E1] text-[#8A6D1D]">Live account records</span>
+      </div>
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(17rem,0.75fr)]">
+        <div className="rounded-xl border border-[#E5E7EB] bg-white/85 p-4 sm:p-5">
+          <ValueSnapshotChart values={data.linkedPropertyValues} />
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+              <p className={labelClass}>Recorded purchase</p>
+              <p className="mt-2 font-mono text-lg font-bold text-[#1F2937]">{purchaseTotal ? formatRecordedLakhs(purchaseTotal) : 'Pending'}</p>
+            </div>
+            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+              <p className={labelClass}>Recorded current</p>
+              <p className="mt-2 font-mono text-lg font-bold text-[#C0392B]">{currentTotal ? formatRecordedLakhs(currentTotal) : 'Pending'}</p>
+            </div>
+            <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+              <p className={labelClass}>Recorded change</p>
+              <p className={`mt-2 font-mono text-lg font-bold ${difference == null ? 'text-[#6B7280]' : difference >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                {difference == null ? 'Pending' : `${difference >= 0 ? '+' : ''}${formatRecordedLakhs(difference)}`}
+              </p>
+              {percentage != null ? <p className="mt-1 text-xs text-[#6B7280]">{percentage >= 0 ? '+' : ''}{percentage.toFixed(1)}% from recorded purchase</p> : null}
+            </div>
+          </div>
+        </div>
+
+        <aside className="rounded-xl border border-[#E5E7EB] bg-white/85 p-5">
+          <p className={labelClass}>Linked property records</p>
+          <div className="mt-4 space-y-3">
+            {data.linkedPropertyValues.length === 0 ? (
+              <p className="text-sm leading-6 text-[#6B7280]">Link a property to your customer record before value information can appear here.</p>
+            ) : null}
+            {data.linkedPropertyValues.slice(0, 5).map((value) => {
+              const lastRecorded = value.updated_at ? formatDate(value.updated_at) : 'Update pending'
+              const label = value.property_title || value.plot_number || 'Linked property'
+              return (
+                <div key={value.id} className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-4 py-3">
+                  <p className="font-semibold text-[#1F2937]">{label}</p>
+                  <p className="mt-1 text-xs text-[#6B7280]">
+                    {value.plot_number ? `${value.plot_number} · ` : ''}Last recorded {lastRecorded}
+                  </p>
+                  <p className="mt-2 font-mono text-sm font-semibold text-[#C0392B]">
+                    {value.current_value_lakhs > 0 ? formatRecordedLakhs(value.current_value_lakhs) : 'Current value pending'}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        </aside>
+      </div>
     </section>
   )
 }
@@ -260,7 +339,16 @@ function BrowseListingsSection({ data }: { data: CustomerWorkspaceData }) {
           </div>
         ) : null}
         {data.listings.map((listing) => (
-          <article key={listing.id} className={subtleCardClass}>
+          <article key={listing.id} className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-[#F9FAFB]">
+            <div className="relative aspect-[16/8] overflow-hidden border-b border-[#E5E7EB] bg-[#F3F4F6]">
+              <ListingImage
+                imageUrl={listing.image_path || '/images/listings/property-photo-pending.png'}
+                alt={listing.image_path ? `${listing.location} property photograph` : 'Property photograph pending verification'}
+                sizes="(max-width: 1280px) 100vw, 42vw"
+                className="object-cover transition duration-500 hover:scale-[1.02]"
+              />
+            </div>
+            <div className="p-4">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
               <div>
                 <p className="font-mono text-xs uppercase tracking-[0.16em] text-[#C0392B]">{listing.plot_number}</p>
@@ -288,6 +376,7 @@ function BrowseListingsSection({ data }: { data: CustomerWorkspaceData }) {
               </div>
             </dl>
             <ListingActions listing={listing} saved={savedIds.has(listing.id)} readiness={readiness} />
+            </div>
           </article>
         ))}
       </div>
@@ -345,7 +434,7 @@ function TimelineList({
       {rows.length === 0 ? <EmptyState title={emptyTitle} body={emptyBody} /> : null}
       {rows.map((row) => {
       const listing = listingsById.get(row.listing_id)
-      const preferredDate = (row as any).preferred_date ?? (row as any).scheduled_for ?? null
+      const preferredDate = 'preferred_date' in row ? row.preferred_date : null
       const note = 'message' in row ? row.message : row.notes
         return (
           <div key={row.id} className="py-4">
@@ -380,7 +469,7 @@ export function CustomerWorkspace({ data, profileLabel, successCode, errorCode }
 
   return (
     <section className="space-y-8">
-      <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] md:p-8">
+      <div className="dashboard-card dashboard-glass rounded-2xl p-6 md:p-8">
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#C9A962]">Customer marketplace workspace</p>
@@ -390,11 +479,11 @@ export function CustomerWorkspace({ data, profileLabel, successCode, errorCode }
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[360px]">
-            <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-5 py-4">
+            <div className="dashboard-glass rounded-xl px-5 py-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#9CA3AF]">KYC status</p>
               <p className="mt-2 font-sans text-lg font-semibold capitalize text-[#C0392B]">{statusLabel(kycStatus)}</p>
             </div>
-            <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-5 py-4">
+            <div className="dashboard-glass rounded-xl px-5 py-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#9CA3AF]">Buyer budget</p>
               <p className="mt-2 font-sans text-lg font-semibold text-[#1F2937]">{budgetLabel}</p>
             </div>
@@ -418,15 +507,16 @@ export function CustomerWorkspace({ data, profileLabel, successCode, errorCode }
 
       <ProfileCompletionPrompt data={data} />
 
-      <section className="grid gap-4 md:grid-cols-4" id="overview">
+      <section className="dashboard-page-header" id="overview">
+        <DashboardSectionHeader eyebrow="Buyer pulse" title="Your property activity at a glance" description="Shortlist, conversations, and linked records stay together before you move into the detailed workspace sections." />
+        <div className="mt-5 grid gap-4 md:grid-cols-4">
         {overviewStats.map(({ label, value, Icon }) => (
-          <div key={label} className={cardClass}>
-            <Icon className="h-5 w-5 text-[#C0392B]" />
-            <p className="mt-4 font-mono text-xs uppercase tracking-[0.16em] text-[#6B7280]">{label}</p>
-            <p className="mt-3 font-mono text-3xl font-bold text-[#1F2937]">{value}</p>
-          </div>
+          <DashboardStatCard key={label} label={label} value={value} description="Live account record" icon={<Icon className="h-4 w-4" />} />
         ))}
+        </div>
       </section>
+
+      <PropertyValueSnapshot data={data} />
 
       <BrowseListingsSection data={data} />
 

@@ -101,11 +101,13 @@ export function LivePlotMap({ target, current, distanceMeters, arrivalStatus, ac
   useEffect(() => {
     if (!containerRef.current || !targetPoint) return
     let cancelled = false
+    let resizeFrame: number | null = null
+    let map: Leaflet.Map | null = null
     ensureLeaflet()
       .then((L) => {
         if (cancelled || !containerRef.current) return
         leafletRef.current = L
-        const map = L.map(containerRef.current, {
+        map = L.map(containerRef.current, {
           center: targetPoint,
           zoom: 17,
           zoomControl: true,
@@ -127,16 +129,21 @@ export function LivePlotMap({ target, current, distanceMeters, arrivalStatus, ac
           fillColor: '#C0392B',
           fillOpacity: 0.08,
         }).addTo(map)
-        mapRef.current = map
+        const activeMap = map
+        mapRef.current = activeMap
         setReady(true)
-        requestAnimationFrame(() => map.invalidateSize())
+        resizeFrame = requestAnimationFrame(() => {
+          if (!cancelled && mapRef.current === activeMap) activeMap.invalidateSize()
+        })
       })
       .catch((error) => setLoadError(error instanceof Error ? error.message : 'Map failed to load.'))
 
     return () => {
       cancelled = true
-      mapRef.current?.remove()
-      mapRef.current = null
+      if (resizeFrame != null) cancelAnimationFrame(resizeFrame)
+      map?.stop()
+      map?.remove()
+      if (mapRef.current === map) mapRef.current = null
       layersRef.current = {}
       setReady(false)
     }
@@ -145,6 +152,7 @@ export function LivePlotMap({ target, current, distanceMeters, arrivalStatus, ac
   useEffect(() => {
     if (!ready || !mapRef.current || !leafletRef.current || !targetPoint) return
     const L = leafletRef.current
+    const map = mapRef.current
     layersRef.current.plot?.setLatLng(targetPoint)
     layersRef.current.radius?.setLatLng(targetPoint)
     layersRef.current.radius?.setRadius(50)
@@ -153,7 +161,7 @@ export function LivePlotMap({ target, current, distanceMeters, arrivalStatus, ac
       if (layersRef.current.agent) {
         layersRef.current.agent.setLatLng(currentPoint)
       } else {
-        layersRef.current.agent = L.marker(currentPoint, { icon: L.divIcon(markerIcon('agent')) }).addTo(mapRef.current)
+        layersRef.current.agent = L.marker(currentPoint, { icon: L.divIcon(markerIcon('agent')) }).addTo(map)
       }
       if (layersRef.current.line) {
         layersRef.current.line.setLatLngs([targetPoint, currentPoint])
@@ -163,9 +171,9 @@ export function LivePlotMap({ target, current, distanceMeters, arrivalStatus, ac
           weight: 3,
           opacity: 0.72,
           dashArray: '8 8',
-        }).addTo(mapRef.current)
+        }).addTo(map)
       }
-      mapRef.current.fitBounds([targetPoint, currentPoint], { padding: [48, 48], maxZoom: 18 })
+      map.fitBounds([targetPoint, currentPoint], { padding: [48, 48], maxZoom: 18 })
     } else {
       layersRef.current.agent?.remove()
       layersRef.current.line?.remove()
@@ -173,9 +181,12 @@ export function LivePlotMap({ target, current, distanceMeters, arrivalStatus, ac
       layersRef.current.agent = undefined
       layersRef.current.line = undefined
       layersRef.current.route = undefined
-      mapRef.current.setView(targetPoint, 17)
+      map.setView(targetPoint, 17)
     }
-    requestAnimationFrame(() => mapRef.current?.invalidateSize())
+    const resizeFrame = requestAnimationFrame(() => {
+      if (mapRef.current === map) map.invalidateSize()
+    })
+    return () => cancelAnimationFrame(resizeFrame)
   }, [ready, targetPoint, currentPoint])
 
   useEffect(() => {

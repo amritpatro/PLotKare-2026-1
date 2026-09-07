@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { CalendarClock, CheckCircle2, MapPin, Navigation, TimerReset } from 'lucide-react'
 import { AgentShell } from '@/components/agent/agent-shell'
+import { DashboardSectionHeader, DashboardStatCard } from '@/components/dashboard/dashboard-primitives'
 import { requireFieldAgentPage } from '@/lib/agent/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 
@@ -62,12 +63,27 @@ export default async function AgentHomePage() {
     .limit(20)
 
   const assignments = ((data ?? []) as AssignmentRow[]).sort((a, b) => Number(isToday(b.scheduled_for)) - Number(isToday(a.scheduled_for)))
+  const todaysAssignments = assignments.filter((item) => isToday(item.scheduled_for)).length
+  const needsVerification = assignments.filter((item) => {
+    const plot = first(item.plots)
+    return plot?.location_status !== 'verified' || item.target_latitude == null || item.target_longitude == null
+  }).length
+  const inProgress = assignments.filter((item) => item.status === 'in_progress').length
 
   return (
     <AgentShell title="Today's assigned plots" subtitle="Open the plot packet before travel, then capture GPS, photos, checklist, documents, amenities, and sync when signal returns.">
       <section className="grid gap-3">
+        <section className="dashboard-page-header">
+          <DashboardSectionHeader eyebrow="Field pulse" title="Travel readiness" description="The assignment packet below is the source of truth for today’s route and inspection work." />
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <DashboardStatCard label="Today" value={todaysAssignments} description="Scheduled field visits" icon={<CalendarClock className="h-4 w-4" />} />
+            <DashboardStatCard label="Needs verification" value={needsVerification} description="GPS target not ready" icon={<MapPin className="h-4 w-4" />} />
+            <DashboardStatCard label="In progress" value={inProgress} description="Packets currently open" icon={<Navigation className="h-4 w-4" />} />
+          </div>
+        </section>
+        <DashboardSectionHeader eyebrow="Assigned work" title="Open inspection packets" description="Open a packet to navigate, prove arrival, capture evidence, and submit the report." />
         {assignments.length === 0 ? (
-          <div className="rounded-xl border border-[#E5E7EB] bg-white p-6 text-center shadow-sm">
+          <div className="dashboard-empty dashboard-card rounded-xl border border-[#E5E7EB] bg-white p-6 text-center shadow-sm">
             <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" />
             <h2 className="mt-3 text-lg font-semibold">No active field assignments</h2>
             <p className="mt-2 text-sm text-[#6B7280]">New inspections assigned by admin will appear here automatically when you refresh or reopen the portal.</p>
@@ -80,7 +96,7 @@ export default async function AgentHomePage() {
           const hasCoordinates = plot?.location_status === 'verified' && item.target_latitude != null && item.target_longitude != null
 
           return (
-            <article key={item.id} className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+            <article key={item.id} className="dashboard-card dashboard-interactive rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#B45309]">{plot?.plot_number || item.id.slice(0, 8)}</p>

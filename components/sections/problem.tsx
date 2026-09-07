@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { SectionKicker } from '@/components/section-kicker'
 
 const painPoints = [
   {
@@ -46,7 +47,7 @@ const painPoints = [
 ]
 
 export function ProblemSection({
-  heading = 'Why Vacant Plots Need Active Monitoring',
+  heading = 'Why do vacant plots need active monitoring?',
   introduction = 'Distance is only part of the risk. Owners need current records of what is happening on the ground, in documents, and through each property workflow.',
 }: {
   heading?: string
@@ -59,6 +60,7 @@ export function ProblemSection({
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,0.86fr)_minmax(520px,1.14fr)] lg:items-center lg:gap-14">
           <div>
+            <SectionKicker label="Monitoring intelligence" dark />
             <h2 className="font-serif text-4xl font-bold leading-tight text-white md:text-5xl">
               {heading}
             </h2>

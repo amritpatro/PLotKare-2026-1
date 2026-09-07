@@ -9,6 +9,26 @@ import {
 import { customerTypeFromSlug, getMaxSteps } from '@/lib/onboarding/types'
 import type { CustomerType } from '@/lib/onboarding/types'
 
+function formatOnboardingError(error: unknown) {
+  if (!(error instanceof Error)) return 'Failed to save this step.'
+
+  const details = (error as Error & { details?: unknown }).details
+  if (details && typeof details === 'object' && 'fieldErrors' in details) {
+    const fieldErrors = (details as { fieldErrors?: unknown }).fieldErrors
+    if (fieldErrors && typeof fieldErrors === 'object') {
+      const messages = Object.entries(fieldErrors as Record<string, unknown>)
+        .flatMap(([field, value]) => {
+          const labels = Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+          return labels.length ? labels.map((message) => `${field.replaceAll('_', ' ')}: ${message}`) : []
+        })
+        .slice(0, 3)
+      if (messages.length) return messages.join(' · ')
+    }
+  }
+
+  return error.message || 'Failed to save this step.'
+}
+
 export function useOnboarding(customerSlug: string) {
   const customerType = customerTypeFromSlug(customerSlug)
   const [currentStep, setCurrentStep] = useState(1)
@@ -89,7 +109,7 @@ export function useOnboarding(customerSlug: string) {
       }
       return true
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save step.')
+      setError(formatOnboardingError(err))
       return false
     } finally {
       setSubmitting(false)

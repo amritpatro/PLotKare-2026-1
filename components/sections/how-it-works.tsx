@@ -18,7 +18,7 @@ const steps = [
 
 export function HowItWorksSection({
   heading = 'What you receive after',
-  highlightedHeading = 'every visit',
+  highlightedHeading = 'every visit?',
 }: {
   heading?: string
   highlightedHeading?: string
@@ -28,6 +28,7 @@ export function HowItWorksSection({
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         {/* Header */}
         <div className="premium-reveal mb-12 max-w-2xl">
+          <p className="mb-4 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">Inspection output</p>
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
             {heading} <span className="text-primary">{highlightedHeading}</span>
           </h2>

@@ -139,7 +139,7 @@ export default async function VisakhapatnamPage() {
         primaryLabel="See Real Plot Layout"
         secondaryLabel="Register Your Plot"
         supportingLink={{ href: '/', label: 'Explore PlotKare plot management services across India' }}
-        quickAnswer="PlotKare provides plot management services in Visakhapatnam covering monthly field inspections with geotagged boundary photos, encroachment alerts, EC certificate renewal tracking, and a verified property marketplace. Owners in Bheemunipatnam, Kommadi, Madhurawada, Rushikonda, and surrounding corridors receive a PDF and WhatsApp report every inspection cycle. A free consultation call confirms scope and pricing before any service begins."
+        quickAnswer="Monthly inspections, geotagged evidence, document tracking, and issue visibility for Visakhapatnam plot owners. Scope and pricing are confirmed in a free consultation."
       />
       <TrustStrip />
       <ProblemSection

@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { SectionKicker } from '@/components/section-kicker'
 
 type Category = 'All' | 'Income Generation' | 'Protection' | 'Development'
 
@@ -86,6 +87,7 @@ export function LandUtilisationSection({
     <section className="premium-section bg-white py-20 lg:py-28">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <div className="premium-reveal mb-10">
+          <SectionKicker label="Optional property services" />
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
             {heading} <span className="text-primary">{accentedHeading}</span>
           </h2>

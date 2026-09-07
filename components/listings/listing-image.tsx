@@ -15,11 +15,13 @@ export function ListingImage({
   alt,
   sizes,
   className,
+  priority = false,
 }: {
   imageUrl: string
   alt: string
   sizes: string
   className?: string
+  priority?: boolean
 }) {
   const [failed, setFailed] = useState(false)
 
@@ -29,6 +31,7 @@ export function ListingImage({
         src={failed ? withBasePath(PHOTO_PENDING_FALLBACK) : resolveImageUrl(imageUrl)}
         alt={failed ? 'Property photograph pending verification' : alt}
         fill
+        priority={priority}
         className={className}
         sizes={sizes}
         onError={() => setFailed(true)}

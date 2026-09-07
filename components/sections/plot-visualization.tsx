@@ -1,36 +1,31 @@
 'use client'
 
-import { Compass, FileLock2, Route, Ruler, ShieldCheck } from 'lucide-react'
+import { Compass, FileLock2, MapPinned, Route, ShieldCheck } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
-import { BODUVALASA_LAYOUT } from '@/lib/boduvalasa-layout'
-import { getMappedPlotNumbers, getPlotProfile } from '@/lib/plot-profile'
+import { useState } from 'react'
 import { withBasePath } from '@/lib/site-config'
 
-const stats = [
-  { label: 'Total plots', value: String(BODUVALASA_LAYOUT.plotCount) },
-  { label: 'Total area', value: BODUVALASA_LAYOUT.totalArea },
-  { label: 'Road area', value: BODUVALASA_LAYOUT.roadArea },
-  { label: 'Plotted area', value: BODUVALASA_LAYOUT.plottedArea },
-]
-
-const mappedPlotNumbers = new Set<number>(getMappedPlotNumbers())
-const quickPlots = [18, 35, 54, 72, 90, 108, 118, 121, 122].filter((plot) => mappedPlotNumbers.has(plot))
+const recordViews = [
+  { id: 'location', label: 'Location', value: 'Pin and landmark review', icon: MapPinned },
+  { id: 'access', label: 'Access', value: 'Approach-road context', icon: Route },
+  { id: 'evidence', label: 'Evidence', value: 'Geotagged photo record', icon: FileLock2 },
+  { id: 'review', label: 'Review', value: 'Current status and next action', icon: ShieldCheck },
+] as const
 
 export function PlotVisualizationSection({
   sectionId = 'plot-layout',
-  heading = 'Real Plot Layout:',
-  accentHeading = '3D Property File for Every Owner',
-  description = 'Source-mapped layout geometry, road linework, plot counts, and area data form an owner-facing digital snapshot with facing, access, size, and current review status.',
+  heading = 'Property File Preview:',
+  accentHeading = 'A Clearer Record for Every Owner',
+  description = 'An illustrative preview of how PlotKare brings location, access, evidence, and review status into one private property record.',
 }: {
   sectionId?: string | null
   heading?: string
   accentHeading?: string
   description?: string
 }) {
-  const [selectedPlot, setSelectedPlot] = useState(54)
-  const selectedProfile = useMemo(() => getPlotProfile(selectedPlot), [selectedPlot])
+  const [activeRecord, setActiveRecord] = useState<(typeof recordViews)[number]['id']>('location')
+  const selectedRecord = recordViews.find((item) => item.id === activeRecord) ?? recordViews[0]
 
   return (
     <section id={sectionId ?? undefined} className="premium-section bg-secondary py-24 lg:py-32">
@@ -64,11 +59,11 @@ export function PlotVisualizationSection({
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="mb-2 inline-flex rounded-full border border-primary/20 bg-primary/10 px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-wide text-primary">
-                    PLOTKARE VERIFIED
+                    PROPERTY FILE PREVIEW
                   </p>
-                  <p className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">Selected plot</p>
+                  <p className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">Selected record layer</p>
                   <h3 className="mt-1 font-serif text-3xl font-bold text-primary">
-                    Plot {selectedProfile?.plotNumber ?? selectedPlot}
+                    {selectedRecord.label}
                   </h3>
                 </div>
                 <div className="rounded-full border border-primary/20 bg-primary/10 p-3 text-primary">
@@ -76,13 +71,7 @@ export function PlotVisualizationSection({
                 </div>
               </div>
               <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-                {[
-                  { label: 'Owner record', value: 'Private in dashboard', icon: FileLock2 },
-                  { label: 'Facing', value: selectedProfile?.facing ?? 'Mapped record pending', icon: Compass },
-                  { label: 'Road Access', value: selectedProfile?.roadAccess ?? 'Mapped record pending', icon: Route },
-                  { label: 'Plot Size', value: selectedProfile?.extent ?? 'Mapped record pending', icon: Ruler },
-                  { label: 'Status', value: selectedProfile?.status ?? 'Mapped record pending', icon: ShieldCheck },
-                ].map((item) => {
+                {recordViews.map((item) => {
                   const Icon = item.icon
                   return (
                     <div key={item.label} className="rounded-sm border border-border bg-secondary/60 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
@@ -96,18 +85,18 @@ export function PlotVisualizationSection({
                 })}
               </dl>
               <div className="mt-5 flex flex-wrap gap-2">
-                {quickPlots.map((plot) => (
+                {recordViews.map((view) => (
                   <button
-                    key={plot}
+                    key={view.id}
                     type="button"
-                    onClick={() => setSelectedPlot(plot)}
+                    onClick={() => setActiveRecord(view.id)}
                     className={`premium-interactive rounded-sm border px-3 py-2 font-mono text-xs transition-colors ${
-                      selectedPlot === plot
+                      activeRecord === view.id
                         ? 'border-primary bg-primary text-white'
                         : 'border-border bg-white text-muted-foreground'
                     }`}
                   >
-                    {plot}
+                    {view.label}
                   </button>
                 ))}
               </div>
@@ -119,8 +108,8 @@ export function PlotVisualizationSection({
               <div className="absolute inset-x-8 -bottom-5 h-10 rounded-full bg-black/15 blur-xl" />
               <div className="premium-surface-dark relative h-[560px] overflow-hidden rounded-xl border border-foreground/10 bg-darker p-3 shadow-2xl">
                 <Image
-                  src={withBasePath('/images/boduvalasa-layout-preview.webp')}
-                  alt="Source-mapped Boduvalasa layout preview with real plot geometry and roads"
+                  src={withBasePath('/images/property-file-cover.webp')}
+                  alt="Illustrative cadastral property-file preview with a selected parcel, road context, and compass"
                   fill
                   sizes="(max-width: 1024px) 100vw, 52vw"
                   loading="lazy"
@@ -128,7 +117,7 @@ export function PlotVisualizationSection({
                 />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-6 pb-6 pt-20">
                   <p className="max-w-md font-sans text-sm leading-relaxed text-white/75">
-                    Open the source-mapped layout to inspect plots, roads, compass direction, and plot-level records.
+                    A visual guide to the kind of property context an owner can review privately: location, boundaries, approach roads, and evidence.
                   </p>
                   <Link
                     href="/demo/layout-3d/"
@@ -141,7 +130,7 @@ export function PlotVisualizationSection({
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
-              {stats.map((item) => (
+              {recordViews.map((item) => (
                 <div key={item.label} className="premium-surface rounded-lg border border-border bg-white p-4">
                   <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">{item.label}</p>
                   <p className="mt-1 font-sans text-sm font-semibold text-foreground">{item.value}</p>

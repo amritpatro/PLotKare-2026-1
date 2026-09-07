@@ -77,7 +77,15 @@ export async function POST(request: NextRequest) {
     return response(request, { error: 'We could not create the account right now. Please try again later.' }, 503)
   }
 
-  if (data.user) {
+  // Supabase intentionally returns an obfuscated user with no identities for an
+  // already-registered email. Never bootstrap that user: a repeat signup must
+  // not be able to change an existing account's role or onboarding state.
+  const createdNewAuthUser = Boolean(
+    data.user && (Boolean(data.session) || (data.user.identities?.length ?? 0) > 0),
+  )
+  let workspacePreparationPending = false
+
+  if (createdNewAuthUser && data.user) {
     try {
       await ensureAuthProfile({
         userId: data.user.id,
@@ -86,6 +94,9 @@ export async function POST(request: NextRequest) {
         customerType: parsed.data.customerType,
       })
     } catch (profileError) {
+      // Authentication already succeeded. Let confirmation/first sign-in retry
+      // the idempotent profile bootstrap instead of reporting a false signup failure.
+      workspacePreparationPending = true
       await recordAuditLog({
         actorId: data.user.id,
         action: 'auth.signup_profile_bootstrap_failed',
@@ -97,29 +108,28 @@ export async function POST(request: NextRequest) {
           reason: profileError instanceof Error ? profileError.name : 'unknown',
         },
       })
-      return response(
-        request,
-        { error: 'Your account was created, but the workspace profile is not ready yet. Please contact support.' },
-        500,
-      )
     }
   }
 
   await recordAuditLog({
-    actorId: data.user?.id ?? null,
+    actorId: createdNewAuthUser ? data.user?.id ?? null : null,
     action: 'auth.signup_requested',
     entityType: 'auth_session',
-    entityId: data.user?.id ?? null,
+    entityId: createdNewAuthUser ? data.user?.id ?? null : null,
     metadata: {
       email: parsed.data.email,
       customer_type: parsed.data.customerType,
-      awaiting_email_confirmation: Boolean(data.user && !data.session),
+      awaiting_email_confirmation: Boolean(!data.session),
+      workspace_preparation_pending: workspacePreparationPending,
     },
   })
 
   const result = response(request, {
-    sessionCreated: Boolean(data.session && data.user),
-    awaitingEmailConfirmation: Boolean(data.user && !data.session),
+    sessionCreated: Boolean(createdNewAuthUser && data.session),
+    // Keep this generic when confirmation is enabled so signup cannot reveal
+    // whether an email address already belongs to an account.
+    awaitingEmailConfirmation: Boolean(!data.session),
+    workspacePreparationPending,
     destination: onboardingPath,
   })
   cookiesToSet.forEach(({ name, value, options }) => result.cookies.set(name, value, options))

@@ -125,9 +125,9 @@ export function RoleDashboardShell({ role, title, subtitle, userLabel, avatarUrl
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB]">
+    <div className="dashboard-shell min-h-screen bg-[#F9FAFB]">
       {userId ? <RoleRealtimeBridge role={role} userId={userId} /> : null}
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-[#E5E7EB] bg-white md:block">
+      <aside className="dashboard-sidebar fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-[#E5E7EB] bg-white/95 backdrop-blur-xl md:block">
         <div className="flex h-full flex-col">
           <div className="border-b border-[#E5E7EB] px-5 py-5">
             <Link href="/" className="flex items-center gap-2">
@@ -144,19 +144,20 @@ export function RoleDashboardShell({ role, title, subtitle, userLabel, avatarUrl
               {nav.map((item) => {
                 const Icon = item.icon
                 const itemPath = item.href.split('#')[0]
-                const isActive = pathname === itemPath
+                const isActive = itemPath === `/${role}` ? pathname === itemPath : pathname === itemPath || pathname.startsWith(`${itemPath}/`)
 
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    aria-current={isActive ? 'page' : undefined}
                     className={`flex items-center gap-3 rounded-lg border-l-[3px] py-3 pl-[13px] pr-3 font-sans text-sm font-medium transition-colors ${
                       isActive
                         ? 'border-l-[#C0392B] bg-[#FFF1F2] text-[#C0392B]'
                         : 'border-l-transparent text-[#6B7280] hover:bg-[#F9FAFB] hover:text-[#1F2937]'
                     }`}
                   >
-                    <Icon className="h-5 w-5 shrink-0" />
+                    <span className={`dashboard-nav-icon ${isActive ? 'dashboard-nav-icon-active' : ''}`}><Icon className="h-4 w-4 shrink-0" /></span>
                     {item.label}
                   </Link>
                 )
@@ -178,7 +179,7 @@ export function RoleDashboardShell({ role, title, subtitle, userLabel, avatarUrl
         </div>
       </aside>
 
-      <header className="fixed left-0 right-0 top-0 z-30 border-b border-[#E5E7EB] bg-white/95 px-5 py-4 backdrop-blur md:left-64 md:px-8">
+      <header className="dashboard-topbar fixed left-0 right-0 top-0 z-30 border-b border-[#E5E7EB] bg-white/90 px-5 py-4 backdrop-blur-xl md:left-64 md:px-8">
         <div className="flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#C9A962]">{roleLabel[role]}</p>
@@ -186,6 +187,9 @@ export function RoleDashboardShell({ role, title, subtitle, userLabel, avatarUrl
             <p className="hidden max-w-2xl truncate font-sans text-sm text-[#6B7280] lg:block">{subtitle}</p>
           </div>
           <div className="flex items-center gap-3">
+            <span className="dashboard-live-chip hidden lg:inline-flex" role="status">
+              <span className="dashboard-live-dot" aria-hidden="true" /> Session active
+            </span>
             <Avatar className="h-10 w-10 bg-[#C0392B]">
               {resolvedAvatarUrl ? <AvatarImage src={resolvedAvatarUrl} alt={`${userLabel} profile photo`} /> : null}
               <AvatarFallback className="font-mono text-sm font-semibold text-white">{initialsFrom(userLabel)}</AvatarFallback>
@@ -222,24 +226,25 @@ export function RoleDashboardShell({ role, title, subtitle, userLabel, avatarUrl
         </div>
       ) : null}
 
-      <main className="px-4 pb-24 pt-28 md:ml-64 md:px-8 md:pb-12">
+      <main className="dashboard-main px-4 pb-24 pt-28 md:ml-64 md:px-8 md:pb-12">
         <div className="mx-auto max-w-7xl">{children}</div>
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 overflow-x-auto border-t border-[#E5E7EB] bg-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden" aria-label="Mobile workspace sections">
+      <nav className="dashboard-mobile-nav fixed bottom-0 left-0 right-0 z-40 overflow-x-auto border-t border-[#E5E7EB] bg-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden" aria-label="Mobile workspace sections">
         <div className="flex min-w-max">
         {nav.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href
+          const isActive = item.href === `/${role}` ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`)
           return (
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive ? 'page' : undefined}
               className={`flex w-[76px] flex-col items-center gap-1 border-t-2 px-1 py-2 text-[10px] ${
                 isActive ? 'border-[#C0392B] text-[#C0392B]' : 'border-transparent text-[#6B7280]'
               }`}
             >
-              <Icon className="h-4 w-4" />
+              <span className={`dashboard-nav-icon ${isActive ? 'dashboard-nav-icon-active' : ''}`}><Icon className="h-4 w-4" /></span>
               <span className="truncate">{item.label.split(' ')[0]}</span>
             </Link>
           )

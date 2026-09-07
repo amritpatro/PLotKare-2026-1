@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SectionWatermark } from '@/components/SectionWatermark'
 import { HeroMapFrame } from '@/components/sections/hero-map-frame'
 
 const pillars = [
@@ -8,8 +9,8 @@ const pillars = [
 ]
 
 export function HeroSection({
-  heading = 'Land monitoring for plots you cannot visit.',
-  description = 'Verified pins, site evidence, documents, and support in one private property workspace.',
+  heading = 'Plot management and property monitoring services for landowners across India.',
+  description = 'Land monitoring for plots you cannot visit. Verified pins, site evidence, documents, and support in one private property workspace.',
   primaryLabel = 'View 3D Plot Demo',
   secondaryLabel = 'Register My Plot',
   supportingLink,
@@ -28,12 +29,24 @@ export function HeroSection({
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(110deg,var(--secondary)_0%,var(--background)_46%,var(--secondary)_100%)]" />
         <div className="pointer-events-none absolute right-[-12%] top-24 -z-10 hidden h-[72%] w-[62%] rounded-full bg-primary/5 blur-3xl lg:block" />
         <div className="pointer-events-none absolute right-[3%] top-[16%] -z-10 hidden h-[68%] w-[54%] rounded-full bg-[radial-gradient(circle_at_center,rgba(248,246,243,0.92)_0%,rgba(248,246,243,0.58)_42%,rgba(255,255,255,0)_72%)] lg:block" />
+        <SectionWatermark
+          src="/assets/watermarks/watermark-landscape.webp"
+          position="left"
+          scale={1.2}
+          opacity={0.07}
+        />
 
-        <div className="mx-auto grid min-h-[calc(100svh-5rem)] max-w-[1500px] gap-10 px-6 py-12 lg:grid-cols-[minmax(0,0.84fr)_minmax(520px,1.16fr)] lg:items-center lg:px-12 lg:py-16">
+        <div className="relative z-[1] mx-auto grid min-h-[calc(100svh-5rem)] max-w-[1500px] gap-10 px-6 py-12 lg:grid-cols-[minmax(0,0.84fr)_minmax(520px,1.16fr)] lg:items-center lg:px-12 lg:py-16">
           <div className="min-w-0 text-foreground">
             <h1 className="max-w-4xl font-serif text-5xl font-bold leading-[1.02] tracking-tight md:text-6xl xl:text-[4.25rem]">
               {heading}
             </h1>
+
+            {quickAnswer ? (
+              <aside aria-label="PlotKare service summary" className="mt-6 max-w-2xl border-l-2 border-primary bg-secondary/70 px-5 py-4">
+                <p className="font-sans text-sm leading-7 text-muted-foreground md:text-base">{quickAnswer}</p>
+              </aside>
+            ) : null}
 
             <p className="mt-7 max-w-2xl font-sans text-lg leading-relaxed text-muted-foreground md:text-xl">
               {description}
@@ -77,14 +90,6 @@ export function HeroSection({
         </div>
       </section>
 
-      {quickAnswer ? (
-        <aside aria-label="PlotKare service summary" className="border-y border-border bg-secondary/70">
-          <div className="mx-auto flex max-w-[1100px] gap-4 px-6 py-6 lg:px-12">
-            <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
-            <p className="font-sans text-sm leading-7 text-muted-foreground md:text-base">{quickAnswer}</p>
-          </div>
-        </aside>
-      ) : null}
     </>
   )
 }

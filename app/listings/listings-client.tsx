@@ -25,7 +25,7 @@ const FILTERS: ListingFilter[] = [
   'Corner Plots',
 ]
 
-function ListingCard({ plot, onViewDetails }: { plot: PublicPlotListing; onViewDetails: () => void }) {
+function ListingCard({ plot, onViewDetails, priority = false }: { plot: PublicPlotListing; onViewDetails: () => void; priority?: boolean }) {
   const gallery = (plot.imageUrls?.length ? plot.imageUrls : [plot.imageUrl]).slice(0, 4)
   return (
     <article className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
@@ -49,6 +49,7 @@ function ListingCard({ plot, onViewDetails }: { plot: PublicPlotListing; onViewD
             alt={`Listing preview for ${plot.plotNumber}`}
             className="object-cover"
             sizes="(max-width:768px) 100vw, 33vw"
+            priority={priority}
           />
         )}
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
@@ -60,7 +61,7 @@ function ListingCard({ plot, onViewDetails }: { plot: PublicPlotListing; onViewD
       </div>
       <div className="space-y-2 p-5">
         <p className="font-mono text-sm text-primary">{plot.plotNumber}</p>
-        <h3 className="font-serif text-xl font-semibold text-foreground">{plot.location}</h3>
+        <h2 className="font-serif text-xl font-semibold text-foreground">{plot.location}</h2>
         <p className="font-sans text-xs text-muted-foreground">
           {plot.corridor ? `Location / corridor: ${plot.corridor}` : 'Location / corridor verified on request'}
         </p>
@@ -74,7 +75,7 @@ function ListingCard({ plot, onViewDetails }: { plot: PublicPlotListing; onViewD
         <p className="font-sans text-xs text-muted-foreground">
           Seller: {plot.sellerName ?? 'PlotKare Seller'} · {plot.sellerPhone || 'Phone on request'}
         </p>
-        <p className="font-mono text-sm font-bold uppercase tracking-wide text-accent">
+        <p className="font-mono text-sm font-bold uppercase tracking-wide text-primary">
           {plot.priceDisplay || 'Consult for pricing'}
         </p>
         <div className="flex flex-wrap gap-2 pt-2">
@@ -144,7 +145,7 @@ export default function ListingsPageClient({
   const visible = useMemo(() => filterPublicListings(listings, filter), [listings, filter])
 
   return (
-    <div className="min-h-screen bg-secondary pb-20 pt-24">
+      <main className="min-h-screen bg-secondary pb-20 pt-24">
       <div className="mx-auto max-w-[1200px] px-6">
         <p className="font-mono text-sm text-primary">
           <Link href="/" className="hover:underline">
@@ -175,8 +176,8 @@ export default function ListingsPageClient({
         </div>
 
         <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((plot) => (
-            <ListingCard key={plot.id} plot={plot} onViewDetails={() => setDetailPlot(plot)} />
+          {visible.map((plot, index) => (
+            <ListingCard key={plot.id} plot={plot} priority={index === 0} onViewDetails={() => setDetailPlot(plot)} />
           ))}
         </div>
 
@@ -253,7 +254,7 @@ export default function ListingsPageClient({
             </div>
           )}
         </DialogContent>
-      </Dialog>
-    </div>
+        </Dialog>
+      </main>
   )
 }

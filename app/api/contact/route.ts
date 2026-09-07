@@ -4,11 +4,12 @@ import { z } from 'zod'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { isRateLimited } from '@/lib/api/rate-limit'
 import { hasTransactionalEmailConfiguration, sendTransactionalEmail } from '@/lib/email/resend'
+import { humanNameSchema, phoneSchema } from '@/lib/validation/app'
 
 const contactSchema = z.object({
-  name: z.string().trim().min(2).max(120),
+  name: humanNameSchema,
   email: z.string().trim().email().max(180),
-  phone: z.string().trim().max(30).optional().default(''),
+  phone: phoneSchema.optional().default(''),
   message: z.string().trim().min(10).max(4000),
 })
 

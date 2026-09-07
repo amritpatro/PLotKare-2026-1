@@ -34,6 +34,23 @@ function safeCustomerRole(customerType?: CustomerType | null): UserRole {
   return customerType ? customerRoleByType[customerType] : 'user'
 }
 
+async function inferLegacyCustomerType(userId: string): Promise<CustomerType | null> {
+  const admin = createSupabaseAdminClient()
+  const [{ data: owner }, { data: seller }, { data: customer }] = await Promise.all([
+    admin.from('owners').select('id').eq('profile_id', userId).limit(1).maybeSingle(),
+    admin.from('sellers').select('id').eq('profile_id', userId).limit(1).maybeSingle(),
+    admin.from('customers').select('id').eq('profile_id', userId).limit(1).maybeSingle(),
+  ])
+
+  const matches = [
+    owner ? 'land_owner' : null,
+    seller ? 'plot_seller' : null,
+    customer ? 'plot_buyer' : null,
+  ].filter(Boolean) as CustomerType[]
+
+  return matches.length === 1 ? matches[0] : null
+}
+
 async function ensureRoleDetailRecord(input: Required<Pick<ProfileBootstrapInput, 'userId'>> & ProfileBootstrapInput) {
   if (!input.customerType) return
 
@@ -137,16 +154,21 @@ export async function ensureAuthProfile(input: ProfileBootstrapInput) {
 
   const updates: Record<string, unknown> = {}
   const currentRole = isUserRole(existing.role) ? existing.role : 'user'
+  const inferredCustomerType =
+    !customerType && !existing.customer_type && currentRole !== 'admin' && currentRole !== 'employee'
+      ? await inferLegacyCustomerType(input.userId)
+      : null
+  const resolvedCustomerType = customerType ?? existing.customer_type ?? inferredCustomerType
   const nextRole =
     currentRole === 'admin' || currentRole === 'employee'
       ? currentRole
-      : customerType
-      ? selectedRole
+      : resolvedCustomerType
+      ? safeCustomerRole(resolvedCustomerType)
       : currentRole
 
-  if (!existing.customer_type && customerType) updates.customer_type = customerType
+  if (!existing.customer_type && resolvedCustomerType) updates.customer_type = resolvedCustomerType
   if (currentRole !== nextRole) updates.role = nextRole
-  if (customerType && existing.onboarding_status !== 'completed') {
+  if (resolvedCustomerType && existing.onboarding_status !== 'completed') {
     updates.onboarding_status = 'in_progress'
     updates.onboarding_completed = false
   }
@@ -158,12 +180,12 @@ export async function ensureAuthProfile(input: ProfileBootstrapInput) {
     if (error) throw error
   }
 
-  await ensureRoleDetailRecord({ ...input, userId: input.userId, customerType })
+  await ensureRoleDetailRecord({ ...input, userId: input.userId, customerType: resolvedCustomerType })
 
   return {
     created: false,
     role: nextRole,
-    customerType: customerType ?? existing.customer_type ?? null,
-    destination: customerType ? `/onboarding/${slugFromCustomerType(customerType)}` : '/auth/choose-role',
+    customerType: resolvedCustomerType,
+    destination: resolvedCustomerType ? `/onboarding/${slugFromCustomerType(resolvedCustomerType)}` : '/auth/choose-role',
   }
 }

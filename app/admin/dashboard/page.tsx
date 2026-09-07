@@ -1,8 +1,11 @@
 import Link from 'next/link'
+import type { ReactNode } from 'react'
+import { Activity, Building2, ClipboardCheck, Headphones, MapPinned, ShieldCheck, Users, Wrench } from 'lucide-react'
 import { WorkloadPerformanceChart } from '@/components/admin/workload-performance-chart'
+import { DashboardActionCard, DashboardSectionHeader, DashboardStatCard } from '@/components/dashboard/dashboard-primitives'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
+const cardClass = 'dashboard-card rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const openTicketStatuses = ['open', 'assigned', 'in_progress', 'waiting_on_customer']
 const openWorkStatuses = ['requested', 'scheduled', 'in_progress', 'needs_followup', 'open', 'assigned', 'waiting_on_vendor']
 const terminalWorkStatuses = ['completed', 'resolved', 'closed', 'cancelled']
@@ -111,6 +114,7 @@ export default async function AdminOverviewPage() {
     openSupportCount,
     recentAudit,
     propertyQueue,
+    pendingLocationPlotsQuery,
     sellerQueue,
     ownerQueue,
     customerQueue,
@@ -138,6 +142,12 @@ export default async function AdminOverviewPage() {
       .from('properties')
       .select('id,title,property_kind,city,verification_status,created_at')
       .neq('verification_status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(50),
+    supabase
+      .from('plots')
+      .select('id,plot_number,location,address_landmark,location_status,created_at')
+      .eq('location_status', 'pending_verification')
       .order('created_at', { ascending: false })
       .limit(50),
     supabase
@@ -195,6 +205,7 @@ export default async function AdminOverviewPage() {
 
   const activityRows = recentAudit.data ?? []
   const propertyRows = propertyQueue.data ?? []
+  const pendingLocationRows = pendingLocationPlotsQuery.data ?? []
   const sellerRows = sellerQueue.data ?? []
   const ownerRows = ownerQueue.data ?? []
   const customerRows = customerQueue.data ?? []
@@ -223,6 +234,63 @@ export default async function AdminOverviewPage() {
   const highPriorityTickets = supportRows.filter(
     (row) => openTicketStatuses.includes(row.status) && ['high', 'urgent'].includes(row.priority || ''),
   )
+  const unassignedInspections = inspectionRows.filter(
+    (row) => openWorkStatuses.includes(row.status) && !row.assigned_employee_id,
+  ).length
+  const decisionItems = [
+    totalPending
+      ? {
+          eyebrow: 'Approve, reject, or clarify',
+          title: 'Review verification queue',
+          description: 'Open each record with its evidence, assign a reviewer where needed, then record the decision.',
+          count: totalPending,
+          href: '/admin/dashboard/verification',
+          icon: <ShieldCheck className="h-5 w-5" />,
+          actionLabel: 'Open review queue',
+        }
+      : null,
+    pendingLocationRows.length
+      ? {
+          eyebrow: 'Verify target location',
+          title: 'Review submitted GPS pins',
+          description: 'Confirm or adjust a plot location before it becomes the field team’s active navigation target.',
+          count: pendingLocationRows.length,
+          href: '/admin/dashboard/plots',
+          icon: <MapPinned className="h-5 w-5" />,
+          actionLabel: 'Open location queue',
+        }
+      : null,
+    unassignedInspections
+      ? {
+          eyebrow: 'Assign field work',
+          title: 'Schedule open inspections',
+          description: 'Choose a field agent and schedule only after the plot GPS target has been verified.',
+          count: unassignedInspections,
+          href: '/admin/dashboard/inspection-reports',
+          icon: <ClipboardCheck className="h-5 w-5" />,
+          actionLabel: 'Open assignments',
+        }
+      : null,
+    highPriorityTickets.length
+      ? {
+          eyebrow: 'Resolve customer risk',
+          title: 'Triage high-priority support',
+          description: 'Route urgent tickets to the support desk before routine operational follow-up.',
+          count: highPriorityTickets.length,
+          href: '/admin/dashboard/support',
+          icon: <Headphones className="h-5 w-5" />,
+          actionLabel: 'Open support desk',
+        }
+      : null,
+  ].filter(Boolean) as Array<{
+    eyebrow: string
+    title: string
+    description: string
+    count: number
+    href: string
+    icon: ReactNode
+    actionLabel: string
+  }>
   const staleVerificationCount = [...propertyRows, ...sellerRows, ...ownerRows, ...documentRows].filter(
     (row) => new Date(row.created_at) < staleCutoff,
   ).length
@@ -247,7 +315,7 @@ export default async function AdminOverviewPage() {
   const unassignedWork = openWorkRows.filter((row) => !row.assigned_employee_id).length
 
   return (
-    <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
+    <div className="dashboard-overview px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#C9A962]">Admin control center</p>
@@ -264,37 +332,88 @@ export default async function AdminOverviewPage() {
         </Link>
       </div>
 
-      <section className="mt-8 grid gap-4 lg:grid-cols-4">
+      <section className="dashboard-page-header mt-8">
+        <DashboardSectionHeader
+          eyebrow="Command pulse"
+          title="What needs attention now"
+          description="Live operational signals connected to the queues below."
+          action={<span className="dashboard-live-chip"><span className="dashboard-live-dot" aria-hidden="true" /> Live data</span>}
+        />
+        <div className="mt-5 grid gap-4 lg:grid-cols-4">
         {[
-          ['Live tracking', liveTrackingCount, 'Agent GPS updates in last 15 min', '/admin/dashboard/tracking'],
-          ['Support desk', openSupportCount, 'Open support tickets', '/admin/dashboard/support'],
-          ['Approval queue', totalPending, 'Records awaiting admin decision', '/admin/dashboard/verification'],
-          ['Unassigned work', unassignedWork, 'Operations not yet owned', '/admin/dashboard/employees'],
-        ].map(([label, value, description, href]) => (
-          <Link key={label} href={String(href)} className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition hover:border-[#C0392B]">
-            <p className="font-mono text-xs uppercase tracking-[0.16em] text-[#6B7280]">{label}</p>
-            <p className="mt-3 font-mono text-3xl font-bold text-[#C0392B]">{value}</p>
-            <p className="mt-2 text-xs text-[#9CA3AF]">{description}</p>
-          </Link>
+          ['Live tracking', liveTrackingCount, 'Agent GPS updates in last 15 min', '/admin/dashboard/tracking', <Activity key="live-tracking" className="h-4 w-4" />],
+          ['Support desk', openSupportCount, 'Open support tickets', '/admin/dashboard/support', <Headphones key="support-desk" className="h-4 w-4" />],
+          ['Approval queue', totalPending, 'Records awaiting admin decision', '/admin/dashboard/verification', <ShieldCheck key="approval-queue" className="h-4 w-4" />],
+          ['Unassigned work', unassignedWork, 'Operations not yet owned', '/admin/dashboard/employees', <ClipboardCheck key="unassigned-work" className="h-4 w-4" />],
+        ].map(([label, value, description, href, icon]) => (
+          <DashboardStatCard key={String(label)} label={String(label)} value={value as number} description={String(description)} href={String(href)} icon={icon} />
         ))}
+        </div>
+      </section>
+
+      <section className="mt-6 dashboard-command-deck">
+        <div className="dashboard-command-summary">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#C9A962]">Decision order</p>
+          <h2 className="mt-2 max-w-xl font-serif text-3xl font-semibold text-[#1F2937]">Make the next operational decision clear.</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#6B7280]">
+            Review evidence first, verify location before field assignment, and use archive or rejection instead of deleting operational history.
+          </p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            {[
+              ['1', 'Verify evidence', 'Approve only when the submitted record is complete.'],
+              ['2', 'Confirm location', 'Field GPS arrival uses verified plot coordinates only.'],
+              ['3', 'Assign safely', 'Schedule the field agent after the target is ready.'],
+            ].map(([step, title, copy]) => (
+              <div key={step} className="dashboard-glass rounded-xl p-4">
+                <span className="font-mono text-sm font-bold text-[#C0392B]">{step}</span>
+                <p className="mt-2 font-semibold text-[#1F2937]">{title}</p>
+                <p className="mt-1 text-xs leading-5 text-[#6B7280]">{copy}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <aside className="dashboard-command-note self-start">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#8A6D1D]">Record safety</p>
+          <p className="mt-2 font-semibold text-[#1F2937]">No hard-delete workflow</p>
+          <p className="mt-2 text-sm leading-6 text-[#6B7280]">
+            Archive hides a listing from the marketplace while retaining its operational and audit history. Reject keeps the submitted record for accountable review.
+          </p>
+        </aside>
+      </section>
+
+      <section className="mt-6">
+        <DashboardSectionHeader
+          eyebrow="Decision queue"
+          title="Start with work that needs a human decision"
+          description="Each card leads directly to the existing workflow. Empty categories are intentionally omitted."
+        />
+        {decisionItems.length ? (
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {decisionItems.map((item) => <DashboardActionCard key={item.title} {...item} />)}
+          </div>
+        ) : (
+          <div className="dashboard-empty mt-5" role="status">
+            <p className="font-semibold text-[#1F2937]">Your decision queue is clear.</p>
+            <p className="mt-1 text-sm text-[#6B7280]">Continue monitoring live tracking, support, and operational workload below.</p>
+          </div>
+        )}
       </section>
 
       <section className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="sm:col-span-2 xl:col-span-4">
+          <DashboardSectionHeader eyebrow="Platform inventory" title="Account and work totals" description="A compact view of the records your operations team is responsible for." />
+        </div>
         {[
-          ['Profiles', totalProfiles, 'Registered accounts'],
-          ['Properties', properties, 'Platform inventory'],
-          ['Pending approvals', totalPending, `${pendingProperties} property records`],
-          ['Open support', openSupportCount, `${highPriorityTickets.length} high priority`],
-          ['Sellers', sellers, 'Business accounts'],
-          ['Owners', owners, 'Land owner accounts'],
-          ['Customers', customers, 'Buyer / renter accounts'],
-          ['Open operations', openWorkRows.length, `${unassignedWork} unassigned`],
-        ].map(([label, value, description]) => (
-          <div key={label} className={cardClass}>
-            <p className="font-mono text-xs uppercase tracking-[0.16em] text-[#6B7280]">{label}</p>
-            <p className="mt-3 font-mono text-3xl font-bold text-[#C0392B]">{value}</p>
-            <p className="mt-2 font-sans text-xs text-[#9CA3AF]">{description}</p>
-          </div>
+          ['Profiles', totalProfiles, 'Registered accounts', <Users key="profiles" className="h-4 w-4" />],
+          ['Properties', properties, 'Platform inventory', <Building2 key="properties" className="h-4 w-4" />],
+          ['Pending approvals', totalPending, `${pendingProperties} property records`, <ShieldCheck key="pending-approvals" className="h-4 w-4" />],
+          ['Open support', openSupportCount, `${highPriorityTickets.length} high priority`, <Headphones key="open-support" className="h-4 w-4" />],
+          ['Sellers', sellers, 'Business accounts', <Users key="sellers" className="h-4 w-4" />],
+          ['Owners', owners, 'Land owner accounts', <Building2 key="owners" className="h-4 w-4" />],
+          ['Customers', customers, 'Buyer / renter accounts', <Users key="customers" className="h-4 w-4" />],
+          ['Open operations', openWorkRows.length, `${unassignedWork} unassigned`, <Wrench key="open-operations" className="h-4 w-4" />],
+        ].map(([label, value, description, icon]) => (
+          <DashboardStatCard key={String(label)} label={String(label)} value={value as number} description={String(description)} icon={icon} />
         ))}
       </section>
 

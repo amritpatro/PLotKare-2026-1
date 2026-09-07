@@ -10,6 +10,13 @@ import {
   isAuthServiceUnavailableError,
 } from '@/lib/auth/auth-service-status'
 import { authUserBootstrapInput, ensureAuthProfile } from '@/lib/auth/profile-bootstrap'
+import { safeRelativePath } from '@/lib/supabase/auth-redirect'
+
+function requiresEmailConfirmation(error: { code?: string; message?: string } | null) {
+  const code = error?.code?.toLowerCase()
+  const message = error?.message?.toLowerCase() ?? ''
+  return code === 'email_not_confirmed' || message.includes('email not confirmed')
+}
 
 export async function POST(request: NextRequest) {
   if (await isRateLimited(request)) {
@@ -30,7 +37,8 @@ export async function POST(request: NextRequest) {
   }
 
   const mode = body?.mode === 'admin' ? 'admin' : 'user'
-  const next = typeof body?.next === 'string' && body.next.startsWith('/') ? body.next : undefined
+  const requestedNext = typeof body?.next === 'string' ? body.next : null
+  const next = requestedNext ? safeRelativePath(requestedNext, '/auth/choose-role') : undefined
   const { url, anonKey } = requireSupabaseBrowserEnv()
   const cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }> = []
 
@@ -68,8 +76,12 @@ export async function POST(request: NextRequest) {
       metadata: { email: parsed.data.email, mode, reason: error?.name ?? 'invalid_credentials' },
     })
     return NextResponse.json(
-      { error: 'Unable to sign in. Please check your credentials and try again.' },
-      { status: 401 },
+      {
+        error: requiresEmailConfirmation(error)
+          ? 'Please confirm your email before signing in. Check your inbox and spam folder, then open the confirmation link.'
+          : 'Unable to sign in. Please check your credentials and try again.',
+      },
+      { status: requiresEmailConfirmation(error) ? 403 : 401 },
     )
   }
 
@@ -84,10 +96,14 @@ export async function POST(request: NextRequest) {
       metadata: { mode, reason: profileError instanceof Error ? profileError.name : 'unknown' },
     })
     await supabase.auth.signOut()
-    return NextResponse.json(
+    const profileResponse = NextResponse.json(
       { error: 'Your workspace profile is not ready yet. Please contact support.' },
       { status: 409 },
     )
+    cookiesToSet.forEach(({ name, value, options }) => {
+      profileResponse.cookies.set(name, value, options)
+    })
+    return profileResponse
   }
 
   if (mode === 'admin') {
@@ -106,14 +122,18 @@ export async function POST(request: NextRequest) {
         metadata: { mode },
       })
       await supabase.auth.signOut()
-      return NextResponse.json({ error: 'This account does not have admin access.' }, { status: 403 })
+      const deniedResponse = NextResponse.json({ error: 'This account does not have admin access.' }, { status: 403 })
+      cookiesToSet.forEach(({ name, value, options }) => {
+        deniedResponse.cookies.set(name, value, options)
+      })
+      return deniedResponse
     }
   }
 
   const destination =
     mode === 'admin'
       ? next ?? '/admin/dashboard'
-      : await resolvePostLoginRedirect(supabase, data.user.id, next ?? '/auth/choose-role', data.user.user_metadata)
+      : await resolvePostLoginRedirect(supabase, data.user.id, next, data.user.user_metadata)
 
   const response = NextResponse.json({ success: true, destination })
   cookiesToSet.forEach(({ name, value, options }) => {

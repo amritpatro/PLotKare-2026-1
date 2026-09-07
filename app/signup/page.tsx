@@ -28,6 +28,14 @@ type SignupFormData = {
   confirmPassword: string
 }
 
+type SignupResponse = {
+  error?: string
+  sessionCreated?: boolean
+  awaitingEmailConfirmation?: boolean
+  workspacePreparationPending?: boolean
+  destination?: string
+}
+
 const initialFormData: SignupFormData = {
   customerType: '',
   fullName: '',
@@ -66,7 +74,7 @@ function normalizeFieldValue(name: string, value: string) {
 
 export default function SignupPage() {
   const router = useRouter()
-  const supabase = createSupabaseBrowserClient()
+  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
   const [nextPath, setNextPath] = useState('/auth/choose-role')
   const [intent, setIntent] = useState('')
   const [formData, setFormData] = useState<SignupFormData>(initialFormData)
@@ -74,6 +82,7 @@ export default function SignupPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [awaitingEmailConfirmation, setAwaitingEmailConfirmation] = useState(false)
+  const [workspacePreparationPending, setWorkspacePreparationPending] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const authProviders = useAuthProviderStatus()
@@ -120,16 +129,20 @@ export default function SignupPage() {
     rememberPendingOnboardingPath(onboardingPath)
 
     setSubmitting(true)
-    const response = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(parsed.data),
-    })
-    const result = (await response.json()) as {
-      error?: string
-      sessionCreated?: boolean
-      awaitingEmailConfirmation?: boolean
-      destination?: string
+    let response: Response
+    let result: SignupResponse
+
+    try {
+      response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsed.data),
+      })
+      result = (await response.json()) as SignupResponse
+    } catch {
+      setSubmitting(false)
+      setError('Network error. Check your connection and try again.')
+      return
     }
     setSubmitting(false)
 
@@ -147,6 +160,7 @@ export default function SignupPage() {
     if (result.awaitingEmailConfirmation) {
       setAwaitingEmailConfirmation(true)
     }
+    setWorkspacePreparationPending(Boolean(result.workspacePreparationPending))
 
     setSubmitted(true)
   }
@@ -221,9 +235,14 @@ export default function SignupPage() {
                 </p>
                 <p className="mt-3 text-sm leading-6 text-[#5f5f5f]">
                   {awaitingEmailConfirmation
-                    ? `We sent a confirmation link to ${formData.email}. Open it on this device, then sign in to continue.`
+                    ? `If that email can receive sign-in links, we sent a confirmation link to ${formData.email}. Open it on this device, then sign in to continue.`
                     : 'Your access has been created. Sign in to continue to the PlotKare dashboard.'}
                 </p>
+                {workspacePreparationPending ? (
+                  <p className="mt-3 text-sm leading-6 text-[#5f5f5f]">
+                    Your workspace will finish preparing when you complete your first sign-in.
+                  </p>
+                ) : null}
                 <PremiumButton onClick={() => router.push('/login')} fullWidth className="mt-6">
                   Go to Sign In
                 </PremiumButton>
@@ -295,7 +314,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-[#5f5f5f] transition-colors hover:text-[#8B1538]"
+                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-[#5f5f5f] transition-colors hover:text-[#8B1538]"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -316,7 +335,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="text-[#5f5f5f] transition-colors hover:text-[#8B1538]"
+                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-[#5f5f5f] transition-colors hover:text-[#8B1538]"
                     aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                   >
                     {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}

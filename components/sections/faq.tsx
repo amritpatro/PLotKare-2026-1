@@ -1,4 +1,5 @@
 import type { FaqItem } from '@/lib/marketing-seo'
+import { SectionKicker } from '@/components/section-kicker'
 
 export function FaqSection({
   heading,
@@ -13,6 +14,7 @@ export function FaqSection({
     <section className="premium-section [content-visibility:auto] bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1100px] px-6 lg:px-12">
         <div className="premium-reveal mb-12 text-center">
+          <SectionKicker label="Common questions" />
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">{heading}</h2>
           {introduction ? (
             <p className="mx-auto mt-4 max-w-2xl font-sans text-base leading-relaxed text-muted-foreground">

@@ -57,12 +57,14 @@ export function AdminLocationReviewMap({ initialLatitude, initialLongitude }: Ad
   useEffect(() => {
     if (!containerRef.current) return
     let cancelled = false
+    let resizeFrame: number | null = null
+    let map: Leaflet.Map | null = null
     ensureLeaflet()
       .then((L) => {
         if (cancelled || !containerRef.current) return
         const initialPoint = initialPointRef.current
         leafletRef.current = L
-        const map = L.map(containerRef.current, {
+        map = L.map(containerRef.current, {
           center: initialPoint,
           zoom: 18,
           zoomControl: true,
@@ -90,15 +92,20 @@ export function AdminLocationReviewMap({ initialLatitude, initialLongitude }: Ad
           setManualLng(next[1].toFixed(6))
           setAdjusted(true)
         })
-        mapRef.current = map
-        requestAnimationFrame(() => map.invalidateSize())
+        const activeMap = map
+        mapRef.current = activeMap
+        resizeFrame = requestAnimationFrame(() => {
+          if (!cancelled && mapRef.current === activeMap) activeMap.invalidateSize()
+        })
       })
       .catch(() => setLoadError('Map failed to load. Manual coordinate review still works.'))
 
     return () => {
       cancelled = true
-      mapRef.current?.remove()
-      mapRef.current = null
+      if (resizeFrame != null) cancelAnimationFrame(resizeFrame)
+      map?.stop()
+      map?.remove()
+      if (mapRef.current === map) mapRef.current = null
       markerRef.current = null
       tileRef.current = null
     }

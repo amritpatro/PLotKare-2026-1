@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import { FileCheck2, MapPinned, ShieldCheck } from 'lucide-react'
+import { SectionWatermark } from '@/components/SectionWatermark'
 import { withBasePath } from '@/lib/site-config'
 
 const evidenceItems = [
@@ -31,16 +32,14 @@ export function EvidenceStorySection() {
   const FeaturedIcon = featured.icon
 
   return (
-    <section className="premium-section relative overflow-hidden bg-secondary py-20 lg:py-24" aria-labelledby="evidence-story-title">
-      <Image
-        src={withBasePath('/images/brand/india-map.webp')}
-        alt=""
-        aria-hidden="true"
-        width={900}
-        height={600}
-        className="pointer-events-none absolute -right-32 top-8 hidden max-w-[52vw] opacity-[0.07] mix-blend-multiply blur-[1px] lg:block"
+    <section className="premium-section relative isolate overflow-hidden bg-secondary py-20 lg:py-24" aria-labelledby="evidence-story-title">
+      <SectionWatermark
+        src="/assets/watermarks/watermark-india-map.webp"
+        position="right"
+        scale={1.5}
+        opacity={0.1}
       />
-      <div className="mx-auto grid max-w-[1400px] gap-8 px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-end lg:px-12">
+      <div className="relative z-[1] mx-auto grid max-w-[1400px] gap-8 px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-end lg:px-12">
         <div className="premium-reveal max-w-2xl">
           <p className="font-mono text-xs uppercase tracking-wide text-primary">Evidence chain</p>
           <h2 id="evidence-story-title" className="mt-4 font-serif text-4xl font-bold leading-tight text-foreground md:text-5xl">

@@ -56,6 +56,16 @@ function formatStatus(value: string | null | undefined) {
   return String(value ?? 'none').replaceAll('_', ' ')
 }
 
+function verificationActionLabel(status: string) {
+  const labels: Record<string, string> = {
+    under_review: 'Start review',
+    approved: 'Approve record',
+    rejected: 'Reject record',
+    needs_clarification: 'Ask for clarification',
+  }
+  return labels[status] ?? formatStatus(status)
+}
+
 function statusCount(rows: QueueItem[], status: string) {
   return rows.filter((row) => row.status === status).length
 }
@@ -357,6 +367,32 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
         </div>
       ) : null}
 
+      <section className="dashboard-command-deck mt-6">
+        <div className="dashboard-command-summary">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#C9A962]">Review guide</p>
+          <h2 className="mt-2 font-serif text-3xl font-semibold text-[#1F2937]">A decision should be obvious before an action is taken.</h2>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {[
+              ['1', 'Read the evidence', 'Confirm the identity, record, and supporting documents match.'],
+              ['2', 'Set ownership', 'Assign a reviewer, priority, and due date when more work is needed.'],
+              ['3', 'Record the outcome', 'Start review, clarify, reject, or approve with an audit note.'],
+            ].map(([step, title, copy]) => (
+              <div key={step} className="dashboard-glass rounded-xl p-4">
+                <span className="font-mono text-sm font-bold text-[#C0392B]">{step}</span>
+                <p className="mt-2 font-semibold text-[#1F2937]">{title}</p>
+                <p className="mt-1 text-xs leading-5 text-[#6B7280]">{copy}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <aside className="dashboard-command-note self-start">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#8A6D1D]">Action meaning</p>
+          <p className="mt-2 text-sm leading-6 text-[#6B7280]">
+            Approve when the evidence is complete. Ask for clarification when information is missing. Reject keeps the record and audit trail; it does not delete it.
+          </p>
+        </aside>
+      </section>
+
       <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {[
           ['Total pending', totalPending],
@@ -391,7 +427,7 @@ export default async function AdminVerificationPage({ searchParams }: Verificati
                   {pipelineStatuses.map((status) => (
                     <div key={status} className="rounded-md bg-white px-3 py-2">
                       <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#9CA3AF]">
-                        {formatStatus(status)}
+                        {verificationActionLabel(status)}
                       </p>
                       <p className="mt-1 font-mono text-lg font-bold text-[#1F2937]">
                         {statusCount(section.rows, status)}
@@ -586,7 +622,7 @@ function VerificationSection({
                 <input type="hidden" name="entityId" value={row.id} />
                 <input name="note" className={inputClass} placeholder="Optional admin note for audit trail" />
                 <div className="grid gap-2 sm:grid-cols-4">
-                  <select name="assignedEmployeeId" defaultValue={row.assignedEmployeeId ?? ''} className={inputClass}>
+                  <select name="assignedEmployeeId" aria-label="Assign reviewer" defaultValue={row.assignedEmployeeId ?? ''} className={inputClass}>
                     <option value="">No reviewer</option>
                     {employeeOptions.map((employee) => (
                       <option key={employee.id} value={employee.id}>
@@ -594,7 +630,7 @@ function VerificationSection({
                       </option>
                     ))}
                   </select>
-                  <select name="priority" defaultValue={row.priority ?? 'normal'} className={inputClass}>
+                  <select name="priority" aria-label="Set task priority" defaultValue={row.priority ?? 'normal'} className={inputClass}>
                     {ADMIN_TASK_PRIORITIES.map((priority) => (
                       <option key={priority} value={priority}>
                         {priority}
@@ -608,7 +644,7 @@ function VerificationSection({
                     className={inputClass}
                     aria-label="Due date"
                   />
-                  <select name="escalationLevel" defaultValue={row.escalationLevel ?? 0} className={inputClass}>
+                  <select name="escalationLevel" aria-label="Set escalation level" defaultValue={row.escalationLevel ?? 0} className={inputClass}>
                     {[0, 1, 2, 3].map((level) => (
                       <option key={level} value={level}>
                         Escalation {level}
@@ -623,7 +659,7 @@ function VerificationSection({
                     value="under_review"
                     className="rounded-lg border border-[#D1D5DB] bg-white px-3 py-2 text-xs font-semibold text-[#374151] transition hover:border-[#C0392B] hover:text-[#C0392B]"
                   >
-                    Review
+                    Start review
                   </PendingActionButton>
                   <PendingActionButton
                     pendingText="Updating..."
@@ -631,7 +667,7 @@ function VerificationSection({
                     value="needs_clarification"
                     className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 transition hover:bg-amber-100"
                   >
-                    Clarify
+                    Ask for clarification
                   </PendingActionButton>
                   <PendingActionButton
                     pendingText="Updating..."
@@ -639,7 +675,7 @@ function VerificationSection({
                     value="rejected"
                     className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-100"
                   >
-                    Reject
+                    Reject record
                   </PendingActionButton>
                   <PendingActionButton
                     pendingText="Updating..."
@@ -647,7 +683,7 @@ function VerificationSection({
                     value="approved"
                     className="rounded-lg bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-[#A93226]"
                   >
-                    Approve
+                    Approve record
                   </PendingActionButton>
                 </div>
               </form>

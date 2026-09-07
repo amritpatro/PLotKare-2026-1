@@ -75,11 +75,13 @@ export function CoordinatePicker({
   useEffect(() => {
     if (!expanded || !containerRef.current) return
     let cancelled = false
+    let resizeFrame: number | null = null
+    let map: Leaflet.Map | null = null
     ensureLeaflet()
       .then((L) => {
         if (cancelled || !containerRef.current) return
         leafletRef.current = L
-        const map = L.map(containerRef.current, {
+        map = L.map(containerRef.current, {
           center: mapCenter,
           zoom: point ? 17 : 12,
           zoomControl: true,
@@ -97,18 +99,23 @@ export function CoordinatePicker({
           setPoint(next)
           setMessage('Map pin updated.')
         })
-        mapRef.current = map
+        const activeMap = map
+        mapRef.current = activeMap
         if (point) {
           markerRef.current = L.marker(point, { icon: L.divIcon(pinIcon()) }).addTo(map)
         }
-        requestAnimationFrame(() => map.invalidateSize())
+        resizeFrame = requestAnimationFrame(() => {
+          if (!cancelled && mapRef.current === activeMap) activeMap.invalidateSize()
+        })
       })
       .catch(() => setMessage('Map could not load. You can still paste coordinates manually.'))
 
     return () => {
       cancelled = true
-      mapRef.current?.remove()
-      mapRef.current = null
+      if (resizeFrame != null) cancelAnimationFrame(resizeFrame)
+      map?.stop()
+      map?.remove()
+      if (mapRef.current === map) mapRef.current = null
       markerRef.current = null
     }
   }, [expanded])

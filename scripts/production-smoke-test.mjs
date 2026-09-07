@@ -90,6 +90,7 @@ async function checkSecurityHeaders() {
   try {
     const { response } = await timedFetch('/')
     if (response.status !== 200) return fail('security headers', `Homepage returned ${response.status}`)
+    const production = !isLocalUrl(baseUrl)
 
     const expected = {
       'strict-transport-security': 'max-age=63072000; includeSubDomains; preload',
@@ -102,7 +103,8 @@ async function checkSecurityHeaders() {
 
     for (const [header, expectedValue] of Object.entries(expected)) {
       const actual = response.headers.get(header)
-      if (!actual) fail(`header:${header}`, 'Missing')
+      if (!actual && header === 'strict-transport-security' && !production) warn(`header:${header}`, 'Skipped for local HTTP target; production must send HSTS')
+      else if (!actual) fail(`header:${header}`, 'Missing')
       else if (actual !== expectedValue) fail(`header:${header}`, `Expected "${expectedValue}", got "${actual}"`)
       else pass(`header:${header}`, actual)
     }
@@ -119,7 +121,7 @@ async function checkSecurityHeaders() {
 }
 
 async function checkPublicRoutes() {
-  const routes = ['/', '/login/', '/signup/', '/forgot-password/', '/auth/update-password/', '/listings/', '/visakhapatnam/', '/robots.txt', '/sitemap.xml']
+  const routes = ['/', '/login/', '/signup/', '/forgot-password/', '/auth/update-password/', '/listings/', '/visakhapatnam/', '/nri-plot-management-visakhapatnam/', '/robots.txt', '/sitemap.xml']
   for (const route of routes) {
     try {
       const { response, elapsedMs } = await timedFetch(route)

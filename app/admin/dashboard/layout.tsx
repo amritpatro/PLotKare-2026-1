@@ -10,7 +10,7 @@ export default async function AdminDashboardLayout({
   const { user } = await requirePageRole(['admin'])
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB]">
+    <div className="dashboard-shell dashboard-admin min-h-screen bg-[#F9FAFB]">
       <AdminRealtimeBridge userId={user.id} />
       <AdminSidebar />
       <div className="min-h-screen pb-16 md:ml-64 md:pb-0">{children}</div>

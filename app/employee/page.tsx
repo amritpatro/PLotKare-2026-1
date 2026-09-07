@@ -15,12 +15,13 @@ import {
 } from 'lucide-react'
 import { submitInspectionReport, updateAssignedWorkItem, updateMyAdminTask } from './actions'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
+import { DashboardSectionHeader, DashboardStatCard } from '@/components/dashboard/dashboard-primitives'
 import { ADMIN_TASK_STATUSES } from '@/lib/admin/status'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
+const cardClass = 'dashboard-card rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const selectClass =
   'rounded-md border border-[#D1D5DB] bg-white px-3 py-2 text-xs text-[#1F2937] outline-none focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
 const inputClass =
@@ -290,16 +291,8 @@ function InspectionReportForm({ inspection }: { inspection: InspectionRow }) {
 }
 
 function MetricCard({ label, value, Icon, tone = 'neutral' }: { label: string; value: number | string; Icon: ComponentType<{ className?: string }>; tone?: 'neutral' | 'red' | 'gold' | 'green' }) {
-  const color = tone === 'red' ? 'text-red-700' : tone === 'green' ? 'text-emerald-700' : 'text-[#C0392B]'
-  return (
-    <div className={cardClass}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="font-mono text-xs uppercase tracking-[0.16em] text-[#6B7280]">{label}</p>
-        <Icon className="h-5 w-5 text-[#C9A962]" />
-      </div>
-      <p className={`mt-3 font-mono text-3xl font-bold ${color}`}>{value}</p>
-    </div>
-  )
+  const description = tone === 'red' ? 'Needs prompt attention' : tone === 'green' ? 'No immediate pressure' : tone === 'gold' ? 'Keep on today’s queue' : 'Assigned to your workspace'
+  return <DashboardStatCard label={label} value={value} description={description} icon={<Icon className="h-4 w-4" />} />
 }
 
 export default async function EmployeeDashboardPage({ searchParams }: EmployeeDashboardPageProps) {
@@ -408,7 +401,7 @@ export default async function EmployeeDashboardPage({ searchParams }: EmployeeDa
       userId={user.id}
     >
       <section className="space-y-8 text-[#1F2937]">
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] md:p-8">
+        <div className="dashboard-card dashboard-glass rounded-2xl p-6 md:p-8">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#C9A962]">Employee operations</p>
           <div className="mt-4 flex flex-col justify-between gap-6 xl:flex-row xl:items-end">
             <div>
@@ -417,7 +410,7 @@ export default async function EmployeeDashboardPage({ searchParams }: EmployeeDa
                 Work assigned to {userLabel}: admin tasks, verification events, inspections, maintenance, and support.
               </p>
             </div>
-            <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-5 py-4">
+            <div className="dashboard-glass rounded-xl px-5 py-4">
               <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#9CA3AF]">Employee status</p>
               <p className="mt-2 text-lg font-semibold text-[#C0392B]">
                 {employee ? `${statusLabel(employee.employee_role)} · ${employee.active ? 'active' : 'inactive'}` : 'Record pending'}
@@ -446,11 +439,14 @@ export default async function EmployeeDashboardPage({ searchParams }: EmployeeDa
           </div>
         ) : (
           <>
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <section className="dashboard-page-header">
+              <DashboardSectionHeader eyebrow="Workload pulse" title="Your queue, at a glance" description="Prioritize due, overdue, and completed work before opening the detailed assignment lists." />
+              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <MetricCard label="Open admin tasks" value={openTasks.length} Icon={ClipboardCheck} />
               <MetricCard label="Due today" value={dueTodayTasks.length} Icon={CalendarClock} tone={dueTodayTasks.length ? 'gold' : 'green'} />
               <MetricCard label="Overdue" value={overdueTasks.length} Icon={AlertTriangle} tone={overdueTasks.length ? 'red' : 'green'} />
               <MetricCard label="Completed today" value={completedToday} Icon={CheckCircle2} tone="green" />
+              </div>
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">

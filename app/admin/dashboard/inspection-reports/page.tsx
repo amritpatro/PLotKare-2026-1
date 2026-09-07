@@ -184,6 +184,11 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
     assignment_failed: 'Inspection assignment failed. Please try again.',
   }
   const errorMessage = error ? errorMessages[error] ?? 'Inspection assignment failed.' : null
+  const unassignedReportCount = rows.filter((row) => !row.plot_id || !inspectionByPlotId.has(row.plot_id)).length
+  const unverifiedLocationCount = rows.filter((row) => {
+    const plot = row.plot_id ? plotById.get(row.plot_id) : null
+    return Boolean(plot) && (plot?.location_status !== 'verified' || plot?.target_latitude == null || plot?.target_longitude == null)
+  }).length
 
   return (
     <div className="px-4 pb-24 pt-24 sm:px-6 md:px-8 md:pb-12">
@@ -218,6 +223,32 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
         </div>
       ) : null}
 
+      <section className="dashboard-command-deck mt-6">
+        <div className="dashboard-command-summary">
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#C9A962]">Field assignment guide</p>
+          <h2 className="mt-2 font-serif text-3xl font-semibold text-[#1F2937]">Prepare the plot before you send an agent.</h2>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {[
+              ['1', 'Verify GPS pin', `${unverifiedLocationCount} report${unverifiedLocationCount === 1 ? '' : 's'} need a verified target before GPS arrival proof can pass.`],
+              ['2', 'Select field agent', `${agents.length} active field agent${agents.length === 1 ? '' : 's'} available for assignment.`],
+              ['3', 'Set schedule', `${unassignedReportCount} report${unassignedReportCount === 1 ? '' : 's'} are not yet assigned to the field portal.`],
+            ].map(([step, title, copy]) => (
+              <div key={step} className="dashboard-glass rounded-xl p-4">
+                <span className="font-mono text-sm font-bold text-[#C0392B]">{step}</span>
+                <p className="mt-2 font-semibold text-[#1F2937]">{title}</p>
+                <p className="mt-1 text-xs leading-5 text-[#6B7280]">{copy}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <aside className="dashboard-command-note self-start">
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#8A6D1D]">GPS safeguard</p>
+          <p className="mt-2 text-sm leading-6 text-[#6B7280]">
+            You may acknowledge an unverified location to prepare an assignment, but the agent cannot complete GPS arrival proof until the location is verified.
+          </p>
+        </aside>
+      </section>
+
       <section className="mt-8 grid gap-4 sm:grid-cols-4">
         {[
           ['Reports shown', rows.length],
@@ -244,7 +275,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
               <th className="px-3 py-3">Status</th>
               <th className="px-3 py-3">Field assignment</th>
               <th className="px-3 py-3">Created</th>
-              <th className="px-3 py-3">Assign</th>
+              <th className="px-3 py-3">Assign &amp; schedule</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#F3F4F6] text-[#1F2937]">
@@ -345,7 +376,7 @@ export default async function AdminInspectionReportsPage({ searchParams }: Admin
                         </label>
                       ) : null}
                       <button type="submit" className="rounded-lg bg-[#C0392B] px-3 py-2 text-xs font-semibold text-white disabled:bg-[#9CA3AF]" disabled={!row.plot_id || agents.length === 0}>
-                        Assign to field portal
+                        Send assignment to field portal
                       </button>
                     </form>
                     {row.plot_id ? (

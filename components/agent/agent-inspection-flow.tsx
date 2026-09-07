@@ -501,7 +501,7 @@ export function AgentInspectionFlow({
 
   if (submitted) {
     return (
-      <section className="rounded-xl border border-emerald-200 bg-white p-8 text-center shadow-sm">
+      <section className="dashboard-card rounded-xl border border-emerald-200 bg-white p-8 text-center shadow-sm">
         <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-600" />
         <h2 className="mt-4 text-2xl font-bold text-[#111827]">Inspection submitted</h2>
         <p className="mt-2 text-sm text-[#6B7280]">{location}</p>
@@ -515,7 +515,7 @@ export function AgentInspectionFlow({
 
   return (
     <div className="space-y-4">
-      <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+      <section className="dashboard-card rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
         <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#B45309]">{statusText}</p>
         <h2 className="mt-2 text-2xl font-bold text-[#111827]">{title}</h2>
         <p className="mt-1 text-sm text-[#6B7280]">{location}</p>
@@ -580,7 +580,7 @@ export function AgentInspectionFlow({
         </button>
       </section>
 
-      <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+      <section className="dashboard-card rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold text-[#111827]">{template.label} photos</h2>
         <div className="mt-4 grid gap-3">
           {[...template.requiredPhotos, ...optionalPhotoRequirements].map((photoRequirement) => {
@@ -606,7 +606,7 @@ export function AgentInspectionFlow({
         </div>
       </section>
 
-      <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+      <section className="dashboard-card rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold text-[#111827]">{template.label} checklist</h2>
         <div className="mt-4 space-y-3">
           {checklist.map((answer) => (
@@ -636,7 +636,7 @@ export function AgentInspectionFlow({
         ) : null}
       </section>
 
-      <section className="rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
+      <section className="dashboard-card rounded-xl border border-[#E5E7EB] bg-white p-5 shadow-sm">
         <h2 className="text-lg font-bold text-[#111827]">Issue evidence, documents, and amenities</h2>
         <button type="button" onClick={() => inputRefs.current.issue?.click()} className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-[#C0392B] px-4 text-sm font-bold text-[#C0392B]">
           <Camera className="h-5 w-5" />

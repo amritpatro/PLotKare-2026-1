@@ -49,6 +49,7 @@ export type CustomerListing = {
   property_kind: string
   bhk: number | null
   floor_label: string | null
+  image_path?: string | null
   created_at: string
 }
 
@@ -159,6 +160,17 @@ export type LinkedAmenity = {
   created_at: string
 }
 
+export type LinkedPropertyValue = {
+  id: string
+  property_id: string | null
+  property_title: string | null
+  plot_number: string | null
+  purchase_price_lakhs: number
+  current_value_lakhs: number
+  purchase_date: string | null
+  updated_at: string | null
+}
+
 export type MarketplaceSchemaStatus = {
   savedListingsReady: boolean
   inquiriesReady: boolean
@@ -178,5 +190,6 @@ export type CustomerWorkspaceData = {
   maintenanceRequests: MaintenanceRequest[]
   supportTickets: SupportTicket[]
   amenities: LinkedAmenity[]
+  linkedPropertyValues: LinkedPropertyValue[]
   schemaStatus: MarketplaceSchemaStatus
 }

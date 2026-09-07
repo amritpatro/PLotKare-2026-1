@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { Cormorant_Garamond, DM_Sans, DM_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { JsonLd } from '@/components/json-ld'
@@ -8,27 +7,6 @@ import { ThreeConsoleSanitizer } from '@/components/three-console-sanitizer'
 import { SITE_NAME, canonicalPageUrl, absoluteUrl, getSiteUrl, withBasePath } from '@/lib/site-config'
 import { publicBusinessConfig, publicOfficeAddress } from '@/lib/business-config'
 import './globals.css'
-
-const cormorant = Cormorant_Garamond({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-cormorant',
-  display: 'swap',
-})
-
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-dm-sans',
-  display: 'swap',
-})
-
-const dmMono = DM_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
-  variable: '--font-dm-mono',
-  display: 'swap',
-})
 
 const siteUrl = getSiteUrl()
 const defaultOgImage = absoluteUrl('/og-image.png')
@@ -131,7 +109,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${dmSans.variable} ${dmMono.variable} bg-background`}>
+    <html lang="en" className="bg-background">
       <body className="overflow-x-hidden font-sans antialiased">
         <JsonLd data={[organizationJsonLd, websiteJsonLd]} />
         <ThreeConsoleSanitizer />

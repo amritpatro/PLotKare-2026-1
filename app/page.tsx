@@ -9,7 +9,8 @@ import { HowItWorksSection } from '@/components/sections/how-it-works'
 import { PricingSection } from '@/components/sections/pricing'
 import { ContactSection } from '@/components/sections/contact'
 import { FaqSection } from '@/components/sections/faq'
-import { LazyAvailablePlotsShowcaseSection, LazyLandUtilisationSection, LazyPlotVisualizationSection } from '@/components/sections/lazy-home-sections'
+import { AvailablePlotsShowcaseSection } from '@/components/sections/available-plots-showcase'
+import { LazyLandUtilisationSection, LazyPlotVisualizationSection } from '@/components/sections/lazy-home-sections'
 import { Footer } from '@/components/footer'
 import { JsonLd } from '@/components/json-ld'
 import { SITE_NAME, canonicalPageUrl } from '@/lib/site-config'
@@ -69,19 +70,20 @@ export default async function HomePage() {
           href: '/visakhapatnam/',
           label: 'Explore plot management in Visakhapatnam',
         }}
+        quickAnswer="PlotKare monitors vacant plots with geotagged inspections, document tracking, and verified property records. A consultation confirms scope and pricing."
       />
+      <AvailablePlotsShowcaseSection initialListings={verifiedListings} />
       <EvidenceStorySection />
       <ServicesSection />
       <ProblemSection />
       <HowItWorksSection />
       <LazyPlotVisualizationSection />
       <LazyLandUtilisationSection />
-      <LazyAvailablePlotsShowcaseSection initialListings={verifiedListings} />
       <PricingSection />
       <FaqSection
-        heading="Before you begin"
+        heading="Frequently Asked Questions"
         introduction="Short answers for owners deciding whether PlotKare fits their property workflow."
-        items={HOME_FAQS.slice(0, 4)}
+        items={HOME_FAQS}
       />
       <ContactSection />
       <Footer />

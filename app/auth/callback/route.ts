@@ -3,18 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { resolvePostLoginRedirect } from '@/lib/onboarding/redirect'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { authUserBootstrapInput, ensureAuthProfile } from '@/lib/auth/profile-bootstrap'
-
-function safeRelativePath(path: string | null, fallback: string) {
-  if (!path || !path.startsWith('/') || path.startsWith('//')) return fallback
-  try {
-    const base = new URL('https://plotkare.invalid')
-    const candidate = new URL(path, base)
-    if (candidate.origin !== base.origin) return fallback
-    return `${candidate.pathname}${candidate.search}${candidate.hash}`
-  } catch {
-    return fallback
-  }
-}
+import { safeRelativePath } from '@/lib/supabase/auth-redirect'
 
 function redirectTo(request: NextRequest, path: string) {
   const requestUrl = new URL(request.url)

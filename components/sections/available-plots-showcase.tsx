@@ -15,6 +15,8 @@ import {
   type PublicPlotListing,
 } from '@/lib/public-listings'
 import { ListingImage } from '@/components/listings/listing-image'
+import { SectionWatermark } from '@/components/SectionWatermark'
+import { SectionKicker } from '@/components/section-kicker'
 
 const CRIMSON = '#C0392B'
 const GOLD = '#F59E0B'
@@ -265,13 +267,20 @@ export function AvailablePlotsShowcaseSection({
         : 'grid gap-6 md:grid-cols-3 md:gap-8'
 
   return (
-    <section className="premium-section-dark bg-charcoal py-24 lg:py-32">
-      <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
-        <div className="premium-reveal mb-12 text-center">
+    <section id="marketplace" className="premium-section-dark relative isolate overflow-hidden bg-charcoal py-20 lg:py-24">
+      <SectionWatermark
+        src="/assets/watermarks/watermark-magnifier-map.webp"
+        position="right"
+        scale={1.4}
+        opacity={0.075}
+      />
+      <div className="relative z-[1] mx-auto max-w-[1400px] px-6 lg:px-12">
+        <div className="premium-reveal mb-10 text-center">
+          <SectionKicker label="Verified marketplace" dark />
           <h2 className="font-serif text-4xl font-bold text-white md:text-5xl">
             {heading}
           </h2>
-          <p className="mt-4 font-sans text-lg text-white/55">
+          <p className="mx-auto mt-4 max-w-3xl font-sans text-lg text-white/70">
             {description}
           </p>
         </div>
@@ -292,47 +301,66 @@ export function AvailablePlotsShowcaseSection({
             ))}
           </div>
         ) : (
-          <div className="premium-surface-dark rounded-2xl border border-white/10 bg-white/[0.06] px-6 py-12 text-center">
-            <h3 className="font-serif text-2xl font-semibold text-white">Verified listings are being reviewed</h3>
-            <p className="mx-auto mt-3 max-w-2xl font-sans text-sm leading-relaxed text-white/60">
-              Seller properties appear here only after admin or employee verification. Sign in to track your own
-              properties, or contact PlotKare to schedule a guided advisory call.
+          <div className="premium-surface-dark rounded-2xl border border-white/15 bg-white/[0.07] px-6 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.24)] md:px-10">
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[#F59E0B]">Marketplace status</p>
+            <h3 className="mt-3 font-serif text-2xl font-semibold text-white">No verified properties are published yet</h3>
+            <p className="mx-auto mt-3 max-w-2xl font-sans text-sm leading-relaxed text-white/70">
+              A property appears here only after its location, owner-provided evidence, and listing details have been reviewed.
             </p>
-            <Link
-              href="/#contact"
-              prefetch={false}
-              className="premium-button mt-6 inline-flex rounded-xl px-8 py-3 font-sans text-sm font-semibold text-white"
-              style={{ backgroundColor: CRIMSON }}
-            >
-              Contact PlotKare
-            </Link>
+            <div className="mx-auto mt-7 grid max-w-3xl gap-3 text-left sm:grid-cols-3">
+              {['Location record checked', 'Evidence reviewed', 'Listing approved'].map((step, index) => (
+                <div key={step} className="rounded-lg border border-white/10 bg-black/15 px-4 py-3 font-sans text-sm text-white/85">
+                  <span className="mr-2 text-[#F59E0B]">{String(index + 1).padStart(2, '0')}</span>
+                  {step}
+                </div>
+              ))}
+            </div>
+            <div className="mt-7 flex flex-wrap justify-center gap-3">
+              <Link
+                href="/listings/"
+                prefetch={false}
+                className="premium-button-outline inline-flex rounded-xl border border-white/30 bg-transparent px-6 py-3 font-sans text-sm font-semibold text-white transition-colors hover:bg-white/10"
+              >
+                Browse listings
+              </Link>
+              <Link
+                href="/#contact"
+                prefetch={false}
+                className="premium-button inline-flex rounded-xl px-6 py-3 font-sans text-sm font-semibold text-white"
+                style={{ backgroundColor: CRIMSON }}
+              >
+                Talk to PlotKare
+              </Link>
+            </div>
           </div>
         )}
 
-        <div className="premium-surface-dark relative mt-14 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] px-6 py-10 text-center backdrop-blur-xl md:px-12">
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
-          <p className="relative mx-auto max-w-2xl font-sans text-base text-white/75 md:text-lg">
-            Explore the public listings hub for every verified plot and apartment card, then sign in when you are ready to
-            save notes or message an advisor.
-          </p>
-          <div className="relative mt-6 flex flex-wrap justify-center gap-4">
-            <Link
-              href="/listings/"
-              prefetch={false}
-              className="premium-button-outline inline-flex rounded-xl border border-white/30 bg-transparent px-8 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              {browseLabel}
-            </Link>
-            <Link
-              href="/login"
-              prefetch={false}
-              className="premium-button inline-flex rounded-xl px-10 py-3.5 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: CRIMSON }}
-            >
-              {accountLabel}
-            </Link>
+        {showcase.length > 0 ? (
+          <div className="premium-surface-dark relative mt-14 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] px-6 py-10 text-center backdrop-blur-xl md:px-12">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
+            <p className="relative mx-auto max-w-2xl font-sans text-base text-white/75 md:text-lg">
+              Explore the public listings hub for every verified plot and apartment card, then sign in when you are ready to
+              save notes or message an advisor.
+            </p>
+            <div className="relative mt-6 flex flex-wrap justify-center gap-4">
+              <Link
+                href="/listings/"
+                prefetch={false}
+                className="premium-button-outline inline-flex rounded-xl border border-white/30 bg-transparent px-8 py-3.5 font-sans text-sm font-semibold text-white transition-colors hover:bg-white/10"
+              >
+                {browseLabel}
+              </Link>
+              <Link
+                href="/login"
+                prefetch={false}
+                className="premium-button inline-flex rounded-xl px-10 py-3.5 font-sans text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ backgroundColor: CRIMSON }}
+              >
+                {accountLabel}
+              </Link>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
 
       <Dialog open={!!detailPlot} onOpenChange={(o) => !o && setDetailPlot(null)}>

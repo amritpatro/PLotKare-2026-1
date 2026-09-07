@@ -13,8 +13,8 @@ type AgentShellProps = {
 
 export function AgentShell({ title, subtitle, children }: AgentShellProps) {
   return (
-    <main className="min-h-screen bg-[#F8F7F4] text-[#1F2937]">
-      <header className="sticky top-0 z-20 border-b border-[#E5E7EB] bg-[#F8F7F4]/95 px-4 py-3 backdrop-blur">
+    <main className="dashboard-shell dashboard-agent min-h-screen bg-[#F8F7F4] text-[#1F2937]">
+      <header className="dashboard-topbar sticky top-0 z-20 border-b border-[#E5E7EB] bg-[#F8F7F4]/95 px-4 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
           <Link href="/agent" className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-full bg-[#9F1239] font-serif text-2xl font-bold text-white">P</span>
@@ -24,6 +24,9 @@ export function AgentShell({ title, subtitle, children }: AgentShellProps) {
             </span>
           </Link>
           <div className="flex items-center gap-2">
+            <span className="dashboard-live-chip hidden sm:inline-flex" role="status">
+              <span className="dashboard-live-dot" aria-hidden="true" /> Ready to sync
+            </span>
             <AgentPwaControls />
             <LogoutButton iconOnly className="inline-grid min-h-11 min-w-11 place-items-center rounded-full border border-[#E5E7EB] bg-white text-[#C0392B] disabled:opacity-60" />
           </div>
@@ -32,14 +35,15 @@ export function AgentShell({ title, subtitle, children }: AgentShellProps) {
       <AgentSyncBanner />
 
       <section className="mx-auto max-w-3xl px-4 pb-28 pt-6">
-        <div className="mb-5">
+        <div className="dashboard-page-header mb-5">
+          <p className="dashboard-eyebrow">Field operations</p>
           <h1 className="font-serif text-3xl font-bold leading-tight text-[#111827]">{title}</h1>
           <p className="mt-2 text-base text-[#6B7280]">{subtitle}</p>
         </div>
         {children}
       </section>
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-[#E5E7EB] bg-white/95 px-4 py-2 backdrop-blur">
+      <nav className="dashboard-mobile-nav fixed inset-x-0 bottom-0 z-20 border-t border-[#E5E7EB] bg-white/95 px-4 py-2 backdrop-blur">
         <div className="mx-auto grid max-w-3xl grid-cols-6 gap-1 text-xs font-semibold text-[#6B7280]">
           <Link className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg hover:bg-[#F9FAFB]" href="/agent">
             <ClipboardCheck className="h-5 w-5" />

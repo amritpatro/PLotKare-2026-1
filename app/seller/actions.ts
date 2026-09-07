@@ -9,40 +9,41 @@ import { notifyOperationsOfTicket } from '@/lib/support-notifications'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { upsertVerificationRequest } from '@/lib/verification-requests'
+import { humanNameSchema, phoneSchema, safeStructuredText } from '@/lib/validation/app'
 
 const plotSchema = z.object({
-  title: z.string().trim().min(2),
-  plotNumber: z.string().trim().min(1),
-  location: z.string().trim().min(2),
+  title: safeStructuredText(2, 160),
+  plotNumber: safeStructuredText(1, 80),
+  location: safeStructuredText(2, 160),
   sqYards: z.coerce.number().min(50),
   facing: z.enum(['East', 'West', 'North', 'South']),
   priceLakhs: z.coerce.number().min(0).default(0),
 })
 
 const customerSchema = z.object({
-  fullName: z.string().trim().min(2),
+  fullName: humanNameSchema,
   email: z.string().trim().email().optional().or(z.literal('')),
-  phone: z.string().trim().min(6).optional().or(z.literal('')),
-  address: z.string().trim().optional().or(z.literal('')),
+  phone: phoneSchema.optional().or(z.literal('')),
+  address: safeStructuredText(0, 300).optional().or(z.literal('')),
   propertyId: z.string().uuid(),
   registrationDate: z.string().optional().or(z.literal('')),
 })
 
 const serviceRequestSchema = z.object({
   propertyId: z.string().uuid(),
-  title: z.string().trim().min(3),
+  title: safeStructuredText(3, 160),
   description: z.string().trim().optional().or(z.literal('')),
   priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
 })
 
 const amenityRequestSchema = z.object({
   plotId: z.string().uuid(),
-  amenityId: z.string().trim().min(1),
+  amenityId: safeStructuredText(1, 80),
 })
 
 const supportTicketSchema = z.object({
   propertyId: z.string().uuid().optional().or(z.literal('')),
-  subject: z.string().trim().min(3),
+  subject: safeStructuredText(3, 160),
   description: z.string().trim().min(5),
   priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
 })

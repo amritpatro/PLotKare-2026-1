@@ -237,7 +237,7 @@ export function AuthLoginPage({ mode }: { mode: AuthLoginMode }) {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-[#5f5f5f] transition-colors hover:text-[#8B1538] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B1538]"
+                  className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md text-[#5f5f5f] transition-colors hover:text-[#8B1538] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B1538]"
                   disabled={isSigningIn}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >

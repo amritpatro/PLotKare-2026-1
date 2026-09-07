@@ -90,11 +90,13 @@ export function OwnerLocationCard({ plot, action }: OwnerLocationCardProps) {
   useEffect(() => {
     if (locked || !containerRef.current) return
     let cancelled = false
+    let resizeFrame: number | null = null
+    let map: Leaflet.Map | null = null
     ensureLeaflet()
       .then((L) => {
         if (cancelled || !containerRef.current) return
         leafletRef.current = L
-        const map = L.map(containerRef.current, {
+        map = L.map(containerRef.current, {
           center,
           zoom: point ? 17 : 12,
           zoomControl: true,
@@ -117,15 +119,20 @@ export function OwnerLocationCard({ plot, action }: OwnerLocationCardProps) {
           setMessage('Map pin updated. Check the landmark before submitting.')
         })
         if (point) markerRef.current = L.marker(point, { icon: L.divIcon(pinIcon()) }).addTo(map)
-        mapRef.current = map
-        requestAnimationFrame(() => map.invalidateSize())
+        const activeMap = map
+        mapRef.current = activeMap
+        resizeFrame = requestAnimationFrame(() => {
+          if (!cancelled && mapRef.current === activeMap) activeMap.invalidateSize()
+        })
       })
       .catch(() => setMapError('Map could not load. Manual coordinates and device GPS still work.'))
 
     return () => {
       cancelled = true
-      mapRef.current?.remove()
-      mapRef.current = null
+      if (resizeFrame != null) cancelAnimationFrame(resizeFrame)
+      map?.stop()
+      map?.remove()
+      if (mapRef.current === map) mapRef.current = null
       markerRef.current = null
       tileRef.current = null
     }

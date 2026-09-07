@@ -1,6 +1,7 @@
 import type {
   CustomerWorkspaceData,
   LinkedAmenity,
+  LinkedPropertyValue,
   ListingInquiry,
   PropertyDocument,
   PropertyLink,
@@ -61,7 +62,7 @@ export async function getCustomerWorkspaceData(
     supabase
       .from('listings')
       .select(
-        'id,property_id,seller_id,plot_id,plot_number,location,size_sq_yards,size_label,facing,corner_plot,premium,price_lakhs,price_display,status,approval_status,is_published,verified_at,verified_by,inquiries_count,property_kind,bhk,floor_label,created_at',
+        'id,property_id,seller_id,plot_id,plot_number,location,size_sq_yards,size_label,facing,corner_plot,premium,price_lakhs,price_display,status,approval_status,is_published,verified_at,verified_by,inquiries_count,property_kind,bhk,floor_label,image_path,created_at',
       )
       .in('status', ['Active', 'featured'])
       .eq('approval_status', 'approved')
@@ -176,11 +177,19 @@ export async function getCustomerWorkspaceData(
   const { data: linkedPlots } = propertyIds.length
     ? await supabase
         .from('plots')
-        .select('id,property_id,plot_number')
+        .select('id,property_id,plot_number,purchase_price_lakhs,current_value_lakhs,purchase_date,updated_at')
         .in('property_id', propertyIds)
     : { data: [] }
 
-  const linkedPlotRows = (linkedPlots ?? []) as Array<{ id: string; property_id: string | null; plot_number: string | null }>
+  const linkedPlotRows = (linkedPlots ?? []) as Array<{
+    id: string
+    property_id: string | null
+    plot_number: string | null
+    purchase_price_lakhs: number | null
+    current_value_lakhs: number | null
+    purchase_date: string | null
+    updated_at: string | null
+  }>
   const plotIds = linkedPlotRows.map((plot) => plot.id)
   const { data: activeAmenities } = plotIds.length
     ? await supabase
@@ -199,6 +208,19 @@ export async function getCustomerWorkspaceData(
     : { data: [] }
 
   const plotsById = new Map(linkedPlotRows.map((plot) => [plot.id, plot]))
+  const linkedPropertyById = new Map(
+    propertyLinks.map((link) => [link.property_id, linkedPropertyFrom(link)?.title ?? null]),
+  )
+  const linkedPropertyValues: LinkedPropertyValue[] = linkedPlotRows.map((plot) => ({
+    id: plot.id,
+    property_id: plot.property_id,
+    property_title: plot.property_id ? linkedPropertyById.get(plot.property_id) ?? null : null,
+    plot_number: plot.plot_number,
+    purchase_price_lakhs: Number(plot.purchase_price_lakhs ?? 0),
+    current_value_lakhs: Number(plot.current_value_lakhs ?? 0),
+    purchase_date: plot.purchase_date,
+    updated_at: plot.updated_at,
+  }))
   const amenitiesById = new Map((amenityRows ?? []).map((amenity: { id: string }) => [amenity.id, amenity]))
   const linkedAmenities: LinkedAmenity[] = (activeAmenities ?? [])
     .map((row: { id: string; plot_id: string; amenity_id: string; created_at: string }) => {
@@ -243,6 +265,7 @@ export async function getCustomerWorkspaceData(
     maintenanceRequests: maintenanceRequests ?? [],
     supportTickets: supportTickets ?? [],
     amenities: linkedAmenities,
+    linkedPropertyValues,
     schemaStatus: {
       savedListingsReady: savedResult.ready,
       inquiriesReady: inquiryResult.ready,

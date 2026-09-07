@@ -17,8 +17,20 @@ export function getAuthRedirectOrigin(): string {
 
 export function buildAuthCallbackUrl(nextPath: string): string {
   const origin = getAuthRedirectOrigin()
-  const next = nextPath.startsWith('/') ? nextPath : `/${nextPath}`
+  const next = safeRelativePath(nextPath, '/auth/choose-role')
   return `${origin}/auth/callback?next=${encodeURIComponent(next)}`
+}
+
+export function safeRelativePath(path: string | null | undefined, fallback: string): string {
+  if (!path || !path.startsWith('/') || path.startsWith('//')) return fallback
+  try {
+    const base = new URL('https://plotkare.invalid')
+    const candidate = new URL(path, base)
+    if (candidate.origin !== base.origin) return fallback
+    return `${candidate.pathname}${candidate.search}${candidate.hash}`
+  } catch {
+    return fallback
+  }
 }
 
 type AuthErrorLike = {

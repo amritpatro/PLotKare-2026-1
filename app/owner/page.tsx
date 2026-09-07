@@ -1,13 +1,15 @@
 import { createOwnerServiceRequest, createOwnerSupportTicket, registerOwnerProperty } from './actions'
+import { Archive, Building2, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { OwnerCoordinatePanel } from '@/components/owner/owner-coordinate-panel'
 import { OwnerLiveTrackingPanel } from '@/components/owner/owner-live-tracking-panel'
 import { OwnerPlotArchiveList } from '@/components/owner/owner-plot-archive-list'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
+import { DashboardSectionHeader, DashboardStatCard } from '@/components/dashboard/dashboard-primitives'
 import { requirePageRole } from '@/lib/supabase/role-guard'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
-const cardClass = 'rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
+const cardClass = 'dashboard-card rounded-xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
 const inputClass = 'w-full rounded-lg border border-[#D1D5DB] bg-white px-4 py-3 text-sm text-[#1F2937] outline-none transition focus:border-[#C0392B] focus:ring-2 focus:ring-[#C0392B]/15'
 const labelClass = 'mb-2 block font-mono text-xs uppercase tracking-[0.16em] text-[#6B7280]'
 
@@ -211,7 +213,7 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
           </div>
         ) : null}
 
-        <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.08)] md:p-8">
+        <div className="dashboard-card dashboard-glass rounded-2xl p-6 md:p-8">
           <p className="font-mono text-xs uppercase tracking-[0.24em] text-[#C9A962]">Personalized owner workspace</p>
           <div className="mt-4 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <div>
@@ -220,7 +222,7 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
               Register properties, track verification, and view inspections, documents, and service activity tied to your account.
             </p>
           </div>
-          <div className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-5 py-4">
+          <div className="dashboard-glass rounded-xl px-5 py-4">
             <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#9CA3AF]">Owner status</p>
             <p className="mt-2 font-sans text-lg font-semibold text-[#C0392B]">{owner?.verification_status || onboardingDetails?.verification_status || 'Pending'}</p>
           </div>
@@ -236,17 +238,17 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-4">
+        <section className="dashboard-page-header grid gap-4 md:grid-cols-4">
+          <div className="md:col-span-4">
+            <DashboardSectionHeader eyebrow="Property health" title="Your portfolio at a glance" description="Verification, registration, and archive state stay visible before you open a detailed workflow." />
+          </div>
           {[
-            ['Registered properties', registeredPropertyCount],
-            ['Approved', approvedCount],
-            ['Pending review', Math.max(pendingCount, onboardingDetails && approvedCount === 0 ? 1 : 0)],
-            ['Archived plots', archivedPlotRows.length],
-          ].map(([label, value]) => (
-            <div key={label} className={cardClass}>
-              <p className="font-mono text-xs uppercase tracking-[0.16em] text-[#6B7280]">{label}</p>
-              <p className="mt-3 font-mono text-3xl font-bold text-[#C0392B]">{value}</p>
-            </div>
+            ['Registered properties', registeredPropertyCount, 'Properties connected to your account', <Building2 key="registered-properties" className="h-4 w-4" />],
+            ['Approved', approvedCount, 'Ready for active services', <CheckCircle2 key="approved" className="h-4 w-4" />],
+            ['Pending review', Math.max(pendingCount, onboardingDetails && approvedCount === 0 ? 1 : 0), 'Awaiting verification', <ShieldCheck key="pending-review" className="h-4 w-4" />],
+            ['Archived plots', archivedPlotRows.length, 'Retained for your records', <Archive key="archived-plots" className="h-4 w-4" />],
+          ].map(([label, value, description, icon]) => (
+            <DashboardStatCard key={String(label)} label={String(label)} value={value as number} description={String(description)} icon={icon} />
           ))}
         </section>
 

@@ -69,21 +69,25 @@ export default function ChooseRolePage() {
 
         const { data: profile } = await supabase
           .from('profiles')
-          .select('customer_type, onboarding_completed')
+          .select('customer_type, onboarding_completed, role')
           .eq('id', user.id)
           .single()
 
         if (!profile) return
 
-        // User already has a role
-        if (profile.customer_type) {
+        const legacyCustomerType =
+          profile.customer_type ||
+          (profile.role === 'land_owner' ? 'land_owner' : profile.role === 'plot_seller' ? 'plot_seller' : profile.role === 'customer' ? 'plot_buyer' : null)
+
+        // Existing profiles, including legacy profiles, should never be asked to choose again.
+        if (legacyCustomerType) {
           // If onboarding complete, go to dashboard
           if (profile.onboarding_completed) {
-            router.push(dashboardByCustomerType[profile.customer_type as CustomerType] ?? '/auth/choose-role')
+            router.push(dashboardByCustomerType[legacyCustomerType as CustomerType] ?? '/auth/choose-role')
             return
           }
           // If onboarding incomplete, go to onboarding page
-          const slug = slugFromCustomerType(profile.customer_type as CustomerType)
+          const slug = slugFromCustomerType(legacyCustomerType as CustomerType)
           router.push(`/onboarding/${slug}`)
         }
       } catch (err) {

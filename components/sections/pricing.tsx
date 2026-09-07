@@ -1,5 +1,7 @@
 import { CalendarCheck, Check, FileSearch, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
+import { SectionWatermark } from '@/components/SectionWatermark'
+import { SectionKicker } from '@/components/section-kicker'
 
 interface PlanFeature {
   text: string
@@ -70,9 +72,16 @@ export function PricingSection({
   buttonLabel?: string
 }) {
   return (
-    <section id="pricing" className="premium-section bg-white py-24 lg:py-32">
-      <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
+    <section id="pricing" className="premium-section relative isolate overflow-hidden bg-white py-24 lg:py-32">
+      <SectionWatermark
+        src="/assets/watermarks/watermark-document-seal.webp"
+        position="left"
+        scale={1.3}
+        opacity={0.1}
+      />
+      <div className="relative z-[1] mx-auto max-w-[1400px] px-6 lg:px-12">
         <div className="premium-reveal mb-12 text-center">
+          <SectionKicker label="Consultation-led scope" />
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
             {heading} <span className="text-primary">{highlightedHeading}</span>
           </h2>
@@ -89,7 +98,7 @@ export function PricingSection({
                 plan.variant === 'premium'
                   ? 'premium-surface-dark bg-charcoal text-white'
                   : plan.variant === 'featured'
-                    ? 'premium-surface border-2 border-primary bg-white shadow-xl'
+                    ? 'premium-surface border-2 border-primary bg-primary text-white shadow-xl shadow-primary/20'
                     : 'premium-surface border border-border bg-white'
               }`}
             >
@@ -101,7 +110,7 @@ export function PricingSection({
 
               <div
                 className={`mb-5 inline-flex rounded-full p-3 ${
-                  plan.variant === 'premium' ? 'bg-white/10 text-accent' : 'bg-primary/10 text-primary'
+                  plan.variant === 'premium' || plan.variant === 'featured' ? 'bg-white/10 text-accent' : 'bg-primary/10 text-primary'
                 }`}
               >
                 {plan.variant === 'default' ? <ShieldCheck className="h-5 w-5" /> : null}
@@ -109,18 +118,18 @@ export function PricingSection({
                 {plan.variant === 'premium' ? <CalendarCheck className="h-5 w-5" /> : null}
               </div>
 
-              <h3 className={`font-serif text-2xl font-semibold ${plan.variant === 'premium' ? 'text-white' : 'text-foreground'}`}>
+              <h3 className={`font-serif text-2xl font-semibold ${plan.variant === 'premium' || plan.variant === 'featured' ? 'text-white' : 'text-foreground'}`}>
                 {plan.name}
               </h3>
-              <p className={`mt-4 font-sans text-sm leading-relaxed ${plan.variant === 'premium' ? 'text-white/66' : 'text-muted-foreground'}`}>
+              <p className={`mt-4 font-sans text-sm leading-relaxed ${plan.variant === 'premium' || plan.variant === 'featured' ? 'text-white/90' : 'text-muted-foreground'}`}>
                 {plan.summary}
               </p>
 
-              <div className={`mt-6 rounded-lg border p-4 ${plan.variant === 'premium' ? 'border-white/10 bg-white/[0.04]' : 'border-border bg-secondary/60'}`}>
-                <p className={`font-mono text-xs uppercase tracking-wide ${plan.variant === 'premium' ? 'text-accent' : 'text-primary'}`}>
+              <div className={`mt-6 rounded-lg border p-4 ${plan.variant === 'premium' || plan.variant === 'featured' ? 'border-white/25 bg-black/15' : 'border-border bg-secondary/60'}`}>
+                <p className={`font-mono text-xs uppercase tracking-wide ${plan.variant === 'premium' || plan.variant === 'featured' ? 'text-accent' : 'text-primary'}`}>
                   Consult for pricing
                 </p>
-                <p className={`mt-2 font-sans text-sm ${plan.variant === 'premium' ? 'text-white/70' : 'text-muted-foreground'}`}>
+                <p className={`mt-2 font-sans text-sm ${plan.variant === 'premium' || plan.variant === 'featured' ? 'text-white/90' : 'text-muted-foreground'}`}>
                   Final scope is shared after a property review and demo call.
                 </p>
               </div>
@@ -133,7 +142,9 @@ export function PricingSection({
                         feature.included
                           ? plan.variant === 'premium'
                             ? 'text-accent'
-                            : 'text-primary'
+                            : plan.variant === 'featured'
+                              ? 'text-accent'
+                              : 'text-primary'
                           : plan.variant === 'premium'
                             ? 'text-white/30'
                             : 'text-muted-foreground/30'
@@ -143,11 +154,15 @@ export function PricingSection({
                       className={`font-sans text-sm ${
                         feature.included
                           ? plan.variant === 'premium'
-                            ? 'text-white/80'
-                            : 'text-foreground'
+                            ? 'text-white'
+                            : plan.variant === 'featured'
+                              ? 'text-white'
+                              : 'text-foreground'
                           : plan.variant === 'premium'
-                            ? 'text-white/30'
-                            : 'text-muted-foreground/50'
+                            ? 'text-white/55'
+                            : plan.variant === 'featured'
+                              ? 'text-white/65'
+                              : 'text-muted-foreground/50'
                       }`}
                     >
                       {feature.text}
@@ -161,7 +176,9 @@ export function PricingSection({
                 className={`mt-8 block w-full rounded-sm py-3 text-center font-sans text-sm font-medium transition-colors ${
                   plan.variant === 'premium'
                     ? 'premium-button-outline bg-accent text-charcoal hover:bg-accent/90'
-                    : 'premium-button bg-primary text-white hover:bg-primary/90'
+                    : plan.variant === 'featured'
+                      ? 'premium-button-outline bg-white text-primary hover:bg-white/90'
+                      : 'premium-button bg-primary text-white hover:bg-primary/90'
                 }`}
               >
                 {buttonLabel}

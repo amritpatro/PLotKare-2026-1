@@ -57,7 +57,7 @@ export function AdminSidebar() {
 
   return (
     <>
-    <aside className="fixed left-0 top-0 hidden h-screen w-64 border-r border-[#E5E7EB] bg-white md:block">
+    <aside className="dashboard-sidebar fixed left-0 top-0 hidden h-screen w-64 border-r border-[#E5E7EB] bg-white/95 backdrop-blur-xl md:block">
       <div className="flex h-full flex-col">
         <div className="border-b border-[#E5E7EB] px-5 py-5">
           <p className="font-serif text-lg font-bold text-[#1F2937]">PlotKare</p>
@@ -77,7 +77,7 @@ export function AdminSidebar() {
                     {section}
                   </p>
                 ) : null}
-                <Link href={href}>
+                <Link href={href} aria-current={active ? 'page' : undefined}>
                   <span
                     className={`flex items-center gap-3 rounded-lg px-3 py-2.5 font-sans text-sm font-medium transition-colors ${
                       active
@@ -85,7 +85,7 @@ export function AdminSidebar() {
                         : 'border-l-[3px] border-l-transparent pl-[9px] text-[#6B7280] hover:bg-[#F9FAFB]'
                     }`}
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className={`dashboard-nav-icon ${active ? 'dashboard-nav-icon-active' : ''}`}><Icon className="h-4 w-4 shrink-0" /></span>
                     {label}
                   </span>
                 </Link>
@@ -106,11 +106,14 @@ export function AdminSidebar() {
         </div>
       </div>
     </aside>
-    <header className="fixed left-0 right-0 top-0 z-40 flex items-center justify-between border-b border-[#E5E7EB] bg-white px-4 py-4 md:hidden">
-      <Link href="/admin/dashboard">
+    <header className="dashboard-topbar fixed left-0 right-0 top-0 z-40 flex items-center justify-between border-b border-[#E5E7EB] bg-white/90 px-4 py-4 backdrop-blur-xl md:hidden">
+      <Link href="/admin/dashboard" className="flex items-center gap-3">
         <p className="font-serif text-base font-bold text-[#1F2937]">PlotKare</p>
         <p className="font-mono text-[9px] uppercase tracking-wider text-[#C0392B]">Control center</p>
       </Link>
+      <span className="dashboard-live-chip hidden sm:inline-flex" role="status">
+        <span className="dashboard-live-dot" aria-hidden="true" /> Session active
+      </span>
       <button
         type="button"
         onClick={() => void handleLogout()}
@@ -126,13 +129,13 @@ export function AdminSidebar() {
         {sessionError}
       </div>
     ) : null}
-    <nav className="fixed bottom-0 left-0 right-0 z-40 overflow-x-auto border-t border-[#E5E7EB] bg-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden" aria-label="Admin sections">
+    <nav className="dashboard-mobile-nav fixed bottom-0 left-0 right-0 z-40 overflow-x-auto border-t border-[#E5E7EB] bg-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:hidden" aria-label="Admin sections">
       <div className="flex min-w-max">
         {items.map(({ href, label, icon: Icon }) => {
           const active = href === '/admin/dashboard' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)
           return (
-            <Link key={href} href={href} className={`flex w-[76px] flex-col items-center gap-1 border-t-2 px-1 py-2 text-[10px] ${active ? 'border-[#C0392B] text-[#C0392B]' : 'border-transparent text-[#6B7280]'}`}>
-              <Icon className="h-4 w-4" />
+            <Link key={href} href={href} aria-current={active ? 'page' : undefined} className={`flex w-[76px] flex-col items-center gap-1 border-t-2 px-1 py-2 text-[10px] ${active ? 'border-[#C0392B] text-[#C0392B]' : 'border-transparent text-[#6B7280]'}`}>
+              <span className={`dashboard-nav-icon ${active ? 'dashboard-nav-icon-active' : ''}`}><Icon className="h-4 w-4" /></span>
               <span className="max-w-full truncate">{label.split(' ')[0]}</span>
             </Link>
           )
