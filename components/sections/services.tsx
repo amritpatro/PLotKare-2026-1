@@ -2,6 +2,7 @@ import Image from 'next/image'
 import { Camera, FileText, Bell } from 'lucide-react'
 import { withBasePath } from '@/lib/site-config'
 import { SectionKicker } from '@/components/section-kicker'
+import { Reveal } from '@/components/motion/reveal'
 
 const services = [
   {
@@ -35,7 +36,7 @@ export function ServicesSection({
     <section id="services" className="premium-section bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         {/* Header */}
-        <div className="premium-reveal mb-16 text-center">
+        <Reveal className="mb-16 text-center">
           <SectionKicker label="Property record" />
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">
             {heading}
@@ -43,7 +44,7 @@ export function ServicesSection({
           <p className="mx-auto mt-4 max-w-2xl font-sans text-lg text-muted-foreground">
             {introduction}
           </p>
-        </div>
+        </Reveal>
 
         {/* Services Grid */}
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">

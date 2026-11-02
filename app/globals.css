@@ -75,6 +75,16 @@
 
   /* Premium polish tokens */
   --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-micro: 150ms;
+  --motion-standard: 200ms;
+  --motion-emphasis: 300ms;
+  --motion-reveal: 480ms;
+  --space-1: 0.5rem;
+  --space-2: 1rem;
+  --space-3: 1.5rem;
+  --space-4: 2rem;
+  --space-5: 3rem;
+  --space-6: 4rem;
   --shadow-soft: 0 18px 55px rgb(26 26 26 / 0.08);
   --shadow-lift: 0 24px 70px rgb(26 26 26 / 0.13);
   --shadow-dark-soft: 0 24px 70px rgb(0 0 0 / 0.26);
@@ -313,6 +323,22 @@
   .premium-nav-link:hover::after {
     opacity: 0.48;
     transform: scaleX(1);
+  }
+
+  .premium-nav-link[data-active='true']::after {
+    opacity: 0.72;
+    transform: scaleX(1);
+  }
+
+  .scroll-progress {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    transform-origin: left;
+    background: var(--primary);
+    transition: transform var(--motion-micro) linear;
   }
 
   .premium-hero {

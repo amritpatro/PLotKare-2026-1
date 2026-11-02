@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSupabaseBrowserEnv } from '@/lib/supabase/env'
+import { requireSupabaseBrowserEnv, requireSupabaseServiceEnv } from '@/lib/supabase/env'
 import { signupSchema } from '@/lib/validation/auth'
 import { isRateLimited } from '@/lib/api/rate-limit'
 import { recordAuditLog } from '@/lib/audit'
@@ -9,6 +10,16 @@ import {
   isAuthServiceUnavailableError,
 } from '@/lib/auth/auth-service-status'
 import { ensureAuthProfile } from '@/lib/auth/profile-bootstrap'
+import { hasTransactionalEmailConfiguration, sendTransactionalEmail } from '@/lib/email/resend'
+import { formatAuthError } from '@/lib/supabase/auth-redirect'
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+}
 
 function response(request: NextRequest, body: Record<string, unknown>, status = 200) {
   const requestId = request.headers.get('x-request-id') || crypto.randomUUID()
@@ -31,6 +42,86 @@ export async function POST(request: NextRequest) {
 
   const onboardingPath = `/onboarding/${parsed.data.customerType.replace('_', '-')}`
   const { url, anonKey } = requireSupabaseBrowserEnv()
+  const email = parsed.data.email.toLowerCase()
+  const emailRedirectTo = `${request.nextUrl.origin}/auth/callback?next=${encodeURIComponent(onboardingPath)}`
+
+  // Supabase's hosted SMTP can reject or delay confirmation messages. When the
+  // production Resend integration is configured, create the same short-lived
+  // Supabase signup link and deliver it through the configured transactional
+  // provider instead. The verification token never reaches the browser/API.
+  if (hasTransactionalEmailConfiguration()) {
+    try {
+      const { serviceRoleKey } = requireSupabaseServiceEnv()
+      const admin = createClient(url, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const { data, error } = await admin.auth.admin.generateLink({
+        type: 'signup',
+        email,
+        password: parsed.data.password,
+        options: {
+          redirectTo: emailRedirectTo,
+          data: {
+            full_name: parsed.data.fullName,
+            customer_type: parsed.data.customerType,
+            onboarding_status: 'in_progress',
+          },
+        },
+      })
+
+      if (!error && data.properties.action_link) {
+        const confirmationUrl = data.properties.action_link
+        const safeUrl = escapeHtml(confirmationUrl)
+        const delivery = await sendTransactionalEmail({
+          to: email,
+          subject: 'Confirm your PlotKare account',
+          html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a"><h1 style="font-family:Georgia,serif;color:#8B1538">Confirm your account</h1><p>Confirm your email to begin setting up your PlotKare workspace.</p><p style="margin:28px 0"><a href="${safeUrl}" style="display:inline-block;background:#8B1538;color:#fff;padding:12px 20px;text-decoration:none;border-radius:4px">Confirm email</a></p><p style="color:#666;font-size:13px">If you did not request this account, you can ignore this email.</p></div>`,
+          text: `Confirm your PlotKare account: ${confirmationUrl}`,
+        })
+
+        if (!delivery.skipped && !('error' in delivery)) {
+          const createdNewAuthUser = Boolean(data.user && (data.user.identities?.length ?? 0) > 0)
+          let workspacePreparationPending = false
+          if (createdNewAuthUser && data.user) {
+            try {
+              await ensureAuthProfile({
+                userId: data.user.id,
+                email,
+                fullName: parsed.data.fullName,
+                customerType: parsed.data.customerType,
+              })
+            } catch {
+              workspacePreparationPending = true
+            }
+          }
+
+          await recordAuditLog({
+            actorId: createdNewAuthUser ? data.user?.id ?? null : null,
+            action: 'auth.signup_requested',
+            entityType: 'auth_session',
+            entityId: createdNewAuthUser ? data.user?.id ?? null : null,
+            metadata: {
+              email,
+              customer_type: parsed.data.customerType,
+              confirmation_delivery: 'resend',
+              workspace_preparation_pending: workspacePreparationPending,
+            },
+          })
+
+          return response(request, {
+            sessionCreated: false,
+            awaitingEmailConfirmation: true,
+            workspacePreparationPending,
+            destination: onboardingPath,
+          })
+        }
+      }
+    } catch {
+      // Fall through to Supabase's normal sign-up flow when a server-only
+      // credential is unavailable. This keeps development environments simple.
+    }
+  }
+
   const cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }> = []
   const supabase = createServerClient(url, anonKey, {
     cookies: {
@@ -43,10 +134,9 @@ export async function POST(request: NextRequest) {
     },
   })
 
-  const emailRedirectTo = `${request.nextUrl.origin}/auth/callback?next=${encodeURIComponent(onboardingPath)}`
   const signUpResult = await supabase.auth
     .signUp({
-      email: parsed.data.email.toLowerCase(),
+      email,
       password: parsed.data.password,
       options: {
         emailRedirectTo,
@@ -74,7 +164,7 @@ export async function POST(request: NextRequest) {
       entityType: 'auth_session',
       metadata: { email: parsed.data.email, customer_type: parsed.data.customerType, reason: error.name },
     })
-    return response(request, { error: 'We could not create the account right now. Please try again later.' }, 503)
+    return response(request, { error: formatAuthError(error) }, error.status && error.status < 500 ? error.status : 503)
   }
 
   // Supabase intentionally returns an obfuscated user with no identities for an

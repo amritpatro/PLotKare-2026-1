@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { ChevronDown, Menu, X } from 'lucide-react'
 import { LogoMark } from '@/components/logo'
 import {
@@ -30,7 +31,9 @@ const mobileNavLinks = [...primaryNavLinks, ...moreNavLinks]
 const MOBILE_MENU_ID = 'plotkare-mobile-menu'
 
 export function Navigation() {
+  const pathname = usePathname()
   const [isScrolled, setIsScrolled] = useState(false)
+  const [scrollProgress, setScrollProgress] = useState(0)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -39,11 +42,15 @@ export function Navigation() {
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 80)
+      const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight
+      setScrollProgress(scrollableHeight > 0 ? Math.min(window.scrollY / scrollableHeight, 1) : 0)
     }
     handleScroll()
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  const isActiveLink = (href: string) => href === pathname || (pathname === '/' && href.startsWith('#'))
 
   useEffect(() => {
     if (!isMobileMenuOpen) return
@@ -149,6 +156,8 @@ export function Navigation() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  data-active={isActiveLink(link.href)}
+                  aria-current={isActiveLink(link.href) ? 'page' : undefined}
                   className="premium-nav-link whitespace-nowrap font-sans text-[13px] font-medium text-foreground/80 transition-colors hover:text-primary xl:text-sm"
                 >
                   {link.label}
@@ -202,6 +211,7 @@ export function Navigation() {
             </button>
           </div>
         </div>
+        <div className="scroll-progress" style={{ transform: `scaleX(${scrollProgress})` }} aria-hidden />
       </nav>
 
       {/* Mobile Menu Overlay */}

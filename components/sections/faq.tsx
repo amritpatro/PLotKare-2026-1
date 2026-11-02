@@ -1,5 +1,6 @@
 import type { FaqItem } from '@/lib/marketing-seo'
 import { SectionKicker } from '@/components/section-kicker'
+import { Reveal } from '@/components/motion/reveal'
 
 export function FaqSection({
   heading,
@@ -13,7 +14,7 @@ export function FaqSection({
   return (
     <section className="premium-section [content-visibility:auto] bg-white py-24 lg:py-32">
       <div className="mx-auto max-w-[1100px] px-6 lg:px-12">
-        <div className="premium-reveal mb-12 text-center">
+        <Reveal className="mb-12 text-center">
           <SectionKicker label="Common questions" />
           <h2 className="font-serif text-4xl font-bold text-foreground md:text-5xl">{heading}</h2>
           {introduction ? (
@@ -21,7 +22,7 @@ export function FaqSection({
               {introduction}
             </p>
           ) : null}
-        </div>
+        </Reveal>
         <dl className="grid gap-5 md:grid-cols-2">
           {items.map((item) => (
             <div key={item.question} className="premium-surface premium-interactive rounded-lg border border-border bg-card p-7">
