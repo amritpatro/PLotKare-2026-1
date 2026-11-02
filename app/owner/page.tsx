@@ -4,6 +4,7 @@ import { PendingActionButton } from '@/components/forms/pending-action-button'
 import { OwnerCoordinatePanel } from '@/components/owner/owner-coordinate-panel'
 import { OwnerLiveTrackingPanel } from '@/components/owner/owner-live-tracking-panel'
 import { OwnerPlotArchiveList } from '@/components/owner/owner-plot-archive-list'
+import { OwnerCarePanel } from '@/components/property-care/owner-care-panel'
 import { RoleDashboardShell } from '@/components/role-dashboard-shell'
 import { DashboardSectionHeader, DashboardStatCard } from '@/components/dashboard/dashboard-primitives'
 import { requirePageRole } from '@/lib/supabase/role-guard'
@@ -75,6 +76,9 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
     { data: plans },
     { data: subscriptions },
     { data: ownerPlots },
+    { data: readinessSnapshots },
+    { data: qrSettings },
+    { data: propertyInterests },
   ] = await Promise.all([
     supabase
       .from('owners')
@@ -131,6 +135,17 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
       .select('id,property_id,plot_number,location,sq_yards,facing,status,lifecycle_status,verification_status,target_latitude,target_longitude,submitted_latitude,submitted_longitude,submitted_accuracy_meters,location_source,location_status,location_note,location_submitted_at,address_landmark,google_maps_link,location_verified_at,location_adjusted_by_admin,created_at')
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('property_readiness_snapshots')
+      .select('property_id,tier,blockers,next_action,evaluated_at'),
+    supabase
+      .from('property_qr_settings')
+      .select('property_id,public_token,status,owner_enabled'),
+    supabase
+      .from('property_interest_requests')
+      .select('property_id,id,request_type,status,created_at')
+      .order('created_at', { ascending: false })
+      .limit(30),
   ])
 
   const propertyRows = properties ?? []
@@ -141,6 +156,9 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
   const planRows = plans ?? []
   const subscriptionRows = subscriptions ?? []
   const plotRows = ownerPlots ?? []
+  const readinessRows = readinessSnapshots ?? []
+  const qrRows = qrSettings ?? []
+  const interestRows = propertyInterests ?? []
   const archivedPlotRows = plotRows.filter(
     (plot) => plot.lifecycle_status === 'archived' || String(plot.status ?? '').toLowerCase() === 'archived',
   )
@@ -251,6 +269,13 @@ export default async function LandOwnerDashboardPage({ searchParams }: OwnerDash
             <DashboardStatCard key={String(label)} label={String(label)} value={value as number} description={String(description)} icon={icon} />
           ))}
         </section>
+
+        <OwnerCarePanel
+          properties={visiblePropertyRows.map((property) => ({ id: property.id, title: property.title, city: property.city, verification_status: property.verification_status }))}
+          readiness={readinessRows as any}
+          qrSettings={qrRows as any}
+          interests={interestRows as any}
+        />
 
         <OwnerPlotArchiveList plots={plotRows} />
         <OwnerCoordinatePanel plots={plotRows} />
