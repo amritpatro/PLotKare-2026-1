@@ -15,7 +15,8 @@
     "lint": "eslint app components lib",
     "prelaunch:static": "node scripts/prelaunch-static-check.mjs",
     "smoke:local": "node scripts/production-smoke-test.mjs http://127.0.0.1:3002 --allow-local",
-    "smoke:production": "node scripts/production-smoke-test.mjs https://plotkare.in"
+    "smoke:production": "node scripts/production-smoke-test.mjs https://plotkare.in",
+    "e2e:owner-care": "node scripts/owner-care-production-e2e.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
